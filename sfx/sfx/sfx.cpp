@@ -23,6 +23,9 @@
 
 #include "../sfxFlags.h"
 
+#include "TinyJS_Functions.h"
+#include "TinyJS_MathFunctions.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -99,6 +102,9 @@ BOOL CSfxApp::InitInstance()
 {
 	CWinApp::InitInstance();
 
+	registerFunctions(&m_js);
+	registerMathFunctions(&m_js);
+
 	// Create the shell manager, in case the dialog contains
 	// any shell tree view or shell list view controls.
 	CShellManager *pShellManager = new CShellManager;
@@ -126,6 +132,23 @@ BOOL CSfxApp::InitInstance()
 		}
 	}
 	m_InstallPath = pDefaultPath;
+
+	TCHAR *script_res_name[EScriptType::NUMTYPES] = {_T("SFX_SCRIPT_INIT"), _T("SFX_SCRIPT_PERFILE"), _T("SFX_SCRIPT_FINISH")};
+	for (int si = 0, max_si = EScriptType::NUMTYPES; si < max_si; si++)
+	{
+		TCHAR *pscript = _T("");
+		hfr = FindResource(NULL, script_res_name[si], _T("SFX"));
+		if (hfr)
+		{
+			HGLOBAL hg = LoadResource(NULL, hfr);
+			if (hg)
+			{
+				pscript = (TCHAR *)LockResource(hg);
+			}
+		}
+
+		m_Script[si] = pscript;
+	}
 
 	bool runnow = false;
 	if (PathIsDirectory(m_lpCmdLine))
@@ -171,7 +194,7 @@ BOOL CSfxApp::InitInstance()
 				ZeroMemory(&sei, sizeof(SHELLEXECUTEINFO));
 
 				TCHAR exepath[MAX_PATH];
-				_tcscpy(exepath, theApp.m_pszHelpFilePath);
+				_tcscpy_s(exepath, MAX_PATH, theApp.m_pszHelpFilePath);
 				PathRenameExtension(exepath, _T(".exe"));
 
 				HINSTANCE shellret = ShellExecute(NULL, _T("runas"), exepath, NULL, NULL, SW_SHOWNORMAL);

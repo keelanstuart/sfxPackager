@@ -44,12 +44,8 @@ CSfxPackagerApp::CSfxPackagerApp()
 {
 	m_bHiColorIcons = TRUE;
 
-	// TODO: replace application ID string below with unique ID string; recommended
-	// format for string is CompanyName.ProductName.SubProduct.VersionInformation
-	SetAppID(_T("sfxPackager.AppID.NoVersion"));
-
-	m_s7ZipPath = _T("C:\\Program Files\\7-Zip\\7z.exe");
-	m_sTempPath = _T("D:\\temp\\SfxPackager_Work_Area");
+	// recommended format for string is CompanyName.ProductName.SubProduct.VersionInformation
+	SetAppID(_T("sfxPackager.sfxPackager.1.1.0.1"));
 }
 
 // The one and only CSfxPackagerApp object
@@ -86,18 +82,60 @@ BOOL CSfxPackagerApp::InitInstance()
 	EnableTaskbarInteraction();
 
 	// AfxInitRichEdit2() is required to use RichEdit control	
-	// AfxInitRichEdit2();
+	AfxInitRichEdit2();
 
 	// Standard initialization
 	// If you are not using these features and wish to reduce the size
 	// of your final executable, you should remove from the following
 	// the specific initialization routines you do not need
 	// Change the registry key under which our settings are stored
-	SetRegistryKey(_T("SECore Applications"));
+	SetRegistryKey(_T("sfxPackager"));
 	LoadStdProfileSettings(4);  // Load standard INI file options (including MRU)
 
-	m_s7ZipPath = GetProfileString(_T("sfxPackager"), _T("7ZipPath"), _T("C:\\Program Files\\7-zip\\7z.exe"));
-	m_sTempPath = GetProfileString(_T("sfxPackager"), _T("TempPath"), _T("D:\\temp\\SfxPackager_Work_Area"));
+	{
+		TCHAR path7z[MAX_PATH] = {0};
+		HKEY key;
+		if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("SOFTWARE\\7-Zip"), 0, KEY_READ, &key) == ERROR_SUCCESS)
+		{
+			DWORD rkt, rksz;
+			rksz = sizeof(path7z);
+			RegQueryValueEx(key, _T("Path"), 0, &rkt, (BYTE *)path7z, &rksz);
+
+			RegCloseKey(key);
+		}
+		_tcscat_s(path7z, MAX_PATH, _T("7z.exe"));
+
+		m_s7ZipPath = GetProfileString(_T("sfxPackager"), _T("7ZipPath"), path7z);
+	}
+
+	{
+		TCHAR workpath[MAX_PATH] = {0};
+		TCHAR *rootpath;
+		HRESULT hr = SHGetKnownFolderPath(FOLDERID_ProgramData, 0, NULL, &rootpath);
+		if (SUCCEEDED(hr))
+		{
+			_tcscat_s(workpath, MAX_PATH, rootpath);
+			PathAddBackslash(workpath);
+			CoTaskMemFree(rootpath);
+
+			_tcscat_s(workpath, MAX_PATH, _T("sfxPackager"));
+			if (!PathIsDirectory(workpath) && !PathIsDirectory(workpath))
+				if (!CreateDirectory(workpath, nullptr))
+					return false;
+
+			PathAddBackslash(workpath);
+			_tcscat_s(workpath, MAX_PATH, _T("WorkArea"));
+			if (!PathIsDirectory(workpath) && !PathIsDirectory(workpath))
+				if (!CreateDirectory(workpath, nullptr))
+					return false;
+
+			if (!PathIsDirectory(workpath) && !PathIsDirectory(workpath))
+				return false;
+
+		}
+
+		m_sTempPath = GetProfileString(_T("sfxPackager"), _T("TempPath"), workpath);
+	}
 
 	InitContextMenuManager();
 
@@ -111,13 +149,14 @@ BOOL CSfxPackagerApp::InitInstance()
 
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views
-	CMultiDocTemplate* pDocTemplate;
-	pDocTemplate = new CMultiDocTemplate(IDR_sfxPackagerTYPE,
+	CMultiDocTemplate* pDocTemplate = new CMultiDocTemplate(IDR_sfxPackagerTYPE,
 		RUNTIME_CLASS(CSfxPackagerDoc),
 		RUNTIME_CLASS(CChildFrame), // custom MDI child frame
 		RUNTIME_CLASS(CSfxPackagerView));
+
 	if (!pDocTemplate)
 		return FALSE;
+
 	AddDocTemplate(pDocTemplate);
 
 	// create main MDI Frame window

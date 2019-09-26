@@ -72,6 +72,8 @@ BOOL CProgressDlg::OnInitDialog()
 
 	m_Thread = CreateThread(NULL, 0, InstallThreadProc, this, 0, NULL);
 
+	ShowWindow(SW_SHOWNORMAL);
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -186,14 +188,14 @@ public:
 		return false;
 	}
 
-	virtual LONGLONG GetLength()
+	virtual uint64_t GetLength()
 	{
 		LARGE_INTEGER p;
 		GetFileSizeEx(m_hFile, &p);
 		return p.QuadPart;
 	}
 
-	virtual LONGLONG GetOffset()
+	virtual uint64_t GetOffset()
 	{
 		LARGE_INTEGER p, z;
 		z.QuadPart = 0;
@@ -210,12 +212,17 @@ DWORD CProgressDlg::RunInstall()
 	DWORD ret = 0;
 
 	TCHAR exepath[MAX_PATH];
-	_tcscpy(exepath, theApp.m_pszHelpFilePath);
+	_tcscpy_s(exepath, MAX_PATH, theApp.m_pszHelpFilePath);
 	PathRenameExtension(exepath, _T(".exe"));
 
 	CString msg;
 
 	m_Progress.SetPos(0);
+
+	if (!theApp.m_Script[CSfxApp::EScriptType::INIT].empty())
+	{
+		theApp.m_js.execute(theApp.m_Script[CSfxApp::EScriptType::INIT]);
+	}
 
 	bool cancelled = false;
 	bool extract_ok = true;
@@ -225,7 +232,7 @@ DWORD CProgressDlg::RunInstall()
 	{
 		LARGE_INTEGER arcofs;
 		DWORD br;
-		SetFilePointer(hfile, -(sizeof(LONGLONG)), NULL, FILE_END);
+		SetFilePointer(hfile, -(LONG)(sizeof(LONGLONG)), NULL, FILE_END);
 		ReadFile(hfile, &(arcofs.QuadPart), sizeof(LONGLONG), &br, NULL);
 
 		SetFilePointerEx(hfile, arcofs, NULL, FILE_BEGIN);
@@ -236,11 +243,11 @@ DWORD CProgressDlg::RunInstall()
 		{
 			size_t maxi = pie->GetFileCount();
 
-			msg.Format(_T("Extracting %d files to %s...\r\n"), maxi, (LPCTSTR)(theApp.m_InstallPath));
+			msg.Format(_T("Extracting %d files to %s...\r\n"), int(maxi), (LPCTSTR)(theApp.m_InstallPath));
 			m_Status.SetSel(-1, 0, TRUE);
 			m_Status.ReplaceSel(msg);
 
-			m_Progress.SetRange32(0, maxi);
+			m_Progress.SetRange32(0, (int)maxi);
 
 			pie->SetBaseOutputPath((LPCTSTR)(theApp.m_InstallPath));
 
@@ -255,16 +262,16 @@ DWORD CProgressDlg::RunInstall()
 
 				tstring fname;
 				tstring fpath;
-				LONGLONG usize;
+				uint64_t usize;
 				pie->GetFileInfo(i, &fname, &fpath, NULL, &usize);
 
-				m_Progress.SetPos(i + 1);
+				m_Progress.SetPos((int)i + 1);
 
 				IExtractor::EXTRACT_RESULT er = pie->ExtractFile(i);
 				switch (er)
 				{
 					case IExtractor::ER_OK:
-						msg.Format(_T("    %s%s%s (%dKB) [ok]\r\n"), fpath.c_str(), fpath.empty() ? _T("") : _T("\\"), fname.c_str(), usize / 1024);
+						msg.Format(_T("    %s%s%s (%" PRId64 "KB) [ok]\r\n"), fpath.c_str(), fpath.empty() ? _T("") : _T("\\"), fname.c_str(), usize / 1024);
 						break;
 
 					default:
@@ -281,6 +288,11 @@ DWORD CProgressDlg::RunInstall()
 		}
 
 		CloseHandle(hfile);
+	}
+
+	if (!theApp.m_Script[CSfxApp::EScriptType::FINISH].empty())
+	{
+		theApp.m_js.execute(theApp.m_Script[CSfxApp::EScriptType::FINISH]);
 	}
 
 	msg.Format(_T("Done.\r\n"));

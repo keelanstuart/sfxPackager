@@ -271,11 +271,11 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 				selcount++;
 
 				int i = list.GetNextSelectedItem(pos);
-				UINT hi = list.GetItemData(i);
+				DWORD_PTR hi = list.GetItemData(i);
 
 				if (!got_name)
 				{
-					name = pd->GetFileData(hi, CSfxPackagerDoc::FDT_NAME);
+					name = pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_NAME);
 					got_name = true;
 				}
 				else
@@ -285,22 +285,22 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 
 				if (!got_src)
 				{
-					_tcscpy(rawsrc, pd->GetFileData(hi, CSfxPackagerDoc::FDT_SRCPATH));
+					_tcscpy_s(rawsrc, MAX_PATH, pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_SRCPATH));
 					got_src = true;
 				}
 				else
 				{
-					PrunePathToCommonPart(rawsrc, pd->GetFileData(hi, CSfxPackagerDoc::FDT_SRCPATH));
+					PrunePathToCommonPart(rawsrc, pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_SRCPATH));
 				}
 
 				if (!got_dst)
 				{
-					_tcscpy(rawdst, pd->GetFileData(hi, CSfxPackagerDoc::FDT_DSTPATH));
+					_tcscpy_s(rawdst, MAX_PATH, pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_DSTPATH));
 					got_dst = true;
 				}
 				else
 				{
-					PrunePathToCommonPart(rawdst, pd->GetFileData(hi, CSfxPackagerDoc::FDT_DSTPATH));
+					PrunePathToCommonPart(rawdst, pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_DSTPATH));
 				}
 			}
 

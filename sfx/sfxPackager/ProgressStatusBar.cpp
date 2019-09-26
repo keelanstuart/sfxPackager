@@ -121,7 +121,7 @@ void CProgressStatusBar::SetMarquee(bool on)
 LRESULT CProgressStatusBar::OnUpdateStatus(WPARAM pct, LPARAM marquee)
 {
 	if ((INT32)pct <= 100)
-		SetProgress(pct);
+		SetProgress((UINT)pct);
 
 	SetMarquee(marquee != 0);
 

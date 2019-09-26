@@ -20,6 +20,7 @@
 #endif
 
 #include "resource.h"		// main symbols
+#include "TinyJS.h"
 
 
 // CSfxApp:
@@ -39,6 +40,19 @@ public:
 	LARGE_INTEGER m_SpaceRequired;
 	UINT32 m_CompressedFileCount;
 	UINT32 m_ZipParts;
+
+	CTinyJS m_js;
+
+	enum EScriptType
+	{
+		INIT = 0,
+		PERFILE,
+		FINISH,
+
+		NUMTYPES
+	};
+
+	tstring m_Script[EScriptType::NUMTYPES];
 
 // Overrides
 public:

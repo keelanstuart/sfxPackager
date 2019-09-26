@@ -284,3 +284,28 @@ bool CGenParser::IsToken(TCHAR *s, bool case_sensitive)
 
 	return !_tcsicmp(m_curStr.c_str(), s);
 }
+
+bool CGenParser::FindBoundedRawString(TCHAR s)
+{
+	if (!m_data || !m_datalen)
+		return false;
+
+	m_curType = TT_STRING;
+	m_curStr.clear();
+
+	while (m_pos < m_datalen)
+	{
+		if (m_data[m_pos] == s)
+			break;
+
+		m_curStr += m_data[m_pos];
+
+		m_pos++;
+	}
+
+	if (m_pos < m_datalen)
+		return true;
+
+	return true;
+
+}

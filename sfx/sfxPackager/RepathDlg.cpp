@@ -75,16 +75,16 @@ BOOL CRepathDlg::OnInitDialog()
 	{
 		if (*slashes == _T('\\'))
 		{
-			m_SlashPositions.push_back(slashes - s);
+			m_SlashPositions.push_back(UINT(slashes - s));
 		}
 
 		slashes++;
 	}
 
-	m_OrigSubDirSpin.SetRange32(0, m_SlashPositions.size() + 1);
+	m_OrigSubDirSpin.SetRange32(0, int(m_SlashPositions.size() + 1));
 	m_OrigSubDirSpin.SetPos(0);
 
-	m_SubDir = m_SlashPositions.size();
+	m_SubDir = (int)m_SlashPositions.size();
 	m_OrigPath.SetSel(0, -1, TRUE);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -155,7 +155,7 @@ void CRepathDlg::OnDeltaposSpinOrigsubdir(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	LPNMUPDOWN pNMUpDown = reinterpret_cast<LPNMUPDOWN>(pNMHDR);
 
-	m_SubDir = min(max(0, (m_SubDir + pNMUpDown->iDelta)), m_SlashPositions.size());
+	m_SubDir = min(max(0, (m_SubDir + pNMUpDown->iDelta)), (int)m_SlashPositions.size());
 
 	int endsel = (m_SubDir < m_SlashPositions.size()) ? m_SlashPositions[m_SubDir] : -1;
 

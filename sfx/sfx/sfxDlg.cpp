@@ -67,6 +67,8 @@ BOOL CSfxDlg::OnInitDialog()
 		pe->EnableWindow(theApp.m_Flags & SFX_FLAG_ALLOWDESTCHG);
 	}
 
+	ShowWindow(SW_SHOWNORMAL);
+
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
@@ -114,7 +116,7 @@ bool CreateDirectories(const TCHAR *dir)
 		return false;
 
 	TCHAR _dir[MAX_PATH];
-	_tcscpy(_dir, dir);
+	_tcscpy_s(_dir, MAX_PATH, dir);
 	PathRemoveFileSpec(_dir);
 	CreateDirectories(_dir);
 
@@ -129,16 +131,6 @@ void CSfxDlg::OnBnClickedOk()
 	if (pe)
 		pe->GetWindowText(theApp.m_InstallPath);
 
-	ULARGE_INTEGER freespace;
-	GetDiskFreeSpaceEx(theApp.m_InstallPath, &freespace, NULL, NULL);
-	if (freespace.QuadPart < theApp.m_SpaceRequired.QuadPart)
-	{
-		CString s;
-		s.Format(_T("The location you have selected does not have enough free space to decompress the entire package (%dMB required)."), theApp.m_SpaceRequired.QuadPart / 1024);
-		::MessageBox(GetSafeHwnd(), s, _T("Not Enough Space!"), MB_OK | MB_ICONERROR);
-		return;
-	}
-
 	if (!PathFileExists(theApp.m_InstallPath))
 	{
 		switch (::MessageBox(GetSafeHwnd(), _T("The specified directory does not exist.  Would you like to create it before proceeding?"), _T("Path Not Found - Create?"), MB_OKCANCEL | MB_ICONHAND))
@@ -151,6 +143,16 @@ void CSfxDlg::OnBnClickedOk()
 				return;
 				break;
 		}
+	}
+
+	ULARGE_INTEGER freespace;
+	GetDiskFreeSpaceEx(theApp.m_InstallPath, &freespace, NULL, NULL);
+	if ((LONGLONG)freespace.QuadPart < theApp.m_SpaceRequired.QuadPart)
+	{
+		CString s;
+		s.Format(_T("The location you have selected does not have enough free space to decompress the entire package (%" PRId64 "KB required)."), theApp.m_SpaceRequired.QuadPart >> 10);
+		::MessageBox(GetSafeHwnd(), s, _T("Not Enough Space!"), MB_OK | MB_ICONERROR);
+		return;
 	}
 
 	CDialogEx::OnOK();

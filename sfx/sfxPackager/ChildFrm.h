@@ -23,9 +23,11 @@ public:
 
 // Attributes
 public:
+	CSplitterWndEx m_wndSplitter;
 
 // Operations
 public:
+	CEditView *GetScriptEditPane();
 
 // Overrides
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
@@ -45,4 +47,8 @@ public:
 	afx_msg void OnNcPaint();
 	virtual void ActivateFrame(int nCmdShow = -1);
 	afx_msg void OnSetFocus(CWnd* pOldWnd);
+	virtual BOOL OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext *pContext);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	virtual void RecalcLayout(BOOL bNotify = TRUE);
+	afx_msg void OnUpdateAppBuildsfx(CCmdUI *pCmdUI);
 };

@@ -102,7 +102,7 @@ int COutputWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndTabs.AddTab(&m_wndOutputDebug, strTabName, (UINT)1);
 
 	// Fill output tabs with some dummy text (nothing magic here)
-	AppendMessage(OT_DEBUG, _T("sfxPackager v0.1 - contact Keelan Stuart with comments, bug reports, or suggestions.\r\n"));
+	AppendMessage(OT_DEBUG, _T("sfxPackager v1.1 - contact Keelan Stuart (keelanstuart@gmail.com) with comments, bug reports, or suggestions.\r\n"));
 
 	return 0;
 }

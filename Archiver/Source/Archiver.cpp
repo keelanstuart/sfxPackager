@@ -19,7 +19,7 @@ IArchiver::CREATE_RESULT IArchiver::CreateArchiver(IArchiver **ppia, IArchiveHan
 	if (ppia)
 	{
 		DWORD bw;
-		UINT32 comp_magic;
+		uint32_t comp_magic;
 
 		switch (ct)
 		{
@@ -33,13 +33,13 @@ IArchiver::CREATE_RESULT IArchiver::CreateArchiver(IArchiver **ppia, IArchiveHan
 
 		*ppia = NULL;
 
-		UINT32 magic = IArchiver::MAGIC;
-		WriteFile(pah->GetHandle(), &magic, sizeof(UINT32), &bw, NULL);
+		uint32_t magic = IArchiver::MAGIC;
+		WriteFile(pah->GetHandle(), &magic, sizeof(uint32_t), &bw, NULL);
 
-		WriteFile(pah->GetHandle(), &comp_magic, sizeof(UINT32), &bw, NULL);
+		WriteFile(pah->GetHandle(), &comp_magic, sizeof(uint32_t), &bw, NULL);
 
-		UINT64 flags = 0;
-		WriteFile(pah->GetHandle(), &flags, sizeof(UINT64), &bw, NULL);
+		uint64_t flags = 0;
+		WriteFile(pah->GetHandle(), &flags, sizeof(uint64_t), &bw, NULL);
 
 		switch (ct)
 		{
@@ -74,18 +74,18 @@ IExtractor::CREATE_RESULT IExtractor::CreateExtractor(IExtractor **ppie, IArchiv
 	if (ppie)
 	{
 		DWORD br;
-		UINT32 magic;
-		ReadFile(pah->GetHandle(), &magic, sizeof(UINT32), &br, NULL);
+		uint32_t magic;
+		ReadFile(pah->GetHandle(), &magic, sizeof(uint32_t), &br, NULL);
 
 		if (magic != IArchiver::MAGIC)
 			return CR_BADMAGIC;
 
 		*ppie = NULL;
 
-		ReadFile(pah->GetHandle(), &magic, sizeof(UINT32), &br, NULL);
+		ReadFile(pah->GetHandle(), &magic, sizeof(uint32_t), &br, NULL);
 
 		UINT64 flags;
-		ReadFile(pah->GetHandle(), &flags, sizeof(UINT64), &br, NULL);
+		ReadFile(pah->GetHandle(), &flags, sizeof(uint64_t), &br, NULL);
 
 		switch (magic)
 		{

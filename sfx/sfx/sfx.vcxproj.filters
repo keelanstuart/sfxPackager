@@ -43,6 +43,21 @@
     <None Include="res\sfx_fixupdata.bin">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="res\sfx1.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\sfx3.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\sfx_script_init.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\sfx_script_perfile.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\sfx_script_finish.bin">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sfx.h">
@@ -69,6 +84,15 @@
     <ClInclude Include="ProgressDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TinyJS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TinyJS_Functions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TinyJS_MathFunctions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sfx.cpp">
@@ -87,6 +111,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ProgressDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TinyJS.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TinyJS_Functions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TinyJS_MathFunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -31,8 +31,8 @@ CFastLZArchiver::CFastLZArchiver(IArchiveHandle *pah)
 	DWORD bw;
 
 	// temporary file table offset
-	LONGLONG fto_place_holder = 0;
-	WriteFile(m_pah->GetHandle(), &fto_place_holder, sizeof(LONGLONG), &bw, NULL);
+	uint64_t fto_place_holder = 0;
+	WriteFile(m_pah->GetHandle(), &fto_place_holder, sizeof(uint64_t), &bw, NULL);
 }
 
 
@@ -41,7 +41,7 @@ CFastLZArchiver::~CFastLZArchiver()
 }
 
 
-void CFastLZArchiver::SetMaximumSize(LONGLONG maxsize)
+void CFastLZArchiver::SetMaximumSize(uint64_t maxsize)
 {
 	m_MaxSize = maxsize;
 }
@@ -62,8 +62,10 @@ size_t CFastLZArchiver::GetFileCount(IArchiver::INFO_MODE mode)
 }
 
 // Adds a file to the archive
-CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, const TCHAR *dst_filename)
+CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp, uint64_t *sz_comp)
 {
+	CFastLZArchiver::ADD_RESULT ret = AR_OK;
+
 	HANDLE hin = CreateFile(src_filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 	if (hin != INVALID_HANDLE_VALUE)
 	{
@@ -82,6 +84,8 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 		LARGE_INTEGER fsz;
 		GetFileSizeEx(hin, &fsz);
 		fte.m_UncompressedSize = fsz.QuadPart;
+		if (sz_uncomp)
+			*sz_uncomp = fte.m_UncompressedSize;
 
 		// store the file time
 		GetFileTime(hin, &(fte.m_FTCreated), NULL, &(fte.m_FTModified));
@@ -96,14 +100,20 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 			fte.m_BlockCount++;
 
 			// compress and write the data to the archive
-			b.CompressData();
+			if (b.CompressData())
+			{
+				// update the compressed size of the file
+				fte.m_CompressedSize += b.m_Header.m_SizeC;
+			}
+			else
+			{
+				fte.m_CompressedSize += b.m_Header.m_SizeU;
+			}
+
 			b.WriteCompressedData(m_pah->GetHandle());
 
-			// update the compressed size of the file
-			fte.m_CompressedSize += b.m_Header.m_SizeC;
-
 			// spanning logic
-			if ((m_pah->GetLength() + ComputeFileTableSize()) >= m_MaxSize)
+			if ((m_MaxSize != UINT64_MAX) && ((m_pah->GetLength() + (uint64_t)ComputeFileTableSize()) >= m_MaxSize))
 			{
 				// if we're spanning, then we need to add this entry to the file table now and do some cleanup
 				m_FileTable.push_back( fte );
@@ -116,14 +126,14 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 				m_pah->Span();
 
 				DWORD bw;
-				UINT32 magic = IArchiver::MAGIC;
-				WriteFile(m_pah->GetHandle(), &magic, sizeof(UINT32), &bw, NULL);
+				uint32_t magic = IArchiver::MAGIC;
+				WriteFile(m_pah->GetHandle(), &magic, sizeof(uint32_t), &bw, NULL);
 
-				UINT32 comp_magic = CFastLZArchiver::MAGIC_FASTLZ;
-				WriteFile(m_pah->GetHandle(), &comp_magic, sizeof(UINT32), &bw, NULL);
+				uint32_t comp_magic = CFastLZArchiver::MAGIC_FASTLZ;
+				WriteFile(m_pah->GetHandle(), &comp_magic, sizeof(uint32_t), &bw, NULL);
 
-				UINT64 flags = 0;
-				WriteFile(m_pah->GetHandle(), &flags, sizeof(UINT64), &bw, NULL);
+				uint64_t flags = 0;
+				WriteFile(m_pah->GetHandle(), &flags, sizeof(uint64_t), &bw, NULL);
 
 				// after the span, we should expect that offset will be different
 				m_InitialOffset = m_pah->GetOffset();
@@ -135,6 +145,12 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 			}
 		}
 
+		if (fte.m_CompressedSize == fte.m_UncompressedSize)
+			ret = AR_OK_UNCOMPRESSED;
+
+		if (sz_comp)
+			*sz_comp = (fte.m_CompressedSize != (uint64_t)-1) ? fte.m_CompressedSize : fte.m_UncompressedSize;
+
 		// add the file to the file table
 		m_FileTable.push_back( fte );
 
@@ -143,14 +159,14 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 		CloseHandle(hin);
 	}
 
-	return AR_OK;
+	return ret;
 }
 
 
 CFastLZArchiver::FINALIZE_RESULT CFastLZArchiver::Finalize()
 {
 	// store the file position before writing the file table
-	LONGLONG file_table_ofs = m_pah->GetOffset();
+	uint64_t file_table_ofs = m_pah->GetOffset();
 
 	// write and clear the file table
 	WriteFileTable();
@@ -166,7 +182,7 @@ CFastLZArchiver::FINALIZE_RESULT CFastLZArchiver::Finalize()
 	WriteFile(m_pah->GetHandle(), &file_table_ofs, sizeof(file_table_ofs), &bw, NULL);
 
 	// store the initial offset in the stream (file header)
-	m_InitialOffset -= (sizeof(UINT32) + sizeof(UINT32) + sizeof(UINT64));
+	m_InitialOffset -= (sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint64_t));
 	SetFilePointer(m_pah->GetHandle(), 0, NULL, FILE_END);
 	WriteFile(m_pah->GetHandle(), &m_InitialOffset, sizeof(m_InitialOffset), &bw, NULL);
 
@@ -230,19 +246,19 @@ bool sFileTableEntry::Write(HANDLE hOut) const
 {
 	bool ret = true;
 
-	UINT32 sz;
+	uint32_t sz;
 	DWORD wb;
 
 	ret &= (bool)WriteFile(hOut, &m_Flags, sizeof(m_Flags), &wb, NULL);
 
-	sz = m_Filename.size();
+	sz = (uint32_t)m_Filename.size();
 	ret &= (bool)WriteFile(hOut, &sz, sizeof(sz), &wb, NULL);
 	if (sz)
 	{
 		ret &= (bool)WriteFile(hOut, m_Filename.c_str(), sizeof(TCHAR) * sz, &wb, NULL);
 	}
 
-	sz = m_Path.size();
+	sz = (uint32_t)m_Path.size();
 	ret &= (bool)WriteFile(hOut, &sz, sizeof(sz), &wb, NULL);
 	if (sz)
 	{
@@ -266,7 +282,7 @@ bool sFileTableEntry::Read(HANDLE hIn)
 {
 	bool ret = true;
 
-	UINT32 sz;
+	uint32_t sz;
 	DWORD rb;
 
 	ret &= (bool)ReadFile(hIn, &m_Flags, sizeof(m_Flags), &rb, NULL);
@@ -312,16 +328,16 @@ size_t sFileTableEntry::Size() const
 	size_t ret = (m_Filename.size() + m_Path.size()) * sizeof(TCHAR);
 
 	ret +=
-		sizeof(UINT64) + /* m_Flags */ 
-		sizeof(LONGLONG) + /* m_UncompressedSize */ 
-		sizeof(LONGLONG) + /* m_CompressedSize */ 
-		sizeof(UINT32) + /* m_Crc */ 
-		sizeof(UINT32) + /* m_BlockCount */ 
-		sizeof(LONGLONG) + /* m_BlockCount */ 
+		sizeof(uint64_t) + /* m_Flags */ 
+		sizeof(uint64_t) + /* m_UncompressedSize */ 
+		sizeof(uint64_t) + /* m_CompressedSize */ 
+		sizeof(uint32_t) + /* m_Crc */ 
+		sizeof(uint32_t) + /* m_BlockCount */ 
+		sizeof(uint64_t) + /* m_Offset */ 
 		sizeof(FILETIME) + /* m_FTCreated */ 
 		sizeof(FILETIME) + /* m_FTModified */ 
-		sizeof(UINT32) + /* m_Filename LENGTH */ 
-		sizeof(UINT32);  /* m_Path LENGTH */
+		sizeof(uint32_t) + /* m_Filename LENGTH */ 
+		sizeof(uint32_t);  /* m_Path LENGTH */
 
 	return ret;
 }
@@ -347,7 +363,10 @@ bool sFileBlock::CompressData()
 		m_Header.m_SizeC = fastlz_compress(m_BufU, m_Header.m_SizeU, m_BufC);
 
 		if (m_Header.m_SizeC >= m_Header.m_SizeU)
+		{
 			m_Header.m_SizeC = -1;
+			return false;
+		}
 
 		return true;
 	}
@@ -361,7 +380,7 @@ bool sFileBlock::ReadCompressedData(HANDLE hIn)
 	DWORD br;
 	if (ReadFile(hIn, &m_Header, sizeof(sFileBlock::sFileBlockHeader), &br, NULL))
 	{
-		if (m_Header.m_SizeC < 0)
+		if (m_Header.m_SizeC == (uint32_t)-1)
 		{
 			if (ReadFile(hIn, m_BufU, m_Header.m_SizeU, &br, NULL))
 			{
@@ -383,7 +402,7 @@ bool sFileBlock::ReadCompressedData(HANDLE hIn)
 
 bool sFileBlock::DecompressData()
 {
-	if (m_Header.m_SizeC > 0)
+	if (m_Header.m_SizeC != (uint32_t)-1)
 	{
 		m_Header.m_SizeU = fastlz_decompress(m_BufC, m_Header.m_SizeC, m_BufU, FB_UNCOMPRESSED_BUFSIZE);
 
@@ -399,7 +418,7 @@ bool sFileBlock::WriteCompressedData(HANDLE hOut)
 	DWORD bw;
 	if (WriteFile(hOut, &m_Header, sizeof(sFileBlock::sFileBlockHeader), &bw, NULL))
 	{
-		if (m_Header.m_SizeC < 0)
+		if (m_Header.m_SizeC == (uint32_t)-1)
 		{
 			if (WriteFile(hOut, m_BufU, m_Header.m_SizeU, &bw, NULL))
 			{
@@ -439,10 +458,10 @@ CFastLZExtractor::CFastLZExtractor(IArchiveHandle *pah, UINT64 flags)
 	DWORD br;
 	LARGE_INTEGER p;
 
-	LONGLONG ftofs;
-	ReadFile(m_pah->GetHandle(), &ftofs, sizeof(LONGLONG), &br, NULL);
+	uint64_t ftofs;
+	ReadFile(m_pah->GetHandle(), &ftofs, sizeof(uint64_t), &br, NULL);
 
-	LONGLONG dataofs = m_pah->GetOffset();
+	uint64_t dataofs = m_pah->GetOffset();
 
 	p.QuadPart = ftofs;
 	SetFilePointerEx(m_pah->GetHandle(), p, NULL, FILE_BEGIN);
@@ -468,7 +487,7 @@ size_t CFastLZExtractor::GetFileCount()
 	return m_FileTable.size();
 }
 
-bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *filepath, LONGLONG *csize, LONGLONG *usize, FILETIME *ctime, FILETIME *mtime)
+bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *filepath, uint64_t *csize, uint64_t *usize, FILETIME *ctime, FILETIME *mtime)
 {
 	if (file_idx >= m_FileTable.size())
 		return false;
@@ -508,7 +527,7 @@ bool FLZACreateDirectories(const TCHAR *dir)
 	PathRemoveFileSpec(_dir);
 	ret &= FLZACreateDirectories(_dir);
 
-	ret &= CreateDirectory(dir, NULL);
+	ret &= (CreateDirectory(dir, NULL) ? true : false);
 
 	return ret;
 }

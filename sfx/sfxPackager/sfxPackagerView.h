@@ -1,5 +1,5 @@
 /*
-	Copyright ©2016. Authored by Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
+	Copyright ©2014-2019. Authored by Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
 	Permission to use, copy, modify, and distribute this software is hereby granted, without fee and without a signed licensing agreement,
 	provided that the above copyright notice appears in all copies, modifications, and distributions.
 	Furthermore, AUTHOR assumes no responsibility for any damages caused either directly or indirectly by the use of this software, nor vouches for
@@ -24,27 +24,22 @@ protected: // create from serialization only
 
 // Attributes
 public:
+	virtual ~CSfxPackagerView();
+
 	CSfxPackagerDoc* GetDocument() const;
 
 	static CSfxPackagerView *GetView();
+	void SetSplitterWnd(CSplitterWndEx *ps) { m_Splitter = ps; }
+	CSplitterWndEx *GetSplitterWnd() { return m_Splitter; }
 
-// Operations
-public:
+	void SetScriptEditView(CEditView *pe) { m_ScriptEditor = pe; }
+	CEditView *GetScriptEditView() { return m_ScriptEditor; }
+
 	void RefreshProperties(CSfxPackagerDoc *pd = NULL);
 
-protected:
-	void ImportLivingFolder(const TCHAR *dir, const TCHAR *include_ext = _T("*"), const TCHAR *exclude_ext = NULL);
-	void ImportFile(const TCHAR *filename, UINT depth = 0, bool refresh_props = true);
-
-// Overrides
-public:
 	virtual void OnDraw(CDC* pDC);  // overridden to draw this view
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
-protected:
 
-// Implementation
-public:
-	virtual ~CSfxPackagerView();
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
@@ -58,14 +53,19 @@ public:
 	void SetFilenameForSelection(const TCHAR *name);
 
 protected:
+	void ImportLivingFolder(const TCHAR *dir, const TCHAR *include_ext = _T("*"), const TCHAR *exclude_ext = NULL);
+	void ImportFile(const TCHAR *filename, UINT depth = 0, bool refresh_props = true);
+
 	bool m_bFirstUpdate;
 	HANDLE m_hPackageThread;
+	CSplitterWndEx *m_Splitter;
+	CEditView *m_ScriptEditor;
 
 // Generated message map functions
-protected:
 	afx_msg void OnFilePrintPreview();
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
+
 	DECLARE_MESSAGE_MAP()
 public:
 	virtual void OnUpdate(CView* /*pSender*/, LPARAM /*lHint*/, CObject* /*pHint*/);
@@ -92,10 +92,10 @@ public:
 	afx_msg void OnSetFocus(CWnd* pOldWnd);
 	afx_msg void OnUpdateAppCancelSfx(CCmdUI *pCmdUI);
 	afx_msg void OnAppCancelSfx();
+	afx_msg void OnSize(UINT nType, int cx, int cy);
 };
 
 #ifndef _DEBUG  // debug version in sfxPackagerView.cpp
-inline CSfxPackagerDoc* CSfxPackagerView::GetDocument() const
-   { return reinterpret_cast<CSfxPackagerDoc*>(m_pDocument); }
+inline CSfxPackagerDoc* CSfxPackagerView::GetDocument() const { return reinterpret_cast<CSfxPackagerDoc*>(m_pDocument); }
 #endif
 

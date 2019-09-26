@@ -57,6 +57,7 @@ BEGIN_MESSAGE_MAP(CSfxPackagerView, CListView)
 	ON_WM_SETFOCUS()
 	ON_UPDATE_COMMAND_UI(ID_APP_CANCELSFX, &CSfxPackagerView::OnUpdateAppCancelSfx)
 	ON_COMMAND(ID_APP_CANCELSFX, &CSfxPackagerView::OnAppCancelSfx)
+	ON_WM_SIZE()
 END_MESSAGE_MAP()
 
 // CSfxPackagerView construction/destruction
@@ -65,6 +66,8 @@ CSfxPackagerView::CSfxPackagerView()
 {
 	m_bFirstUpdate = true;
 	m_hPackageThread = NULL;
+	m_Splitter = nullptr;
+	m_ScriptEditor = nullptr;
 }
 
 CSfxPackagerView::~CSfxPackagerView()
@@ -195,6 +198,8 @@ void CSfxPackagerView::OnUpdate(CView* /*pSender*/, LPARAM /*lHint*/, CObject* /
 				for (lvi.iSubItem = 0; lvi.iSubItem < 3; lvi.iSubItem++)
 					list.InsertItem(&lvi);
 			}
+
+			m_ScriptEditor->SetWindowText(pDoc->m_scrInit);
 		}
 	}
 }
@@ -276,7 +281,7 @@ void CSfxPackagerView::ImportFile(const TCHAR *filename, UINT depth, bool refres
 		{
 			if (_tcscmp(fd.cFileName, _T(".")) && _tcscmp(fd.cFileName, _T("..")))
 			{
-				_tcscpy(s, fd.cFileName);
+				_tcscpy_s(s, MAX_PATH, fd.cFileName);
 				ImportFile(filepath, depth + 1, refresh_props);
 			}
 		}
@@ -300,10 +305,10 @@ void CSfxPackagerView::ImportFile(const TCHAR *filename, UINT depth, bool refres
 
 	CSfxPackagerDoc *pDoc = GetDocument();
 	TCHAR srcdir[MAX_PATH];
-	_tcscpy(srcdir, filename);
+	_tcscpy_s(srcdir, MAX_PATH, filename);
 
 	TCHAR dstdir[MAX_PATH];
-	_tcscpy(dstdir, srcdir);
+	_tcscpy_s(dstdir, MAX_PATH, srcdir);
 	PathRemoveFileSpec(dstdir);
 
 	_tcsrev(dstdir);
@@ -368,7 +373,7 @@ void CSfxPackagerView::OnDropFiles(HDROP hDropInfo)
 			if (!got_dir)
 			{
 				got_dir = true;
-				if (MessageBox(_T("Should the included folder(s) be treated as living? That is, should sfxPackager wait until the project is actually built to include files within a folder?"), _T("How should sfxPackager treat folders?"), MB_YESNO) == IDYES)
+				if (MessageBox(_T("Dynamic folder(s)? This option allows the contents of the folders to be examined at build time and to use wildcards now."), _T("How should sfxPackager treat folders?"), MB_YESNO) == IDYES)
 				{
 					living_folders = true;
 				}
@@ -397,7 +402,7 @@ void CSfxPackagerView::OnLvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 	NMLVDISPINFO *pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	CSfxPackagerDoc *pdoc = GetDocument();
 
-	pDispInfo->item.pszText = (TCHAR *)pdoc->GetFileData(pDispInfo->item.lParam, (CSfxPackagerDoc::EFileDataType)(pDispInfo->item.iSubItem));
+	pDispInfo->item.pszText = (TCHAR *)pdoc->GetFileData((UINT)pDispInfo->item.lParam, (CSfxPackagerDoc::EFileDataType)(pDispInfo->item.iSubItem));
 
 	*pResult = 0;
 }
@@ -412,6 +417,9 @@ void CSfxPackagerView::OnUpdateEditDelete(CCmdUI *pCmdUI)
 
 void CSfxPackagerView::OnEditDelete()
 {
+	if (GetSafeHwnd() != ::GetFocus())
+		return;
+
 	CSfxPackagerDoc *pDoc = GetDocument();
 
 	CListCtrl &list = GetListCtrl();
@@ -427,7 +435,7 @@ void CSfxPackagerView::OnEditDelete()
 		{
 			item = list.GetNextItem(item, LVNI_SELECTED);
 
-			UINT handle = list.GetItemData(item);
+			UINT handle = (UINT)list.GetItemData(item);
 
 			pDoc->RemoveFile(handle);
 
@@ -629,7 +637,7 @@ void CSfxPackagerView::SetDestFolderForSelection(const TCHAR *dst, const TCHAR *
 		{
 			item = list.GetNextItem(item, LVNI_SELECTED);
 
-			UINT handle = list.GetItemData(item);
+			UINT handle = (UINT)list.GetItemData(item);
 
 			CString val = pDoc->GetFileData(handle, CSfxPackagerDoc::FDT_DSTPATH);
 			val.Replace(rootdst, dst);
@@ -659,7 +667,7 @@ void CSfxPackagerView::SetSrcFolderForSelection(const TCHAR *src, const TCHAR *r
 		{
 			item = list.GetNextItem(item, LVNI_SELECTED);
 
-			UINT handle = list.GetItemData(item);
+			UINT handle = (UINT)list.GetItemData(item);
 
 			CString val = pDoc->GetFileData(handle, CSfxPackagerDoc::FDT_SRCPATH);
 			val.Replace(rootsrc, src);
@@ -687,7 +695,7 @@ void CSfxPackagerView::SetFilenameForSelection(const TCHAR *name)
 	{
 		item = list.GetNextItem(item, LVNI_SELECTED);
 
-		UINT handle = list.GetItemData(item);
+		UINT handle = (UINT)list.GetItemData(item);
 
 		pDoc->SetFileData(handle, CSfxPackagerDoc::FDT_NAME, name);
 	}
@@ -742,9 +750,9 @@ void CSfxPackagerView::OnEditRepathSource()
 		{
 			item = list.GetNextItem(item, LVNI_SELECTED);
 
-			UINT handle = list.GetItemData(item);
+			UINT handle = (UINT)list.GetItemData(item);
 			if (i == 0)
-				_tcscpy(rootpath, pDoc->GetFileData(handle, CSfxPackagerDoc::FDT_SRCPATH));
+				_tcscpy_s(rootpath, MAX_PATH, pDoc->GetFileData(handle, CSfxPackagerDoc::FDT_SRCPATH));
 			else
 				PrunePathToCommonPart(rootpath, pDoc->GetFileData(handle, CSfxPackagerDoc::FDT_SRCPATH));
 		}
@@ -764,7 +772,7 @@ void CSfxPackagerView::OnEditRepathSource()
 			{
 				item = list.GetNextItem(item, LVNI_SELECTED);
 
-				UINT handle = list.GetItemData(item);
+				UINT handle = (UINT)list.GetItemData(item);
 
 				CString newpath = pDoc->GetFileData(handle, CSfxPackagerDoc::FDT_SRCPATH);
 				newpath.Replace(rootpath, rpdlg.m_Path);
@@ -814,4 +822,22 @@ void CSfxPackagerView::OnAppCancelSfx()
 	CSfxPackagerDoc *pDoc = GetDocument();
 
 	SetEvent(pDoc->m_hCancelEvent);
+}
+
+
+void CSfxPackagerView::OnSize(UINT nType, int cx, int cy)
+{
+#if 0
+	if (m_Splitter)
+	{
+		CRect r;
+		m_Splitter->GetClientRect(r);
+		cx = r.Width();
+
+		int dummy;
+		m_Splitter->GetRowInfo(0, cy, dummy);
+	}
+#endif
+
+	CListView::OnSize(nType, cx, cy);
 }

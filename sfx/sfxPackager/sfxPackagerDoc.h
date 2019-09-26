@@ -75,7 +75,7 @@ protected:
 	LARGE_INTEGER m_UncompressedSize;
 
 	bool InitializeArchive(CSfxPackagerView *pview, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *basename, UINT span = 0);
-	bool AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename = NULL, UINT recursion = 0);
+	bool AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename = NULL, uint64_t *sz_uncomp = NULL, uint64_t *sz_comp = NULL, UINT recursion = 0);
 	bool FixupPackage(const TCHAR *filename, const TCHAR *launchcmd, bool span, UINT32 filecount);
 	bool SetupSfxExecutable(const TCHAR *filename, UINT span = 0);
 
@@ -95,6 +95,10 @@ public:
 	CString m_LaunchCmd;
 	long m_MaxSize;
 
+	CString m_scrInit;
+	CString m_scrPerFile;
+	CString m_scrFinish;
+
 	LPTSTR m_IconName;
 
 	HANDLE m_hThread;
@@ -102,20 +106,21 @@ public:
 
 // Operations
 public:
-	bool CreateSFXPackage(const TCHAR *filename = NULL, CSfxPackagerView *pview = NULL);
+	bool CreateSFXPackage(const TCHAR *filename = NULL, CSfxPackagerView *pview = NULL, CEditView *pedit = NULL);
 	bool CreateTarGzipPackage(const TCHAR *filename = NULL, CSfxPackagerView *pview = NULL);
 
 	static DWORD WINAPI RunCreateSFXPackage(LPVOID param);
 
-	static BOOL CALLBACK EnumTypesFunc(HMODULE hModule, LPTSTR lpType, LONG lParam);
-	static BOOL CALLBACK EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPTSTR lpName, LONG lParam);
-	static BOOL CALLBACK EnumLangsFunc(HMODULE hModule, LPCTSTR lpType, LPCTSTR lpName, WORD wLang, LONG lParam);
+	static BOOL CALLBACK EnumTypesFunc(HMODULE hModule, LPTSTR lpType, LONG_PTR lParam);
+	static BOOL CALLBACK EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPTSTR lpName, LONG_PTR lParam);
+	static BOOL CALLBACK EnumLangsFunc(HMODULE hModule, LPCTSTR lpType, LPCTSTR lpName, WORD wLang, LONG_PTR lParam);
 
 // Overrides
 public:
 	virtual BOOL OnNewDocument();
 
 	void ReadSettings(CGenParser &gp);
+	void ReadScripts(CGenParser &gp);
 	void ReadFiles(CGenParser &gp);
 	void ReadProject(CGenParser &gp);
 

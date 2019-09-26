@@ -37,10 +37,10 @@ public:
 	virtual bool Span() = NULL;
 
 	// Returns the length of the object at the handle
-	virtual LONGLONG GetLength() = NULL;
+	virtual uint64_t GetLength() = NULL;
 
 	// Returns the offset position for the handle from the beginning
-	virtual LONGLONG GetOffset() = NULL;
+	virtual uint64_t GetOffset() = NULL;
 };
 
 class IArchiver
@@ -67,6 +67,7 @@ public:
 	enum ADD_RESULT
 	{
 		AR_OK = 0,
+		AR_OK_UNCOMPRESSED,
 
 		AR_SPANFAIL,
 
@@ -94,7 +95,7 @@ public:
 	static void DestroyArchiver(IArchiver **ppia);
 
 	// This is the maximum number of bytes that will be written to the stream before the Span method is called
-	virtual void SetMaximumSize(LONGLONG maxsize) = NULL;
+	virtual void SetMaximumSize(uint64_t maxsize) = NULL;
 
 	// Returns the number of files that are in the archive (either the whole thing or just the current span)
 	virtual size_t GetFileCount(INFO_MODE mode) = NULL;
@@ -102,7 +103,7 @@ public:
 	// Adds a file to the archive
 	// src_filename can be either absolute or relative
 	// dst_filename should always be relative
-	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename) = NULL;
+	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp = nullptr, uint64_t *sz_comp = nullptr) = NULL;
 
 	// Finalizes the output, performing any operations that may be necessary to later extract and decompress the data (writing file tables, etc)
 	virtual FINALIZE_RESULT Finalize() = NULL;
@@ -152,7 +153,7 @@ public:
 	// Returns the number of files that are in the archive
 	virtual size_t GetFileCount() = NULL;
 
-	virtual bool GetFileInfo(size_t file_idx, tstring *filename = NULL, tstring *filepath = NULL, LONGLONG *csize = NULL, LONGLONG *usize = NULL, FILETIME *ctime = NULL, FILETIME *mtime = NULL) = NULL;
+	virtual bool GetFileInfo(size_t file_idx, tstring *filename = NULL, tstring *filepath = NULL, uint64_t *csize = NULL, uint64_t *usize = NULL, FILETIME *ctime = NULL, FILETIME *mtime = NULL) = NULL;
 
 	// Extracts the next file from the archive - this is assumed to be a serial process where the whole
 	// archive will be extracted at once, so no choice as to which file to extract is provided

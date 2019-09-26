@@ -40,6 +40,7 @@ public:
 	TCHAR *GetCurrentTokenString();
 
 	bool IsToken(TCHAR *s, bool case_sensitive = false);
+	bool FindBoundedRawString(TCHAR s);
 
 protected:
 	TCHAR *m_data;

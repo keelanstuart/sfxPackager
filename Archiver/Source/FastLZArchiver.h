@@ -27,16 +27,16 @@ struct sFileTableEntry
 		FTEFLAG_SPANNED = 0x0000000000000001,		// a spanned file will be partially in multiple files
 	};
 
-	UINT64 m_Flags;
-	tstring m_Filename;
-	tstring m_Path;
-	LONGLONG m_UncompressedSize;
-	LONGLONG m_CompressedSize;
-	UINT32 m_Crc;
+	uint64_t m_Flags;
+	uint64_t m_UncompressedSize;
+	uint64_t m_CompressedSize;
+	uint32_t m_Crc;
+	uint32_t m_BlockCount;
+	uint64_t m_Offset;
 	FILETIME m_FTCreated;
 	FILETIME m_FTModified;
-	LONGLONG m_Offset;
-	UINT32 m_BlockCount;
+	tstring m_Filename;
+	tstring m_Path;
 
 	sFileTableEntry()
 	{
@@ -72,11 +72,11 @@ struct sFileBlock
 
 	struct sFileBlockHeader
 	{
-		sFileBlockHeader() { m_Flags = 0; m_SizeC = m_SizeU = -1; }
+		sFileBlockHeader() { m_Flags = 0; m_SizeC = m_SizeU = 0; }
 
-		UINT64 m_Flags;							// flags
-		INT32 m_SizeC;							// compressed size
-		INT32 m_SizeU;							// uncompressed size
+		uint64_t m_Flags;							// flags
+		uint32_t m_SizeC;							// compressed size
+		uint32_t m_SizeU;							// uncompressed size
 	} m_Header;
 
 	BYTE m_BufU[FB_UNCOMPRESSED_BUFSIZE];		// the uncompressed data
@@ -101,12 +101,12 @@ public:
 	virtual ~CFastLZArchiver();
 
 	// This is the maximum number of bytes that will be written to the stream before the Span method is called
-	virtual void SetMaximumSize(LONGLONG maxsize);
+	virtual void SetMaximumSize(uint64_t maxsize);
 
 	virtual size_t GetFileCount(INFO_MODE mode);
 
 	// Adds a file to the archive
-	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename);
+	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp = nullptr, uint64_t *sz_comp = nullptr);
 
 	virtual FINALIZE_RESULT Finalize();
 
@@ -124,9 +124,9 @@ protected:
 	size_t m_OverallFileCount;
 
 	IArchiveHandle *m_pah;
-	LONGLONG m_InitialOffset;
+	uint64_t m_InitialOffset;
 
-	LONGLONG m_MaxSize;
+	uint64_t m_MaxSize;
 
 };
 
@@ -139,7 +139,7 @@ public:
 
 	virtual size_t GetFileCount();
 
-	virtual bool GetFileInfo(size_t file_idx, tstring *filename = NULL, tstring *filepath = NULL, LONGLONG *csize = NULL, LONGLONG *usize = NULL, FILETIME *ctime = NULL, FILETIME *mtime = NULL);
+	virtual bool GetFileInfo(size_t file_idx, tstring *filename = NULL, tstring *filepath = NULL, uint64_t *csize = NULL, uint64_t *usize = NULL, FILETIME *ctime = NULL, FILETIME *mtime = NULL);
 
 	virtual EXTRACT_RESULT ExtractFile(size_t file_idx, tstring *output_filename = NULL, const TCHAR *override_filename = NULL);
 
@@ -150,7 +150,7 @@ protected:
 	bool ReadFileTable();
 
 	TFileTable m_FileTable;
-	LONGLONG m_CachedFilePosition;
+	uint64_t m_CachedFilePosition;
 
 	IArchiveHandle *m_pah;
 

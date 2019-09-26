@@ -100,8 +100,9 @@ BOOL CFinishDlg::OnInitDialog()
 	GetDesktopWindow()->GetClientRect(dr);
 	wr.OffsetRect((dr.Width() / 2) - (wr.Width() / 2), (dr.Height() / 2) - (wr.Height() / 2));
 	MoveWindow(wr);
-	ShowWindow(SW_SHOWNORMAL);
 #endif
+
+	ShowWindow(SW_SHOWNORMAL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// EXCEPTION: OCX Property Pages should return FALSE

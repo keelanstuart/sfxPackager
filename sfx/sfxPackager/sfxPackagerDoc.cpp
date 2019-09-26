@@ -24,6 +24,7 @@
 
 #include "sfxPackagerDoc.h"
 #include "sfxPackagerView.h"
+#include "ChildFrm.h"
 #include "MainFrm.h"
 #include "PropertiesWnd.h"
 
@@ -48,7 +49,7 @@ bool CreateDirectories(const TCHAR *dir)
 		return false;
 
 	TCHAR _dir[MAX_PATH];
-	_tcscpy(_dir, dir);
+	_tcscpy_s(_dir, MAX_PATH, dir);
 	PathRemoveFileSpec(_dir);
 	CreateDirectories(_dir);
 
@@ -89,7 +90,7 @@ public:
 			m_hFile = INVALID_HANDLE_VALUE;
 
 			// the last file is never spanned
-			FixupSfxExecutable(m_CurrentFilename, m_pDoc->m_LaunchCmd, false, fc);
+			FixupSfxExecutable(m_CurrentFilename, m_pDoc->m_LaunchCmd, false, (UINT32)fc);
 		}
 	}
 
@@ -108,12 +109,12 @@ public:
 		m_spanIdx++;
 
 		TCHAR local_filename[MAX_PATH];
-		_tcscpy(local_filename, m_BaseFilename);
+		_tcscpy_s(local_filename, MAX_PATH, m_BaseFilename);
 
 		TCHAR *pext = PathFindExtension(m_BaseFilename);
 		TCHAR *plext = PathFindExtension(local_filename);
-		_stprintf(plext, _T("_part%d"), m_spanIdx + 1);
-		_tcscat(local_filename, pext);
+		_stprintf_s(plext, MAX_PATH, _T("_part%d"), m_spanIdx + 1);
+		_tcscat_s(local_filename, MAX_PATH, pext);
 		TCHAR *lcmd = PathFindFileName(local_filename);
 
 		size_t fc = m_pArc->GetFileCount(IArchiver::IM_SPAN);
@@ -125,27 +126,29 @@ public:
 		CloseHandle(m_hFile);
 		m_hFile = INVALID_HANDLE_VALUE;
 
-		FixupSfxExecutable(m_CurrentFilename, lcmd, m_spanIdx, fc);
+		FixupSfxExecutable(m_CurrentFilename, lcmd, m_spanIdx, (UINT32)fc);
 
-		_tcscpy(m_CurrentFilename, local_filename);
+		_tcscpy_s(m_CurrentFilename, MAX_PATH, local_filename);
 
 		return SetupSfxExecutable(m_CurrentFilename);
 	}
 
-	virtual LONGLONG GetLength()
+	virtual uint64_t GetLength()
 	{
 		LARGE_INTEGER p;
 		GetFileSizeEx(m_hFile, &p);
 		return p.QuadPart;
 	}
 
-	virtual LONGLONG GetOffset()
+	virtual uint64_t GetOffset()
 	{
 		LARGE_INTEGER p, z;
 		z.QuadPart = 0;
 		SetFilePointerEx(m_hFile, z, &p, FILE_CURRENT);
 		return p.QuadPart;
 	}
+
+#define ICONHDRSIZE		22
 
 	bool SetupSfxExecutable(const TCHAR *filename)
 	{
@@ -163,7 +166,7 @@ public:
 					DWORD sfxsize = SizeofResource(NULL, hsfxres);
 
 					TCHAR dir[MAX_PATH];
-					_tcscpy(dir, filename);
+					_tcscpy_s(dir, MAX_PATH, filename);
 					PathRemoveFileSpec(dir);
 					CreateDirectories(dir);
 
@@ -199,13 +202,13 @@ public:
 				if (PathIsRelative(m_pDoc->m_IconFile))
 				{
 					TCHAR docpath[MAX_PATH];
-					_tcscpy(docpath, m_pDoc->GetPathName());
+					_tcscpy_s(docpath, MAX_PATH, m_pDoc->GetPathName());
 					PathRemoveFileSpec(docpath);
 					PathCombine(iconpath, docpath, m_pDoc->m_IconFile);
 				}
 				else
 				{
-					_tcscpy(iconpath, m_pDoc->m_IconFile);
+					_tcscpy_s(iconpath, MAX_PATH, m_pDoc->m_IconFile);
 				}
 
 				if (PathFileExists(iconpath))
@@ -220,7 +223,6 @@ public:
 							DWORD rb;
 							ReadFile(hicobin, pbin, fsz, &rb, NULL);
 
-		#define ICONHDRSIZE		22
 							bresult = UpdateResource(hbur, RT_ICON, MAKEINTRESOURCE(1), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), pbin + ICONHDRSIZE, fsz - ICONHDRSIZE);
 
 							DWORD d = 1;
@@ -281,6 +283,10 @@ public:
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_CAPTION"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)caption), (caption.GetLength() + 1) * sizeof(TCHAR));
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_DESCRIPTION"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_Description), (m_pDoc->m_Description.GetLength() + 1) * sizeof(TCHAR));
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_DEFAULTPATH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_DefaultPath), (m_pDoc->m_DefaultPath.GetLength() + 1) * sizeof(TCHAR));
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INIT"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_scrInit), (m_pDoc->m_scrInit.GetLength() + 1) * sizeof(TCHAR));
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PERFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_scrPerFile), (m_pDoc->m_scrPerFile.GetLength() + 1) * sizeof(TCHAR));
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_FINISH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_scrFinish), (m_pDoc->m_scrFinish.GetLength() + 1) * sizeof(TCHAR));
 
 			SFixupResourceData furd;
 			ZeroMemory(&furd, sizeof(SFixupResourceData));
@@ -351,12 +357,16 @@ public:
 				_tcscpy_s(furd->m_VersionID, MAX_PATH, m_pDoc->m_VersionID);
 
 				UINT32 flags = 0;
+
 				if (m_pDoc->m_bExploreOnComplete && !span)
 					flags |= SFX_FLAG_EXPLORE;
+
 				if (span)
 					flags |= SFX_FLAG_SPAN;
+
 				if (m_pDoc->m_bAllowDestChg)
 					flags |= SFX_FLAG_ALLOWDESTCHG;
+
 				if (m_pDoc->m_bRequireAdmin)
 					flags |= SFX_FLAG_ADMINONLY;
 
@@ -476,7 +486,7 @@ typedef struct
 #pragma pack(pop)
 
 
-BOOL CSfxPackagerDoc::EnumTypesFunc(HMODULE hModule, LPTSTR lpType, LONG lParam)
+BOOL CSfxPackagerDoc::EnumTypesFunc(HMODULE hModule, LPTSTR lpType, LONG_PTR lParam)
 {
 	CSfxPackagerDoc *_this = (CSfxPackagerDoc *)lParam;
 
@@ -485,7 +495,7 @@ BOOL CSfxPackagerDoc::EnumTypesFunc(HMODULE hModule, LPTSTR lpType, LONG lParam)
 	return TRUE;
 }
 
-BOOL CSfxPackagerDoc::EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPTSTR lpName, LONG lParam)
+BOOL CSfxPackagerDoc::EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPTSTR lpName, LONG_PTR lParam)
 {
 	CSfxPackagerDoc *_this = (CSfxPackagerDoc *)lParam;
 
@@ -501,7 +511,7 @@ BOOL CSfxPackagerDoc::EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPTSTR lpNa
 	return TRUE;
 }
 
-BOOL CSfxPackagerDoc::EnumLangsFunc(HMODULE hModule, LPCTSTR lpType, LPCTSTR lpName, WORD wLang, LONG lParam)
+BOOL CSfxPackagerDoc::EnumLangsFunc(HMODULE hModule, LPCTSTR lpType, LPCTSTR lpName, WORD wLang, LONG_PTR lParam)
 {
 	CSfxPackagerDoc *_this = (CSfxPackagerDoc *)lParam;
 
@@ -514,6 +524,12 @@ DWORD CSfxPackagerDoc::RunCreateSFXPackage(LPVOID param)
 {
 	CSfxPackagerView *pv = (CSfxPackagerView *)param;
 
+	CEditView *pe = nullptr;
+	if (pv)
+	{
+		pe = pv->GetScriptEditView();
+	}
+
 	CSfxPackagerDoc *pd = pv->GetDocument(); // should be this
 
 	pd->m_hThread = GetCurrentThread();
@@ -523,7 +539,7 @@ DWORD CSfxPackagerDoc::RunCreateSFXPackage(LPVOID param)
 	{
 		if (!_tcsicmp(ext, _T(".exe")))
 		{
-			pd->CreateSFXPackage(NULL, pv);
+			pd->CreateSFXPackage(NULL, pv, pe);
 		}
 		else if (!_tcsicmp(ext, _T(".gz")) || !_tcsicmp(ext, _T(".gzip")))
 		{
@@ -554,7 +570,7 @@ DWORD GetFileSizeByName(const TCHAR *filename)
 	return ret;
 }
 
-bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, UINT recursion)
+bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, uint64_t *sz_uncomp, uint64_t *sz_comp, UINT recursion)
 {
 	DWORD wr = WaitForSingleObject(m_hCancelEvent, 0);
 	if ((wr == WAIT_OBJECT_0) || (wr == WAIT_ABANDONED))
@@ -579,8 +595,6 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 	{
 		_tcscpy(fullfilename, srcspec);
 	}
-
-	UINT32 maxsize = min((UINT64)((4LL GB) - (8LL KB)), (((UINT32)m_MaxSize) MB));
 
 	TCHAR *filespec = PathFindFileName(srcspec);
 	TCHAR *filename = PathFindFileName(fullfilename);
@@ -622,6 +636,8 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 			{
 				_tcscpy(filename, fd.cFileName);
 
+				uint64_t comp = 0, uncomp = 0;
+
 				if (PathIsDirectory(fullfilename))
 				{
 					if (!PathIsDirectoryEmpty(fullfilename))
@@ -635,7 +651,13 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 							PathAddBackslash(local_dstpath);
 						_tcscat(local_dstpath, fd.cFileName);
 
-						ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, fullfilename, local_dstpath, NULL, recursion + 1);
+						uint64_t rcomp = 0, runcomp = 0;
+						ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, fullfilename, local_dstpath, NULL, &runcomp, &rcomp, recursion + 1);
+						if (ret)
+						{
+							uncomp = runcomp;
+							comp = rcomp;
+						}
 					}
 				}
 				else if (PathMatchSpec(fd.cFileName, filespec))
@@ -654,8 +676,14 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 					msg.Format(_T("    Adding \"%s\" from \"%s\"...\r\n"), dst, fullfilename);
 					pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
-					parc->AddFile(fullfilename, dst);
+					parc->AddFile(fullfilename, dst, &uncomp, &comp);
 				}
+
+				if (sz_uncomp)
+					*sz_uncomp += uncomp;
+
+				if (sz_comp)
+					*sz_comp += comp;
 			}
 		}
 		while (FindNextFile(hfind, &fd));
@@ -674,10 +702,15 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 }
 
 
-bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *pview)
+bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *pview, CEditView *pedit)
 {
 	time_t start_op, finish_op;
 	time(&start_op);
+
+	if (pedit)
+	{
+		pedit->GetWindowText(m_scrInit);
+	}
 
 	UINT c = 0, maxc = m_FileData.size();
 	if (!maxc)
@@ -716,6 +749,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 
 	IArchiver *parc = NULL;
 	UINT spanct;
+	uint64_t sz_uncomp = 0, sz_totalcomp = 0, sz_comp = 0;
 
 	DWORD wr = 0;
 	{
@@ -725,7 +759,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 
 		pah.SetArchiver(parc);
 
-		parc->SetMaximumSize((size_t)m_MaxSize * (1 << 20));
+		parc->SetMaximumSize((m_MaxSize > 0) ? (m_MaxSize MB) : UINT64_MAX);
 
 		m_UncompressedSize.QuadPart = 0;
 
@@ -755,12 +789,15 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 				PathAddBackslash(srcpath);
 				_tcscat(srcpath, it->second.name.c_str());
 
-				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, srcpath, it->second.dstpath.c_str());
+				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, srcpath, it->second.dstpath.c_str(), nullptr, &sz_uncomp, &sz_comp);
 			}
 			else
 			{
-				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, it->second.srcpath.c_str(), it->second.dstpath.c_str(), it->second.name.c_str());
+				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, it->second.srcpath.c_str(), it->second.dstpath.c_str(), it->second.name.c_str(), &sz_uncomp, &sz_comp);
 			}
+
+			sz_totalcomp = sz_comp;
+			m_UncompressedSize.QuadPart = sz_uncomp;
 
 			it++;
 		}
@@ -783,7 +820,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	}
 	else
 	{
-		msg.Format(_T("Added %d files, spanning %d archive(s).\r\n"), parc->GetFileCount(IArchiver::IM_WHOLE), spanct);
+		msg.Format(_T("Added %d files, spanning %d archive(s). Compression ratio: %3.01f%%.\r\n"), parc->GetFileCount(IArchiver::IM_WHOLE), spanct, (double)m_UncompressedSize.QuadPart / (double)sz_totalcomp * 100.0);
 		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 		msg.Format(_T("Done. (completed in: %02d:%02d:%02d)\r\n"), hours, minutes, seconds);
@@ -1193,6 +1230,72 @@ void CSfxPackagerDoc::SetFileData(UINT handle, EFileDataType fdt, const TCHAR *d
 
 // CSfxPackagerDoc serialization
 
+void UnescapeString(const TCHAR *in, tstring &out)
+{
+	out.reserve(_tcslen(in));
+	const TCHAR *c = in;
+	while (c && *c)
+	{
+		if (*c == _T('&'))
+		{
+			if (!memcmp(c, _T("&lt;"), sizeof(TCHAR) * 4))
+			{
+				out += _T('<');
+				c += 3;
+			}
+			else if (!memcmp(c, _T("&gt;"), sizeof(TCHAR) * 4))
+			{
+				out += _T('>');
+				c += 3;
+			}
+			else if (!memcmp(c, _T("&amp;"), sizeof(TCHAR) * 5))
+			{
+				out += _T('&');
+				c += 4;
+			}
+		}
+		else
+			out += *c;
+
+		c++;
+	}
+}
+
+void EscapeString(const TCHAR *in, tstring &out)
+{
+	out.reserve(_tcslen(in) * 2);
+	const TCHAR *c = in;
+	while (c && *c)
+	{
+		switch (*c)
+		{
+			case _T('<'):
+			{
+				out += _T("&lt;");
+				break;
+			}
+			case _T('>'):
+			{
+				out += _T("&gt;");
+				break;
+			}
+			case _T('&'):
+			{
+				out += _T("&amp;");
+				break;
+			}
+			default:
+			{
+				out += *c;
+				break;
+			}
+		};
+
+		c++;
+	}
+}
+
+
 void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 {
 	tstring name, value;
@@ -1250,6 +1353,51 @@ void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 				m_bRequireAdmin = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
 			else if (!_tcsicmp(name.c_str(), _T("allowdestchg")))
 				m_bAllowDestChg = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
+		}
+	}
+}
+
+void CSfxPackagerDoc::ReadScripts(CGenParser &gp)
+{
+	tstring name, value;
+
+	while (gp.NextToken())
+	{
+		if (gp.IsToken(_T("<")))
+		{
+			gp.NextToken();
+
+			if (!gp.IsToken(_T("/")))
+			{
+				name = gp.GetCurrentTokenString();
+			}
+			else
+			{
+				gp.NextToken();
+				if (gp.IsToken(_T("script")))
+				{
+					while (gp.NextToken() && !gp.IsToken(_T(">"))) { }
+					break;
+				}
+			}
+		}
+		else if (gp.IsToken(_T("value")))
+		{
+			gp.NextToken(); // skip '='
+
+			gp.NextToken();
+			value = gp.GetCurrentTokenString();
+		}
+		else if (gp.IsToken(_T(">")))
+		{
+			gp.FindBoundedRawString(_T('<'));
+
+			if (!_tcsicmp(value.c_str(), _T("init")))
+			{
+				tstring temp;
+				UnescapeString(gp.GetCurrentTokenString(), temp);
+				m_scrInit = temp.c_str();
+			}
 		}
 	}
 }
@@ -1315,6 +1463,10 @@ void CSfxPackagerDoc::ReadProject(CGenParser &gp)
 				{
 					ReadSettings(gp);
 				}
+				else if (gp.IsToken(_T("scripts")))
+				{
+					ReadScripts(gp);
+				}
 				else if (gp.IsToken(_T("files")))
 				{
 					ReadFiles(gp);
@@ -1362,9 +1514,61 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 		s += _T("\n\t\t<allowdestchg value=\""); s += m_bAllowDestChg ? _T("true") : _T("false"); s += _T("\"/>");
 
 		TCHAR msb[32];
-		s += _T("\n\t\t<maxsize value=\""); s += _itot(m_MaxSize, msb, 10); s += _T("\"/>");
+		s += _T("\n\t\t<maxsize value=\""); _itot_s(m_MaxSize, msb, 32, 10); s += msb; s += _T("\"/>");
 
 		s += _T("\n\t</settings>\n");
+
+		s += _T("\n\t<scripts>");
+
+		POSITION vp = GetFirstViewPosition();
+		CView *pv = nullptr;
+		CSfxPackagerView *ppv = nullptr;
+		while ((pv = GetNextView(vp)) != nullptr)
+		{
+			if ((ppv = dynamic_cast<CSfxPackagerView *>(pv)) != nullptr)
+				break;
+		}
+
+		CEditView *pe = nullptr;
+		if (ppv)
+		{
+			pe = dynamic_cast<CEditView *>(ppv->GetSplitterWnd()->GetPane(1, 0));
+		}
+
+		if (pe)
+			pe->GetWindowText(m_scrInit);
+
+		tstring scrInit;
+		EscapeString(m_scrInit, scrInit);
+		if (!scrInit.empty())
+			s += _T("\n\t\t<script value=\"init\">\n"); s += scrInit.c_str(); s += _T("\n\t\t</script>");
+
+#if 0
+		len = 0;
+		UrlEscape(m_scrPerFile, nullptr, &len, 0);
+		if (len)
+			{
+			TCHAR *pscript = (TCHAR *)malloc(sizeof(TCHAR) * len);
+			UrlEscape(m_scrPerFile, pscript, &len, 0);
+
+			s += _T("\n\t\t<script value=\"perfile\">"); s += pscript; s += _T("</script>");
+			free(pscript);
+		}
+
+		len = 0;
+		UrlEscape(m_scrFinish, nullptr, &len, 0);
+		if (len)
+		{
+			TCHAR *pscript = (TCHAR *)malloc(sizeof(TCHAR) * len);
+			UrlEscape(m_scrFinish, pscript, &len, 0);
+
+			s += _T("\n\t\t<script value=\"finish\">"); s += pscript; s += _T("</script>");
+			free(pscript);
+		}
+#endif
+
+		s += _T("\n\t</scripts>\n");
+
 		s += _T("\n\t<files>\n");
 
 #if defined(UNICODE)
