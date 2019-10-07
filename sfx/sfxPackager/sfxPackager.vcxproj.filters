@@ -94,6 +94,7 @@
     <None Include="res\Toolbar256.bmp">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="..\Bin\sfx64.exe" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sfxPackager.h">
@@ -150,6 +151,9 @@
     <ClInclude Include="ShellTree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CScriptEditView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sfxPackager.cpp">
@@ -195,6 +199,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ShellTree.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CScriptEditView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

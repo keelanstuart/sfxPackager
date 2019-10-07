@@ -40,16 +40,27 @@ protected: // create from serialization only
 public:
 	friend class CSfxHandle;
 
-	UINT AddFile(const TCHAR *filename, const TCHAR *srcpath, const TCHAR *dstpath);
+	UINT AddFile(const TCHAR *filename, const TCHAR *srcpath, const TCHAR *dstpath, const TCHAR *exclude, const TCHAR *scriptsnippet);
 	void RemoveFile(UINT handle);
 
 	enum EFileDataType
 	{
 		FDT_NAME = 0,
 		FDT_SRCPATH,
-		FDT_DSTPATH,
+		FDT_DSTPATH,		// the destination where files will be installed
+		FDT_EXCLUDE,		// a semi-colon-delimited set of file specifications (wildcards ok) of things to be excluded from the build
+		FDT_SNIPPET,		// a script snippet that is appended to the per-file global script
 
 		FDT_NUMTYPES
+	};
+
+	enum EScriptType
+	{
+		INIT = 0,
+		PERFILE,
+		FINISH,
+
+		NUMTYPES
 	};
 
 	const TCHAR *GetFileData(UINT handle, EFileDataType fdt);
@@ -65,6 +76,8 @@ protected:
 		tstring name;
 		tstring srcpath;
 		tstring dstpath;
+		tstring exclude;	// wildcard exclusion
+		tstring snippet;	// script snippet appended to per-file global
 	};
 
 	typedef std::map<UINT, SFileData> TFileDataMap;
@@ -75,11 +88,11 @@ protected:
 	LARGE_INTEGER m_UncompressedSize;
 
 	bool InitializeArchive(CSfxPackagerView *pview, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *basename, UINT span = 0);
-	bool AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename = NULL, uint64_t *sz_uncomp = NULL, uint64_t *sz_comp = NULL, UINT recursion = 0);
+	bool AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *excludespec, const TCHAR *scriptsnippet, const TCHAR *dstpath, const TCHAR *dstfilename = NULL, uint64_t *sz_uncomp = NULL, uint64_t *sz_comp = NULL, UINT recursion = 0);
 	bool FixupPackage(const TCHAR *filename, const TCHAR *launchcmd, bool span, UINT32 filecount);
 	bool SetupSfxExecutable(const TCHAR *filename, UINT span = 0);
 
-	bool CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, UINT recursion = 0);
+	bool CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, const TCHAR *excludespec, UINT recursion = 0);
 
 public:
 	CString m_SfxOutputFile;
@@ -95,9 +108,7 @@ public:
 	CString m_LaunchCmd;
 	long m_MaxSize;
 
-	CString m_scrInit;
-	CString m_scrPerFile;
-	CString m_scrFinish;
+	CString m_Script[EScriptType::NUMTYPES];
 
 	LPTSTR m_IconName;
 
@@ -106,7 +117,7 @@ public:
 
 // Operations
 public:
-	bool CreateSFXPackage(const TCHAR *filename = NULL, CSfxPackagerView *pview = NULL, CEditView *pedit = NULL);
+	bool CreateSFXPackage(const TCHAR *filename = NULL, CSfxPackagerView *pview = NULL);
 	bool CreateTarGzipPackage(const TCHAR *filename = NULL, CSfxPackagerView *pview = NULL);
 
 	static DWORD WINAPI RunCreateSFXPackage(LPVOID param);

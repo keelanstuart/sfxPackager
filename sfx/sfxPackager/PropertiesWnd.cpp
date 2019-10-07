@@ -25,6 +25,9 @@ static char THIS_FILE[]=__FILE__;
 #define new DEBUG_NEW
 #endif
 
+enum { CID_SELECTOR = 1, CID_PROPGRID };
+
+
 /////////////////////////////////////////////////////////////////////////////
 // CResourceViewBar
 
@@ -45,8 +48,8 @@ BEGIN_MESSAGE_MAP(CPropertiesWnd, CDockablePane)
 	ON_UPDATE_COMMAND_UI(ID_SORTPROPERTIES, OnUpdateSortProperties)
 	ON_WM_SETFOCUS()
 	ON_WM_SETTINGCHANGE()
-	ON_CBN_SELCHANGE(1, OnObjectSelected)
-	ON_UPDATE_COMMAND_UI(2, &CPropertiesWnd::OnUpdatePropertyGrid)
+	ON_CBN_SELCHANGE(CID_SELECTOR, OnObjectSelected)
+	ON_UPDATE_COMMAND_UI(CID_PROPGRID, &CPropertiesWnd::OnUpdatePropertyGrid)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -83,7 +86,7 @@ int CPropertiesWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	// Create combo:
 	const DWORD dwViewStyle = WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_BORDER | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
 
-	if (!m_wndObjectCombo.Create(dwViewStyle, rectDummy, this, 1))
+	if (!m_wndObjectCombo.Create(dwViewStyle, rectDummy, this, CID_SELECTOR))
 	{
 		TRACE0("Failed to create Properties Combo \n");
 		return -1;      // fail to create
@@ -94,7 +97,7 @@ int CPropertiesWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndObjectCombo.AddString(_T("Settings"));
 	m_wndObjectCombo.SetCurSel(0);
 
-	if (!m_wndPropList.Create(WS_VISIBLE | WS_CHILD, rectDummy, this, 2))
+	if (!m_wndPropList.Create(WS_VISIBLE | WS_CHILD, rectDummy, this, CID_PROPGRID))
 	{
 		TRACE0("Failed to create Properties Grid \n");
 		return -1;      // fail to create
@@ -158,6 +161,10 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 	if (!pd)
 		return;
 
+	CSfxPackagerView *pv = CSfxPackagerView::GetView();
+	if (!pv)
+		return;
+
 	if (s == PS_AUTODETECT)
 	{
 		UINT sel = m_wndObjectCombo.GetCurSel();
@@ -203,42 +210,40 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 
 			if (pext && !_tcsicmp(pext, _T(".exe")))
 			{
-				CMFCPropertyGridProperty *pDefaultPathProp = new CMFCPropertyGridFileProperty(_T("Default Path"), pd->m_DefaultPath, 0, _T("The default root path where the install data will go"));
-				CMFCPropertyGridProperty *pRequireAdminProp = new CMFCPropertyGridProperty(_T("Require Admin"), (_variant_t)((bool)pd->m_bRequireAdmin), _T("If set, requires the user to have administrative privileges and will prompt the user to elevate if need be."));
-				CMFCPropertyGridProperty *pShowDestDlgProp = new CMFCPropertyGridProperty(_T("Allow Destination Change"), (_variant_t)((bool)pd->m_bAllowDestChg), _T("If set, will allow the destination folder to be changed by the user. Should normally be set."));
+				{
+					CMFCPropertyGridProperty *pDefaultPathProp = new CMFCPropertyGridFileProperty(_T("Default Path"), pd->m_DefaultPath, 0, _T("The default root path where the install data will go"));
+					CMFCPropertyGridProperty *pRequireAdminProp = new CMFCPropertyGridProperty(_T("Require Admin"), (_variant_t)((bool)pd->m_bRequireAdmin), _T("If set, requires the user to have administrative privileges and will prompt the user to elevate if need be."));
+					CMFCPropertyGridProperty *pShowDestDlgProp = new CMFCPropertyGridProperty(_T("Allow Destination Change"), (_variant_t)((bool)pd->m_bAllowDestChg), _T("If set, will allow the destination folder to be changed by the user. Should normally be set."));
 
-				pSettingsGroup->AddSubItem(pDefaultPathProp);
-				pSettingsGroup->AddSubItem(pRequireAdminProp);
-				pSettingsGroup->AddSubItem(pShowDestDlgProp);
-
-
+					pSettingsGroup->AddSubItem(pDefaultPathProp);
+					pSettingsGroup->AddSubItem(pRequireAdminProp);
+					pSettingsGroup->AddSubItem(pShowDestDlgProp);
+				}
 
 				CMFCPropertyGridProperty *pAppearanceGroup = new CMFCPropertyGridProperty(_T("Appearance"));
+				{
+					CMFCPropertyGridProperty *pTitleProp = new CMFCPropertyGridProperty(_T("Caption"), pd->m_Caption, _T("Specifies the text that will be displayed in the window's title bar"));
+					CMFCPropertyGridProperty *pDescriptionProp = new CMFCPropertyGridProperty(_T("Description"), pd->m_Description, _T("Specifies the text that will be displayed in the window's main area to tell the end-user what the package is"));
+					CMFCPropertyGridProperty *pVersionProp = new CMFCPropertyGridProperty(_T("Version ID"), pd->m_VersionID, _T("Specifies the version number that will be displayed by the installer"));
+					CMFCPropertyGridFileProperty *pIconProp = new CMFCPropertyGridFileProperty(_T("Icon"), TRUE, pd->m_IconFile, _T("ico"), 0, szIcoFilter, _T("Specifies the ICO-format window icon"));
+					CMFCPropertyGridFileProperty *pImageProp = new CMFCPropertyGridFileProperty(_T("Image"), TRUE, pd->m_ImageFile, _T("bmp"), 0, szBmpFilter, _T("Specifies the BMP-format image that will be displayed on the window"));
 
-				CMFCPropertyGridProperty *pTitleProp = new CMFCPropertyGridProperty(_T("Caption"), pd->m_Caption, _T("Specifies the text that will be displayed in the window's title bar"));
-				CMFCPropertyGridProperty *pDescriptionProp = new CMFCPropertyGridProperty(_T("Description"), pd->m_Description, _T("Specifies the text that will be displayed in the window's main area to tell the end-user what the package is"));
-				CMFCPropertyGridProperty *pVersionProp = new CMFCPropertyGridProperty(_T("Version ID"), pd->m_VersionID, _T("Specifies the version number that will be displayed by the installer"));
-				CMFCPropertyGridFileProperty *pIconProp = new CMFCPropertyGridFileProperty(_T("Icon"), TRUE, pd->m_IconFile, _T("ico"), 0, szIcoFilter, _T("Specifies the ICO-format window icon"));
-				CMFCPropertyGridFileProperty *pImageProp = new CMFCPropertyGridFileProperty(_T("Image"), TRUE, pd->m_ImageFile, _T("bmp"), 0, szBmpFilter, _T("Specifies the BMP-format image that will be displayed on the window"));
-
-				pAppearanceGroup->AddSubItem(pTitleProp);
-				pAppearanceGroup->AddSubItem(pDescriptionProp);
-				pAppearanceGroup->AddSubItem(pVersionProp);
-				pAppearanceGroup->AddSubItem(pIconProp);
-				pAppearanceGroup->AddSubItem(pImageProp);
-
+					pAppearanceGroup->AddSubItem(pTitleProp);
+					pAppearanceGroup->AddSubItem(pDescriptionProp);
+					pAppearanceGroup->AddSubItem(pVersionProp);
+					pAppearanceGroup->AddSubItem(pIconProp);
+					pAppearanceGroup->AddSubItem(pImageProp);
+				}
 				m_wndPropList.AddProperty(pAppearanceGroup);
 
-
-
 				CMFCPropertyGridProperty *pPostInstallGroup = new CMFCPropertyGridProperty(_T("Post-Install"));
+				{
+					CMFCPropertyGridProperty *pShowOpenProp = new CMFCPropertyGridProperty(_T("Explore"), (_variant_t)((bool)pd->m_bExploreOnComplete), _T("If set, will open a windows explorer window to the install directory upon completion"));
+					CMFCPropertyGridProperty *pLaunchCmdProp = new CMFCPropertyGridProperty(_T("Launch"), pd->m_LaunchCmd, _T("A command that will be issued when installation is complete (see full docs for parameter options)"));
 
-				CMFCPropertyGridProperty *pShowOpenProp = new CMFCPropertyGridProperty(_T("Explore"), (_variant_t)((bool)pd->m_bExploreOnComplete), _T("If set, will open a windows explorer window to the install directory upon completion"));
-				CMFCPropertyGridProperty *pLaunchCmdProp = new CMFCPropertyGridProperty(_T("Launch"), pd->m_LaunchCmd, _T("A command that will be issued when installation is complete (see full docs for parameter options)"));
-
-				pPostInstallGroup->AddSubItem(pShowOpenProp);
-				pPostInstallGroup->AddSubItem(pLaunchCmdProp);
-
+					pPostInstallGroup->AddSubItem(pShowOpenProp);
+					pPostInstallGroup->AddSubItem(pLaunchCmdProp);
+				}
 				m_wndPropList.AddProperty(pPostInstallGroup);
 			}
 
@@ -251,6 +256,8 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 			CString name;
 			CString src;
 			CString dst;
+			CString exclude;
+			CString snippet;
 
 			TCHAR rawsrc[MAX_PATH];
 			rawsrc[0] = _T('\0');
@@ -261,8 +268,9 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 			bool got_name = false;
 			bool got_src = false;
 			bool got_dst = false;
+			bool got_exclude = false;
+			bool got_snippet = false;
 
-			CSfxPackagerView *pv = CSfxPackagerView::GetView();
 			CListCtrl &list = pv->GetListCtrl();
 			POSITION pos = list.GetFirstSelectedItemPosition();
 
@@ -302,6 +310,26 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 				{
 					PrunePathToCommonPart(rawdst, pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_DSTPATH));
 				}
+
+				if (!got_exclude)
+				{
+					exclude = pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_EXCLUDE);
+					got_exclude = true;
+				}
+				else
+				{
+					exclude = _T("");
+				}
+
+				if (!got_snippet)
+				{
+					snippet = pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_SNIPPET);
+					got_snippet = true;
+				}
+				else
+				{
+					snippet = _T("");
+				}
 			}
 
 			src = rawsrc;
@@ -311,13 +339,17 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 			CMFCPropertyGridProperty *pNameProp = new CMFCPropertyGridProperty(_T("Filename"), name, _T("The name of the file that will be installed (note: this can be different than the name of the source file)"));
 			CMFCPropertyGridProperty *pSrcProp = new CMFCPropertyGridProperty(_T("Source"), src, _T("The source file"));
 			CMFCPropertyGridProperty *pDstProp = new CMFCPropertyGridProperty(_T("Destination"), dst, _T("The destination directory, relative to the install folder chosen by the user"));
+			CMFCPropertyGridProperty *pExcludeProp = new CMFCPropertyGridProperty(_T("Exclude"), exclude, _T("A semi-colon-delimited list of wildcard file descriptions of things that should be excluded (only applies to wildcard Filenames to begin with)"));
+			CMFCPropertyGridProperty *pSnippetProp = new CMFCPropertyGridProperty(_T("Script Add-On"), snippet, _T("This snippet will be appended to the PER-FILE script that is executed after the file is installed. As an example, it could be used to call a function embedded within the global PER-FILE script"));
 
 			pNameProp->Enable((selcount == 1) ? true : false);
-			//pSrcProp->Enable(false);
+			pExcludeProp->Enable(_tcschr(name, _T('*')) != NULL);
 
 			m_wndPropList.AddProperty(pNameProp);
 			m_wndPropList.AddProperty(pSrcProp);
 			m_wndPropList.AddProperty(pDstProp);
+			m_wndPropList.AddProperty(pExcludeProp);
+			m_wndPropList.AddProperty(pSnippetProp);
 			break;
 		}
 

@@ -20,6 +20,9 @@
 
 #include "../../Archiver/Include/Archiver.h"
 
+extern bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst);
+extern bool ReplaceRegistryKeys(const tstring &src, tstring &dst);
+extern bool FLZACreateDirectories(const TCHAR *dir);
 
 // CProgressDlg dialog
 
@@ -207,6 +210,72 @@ protected:
 	HANDLE m_hFile;
 };
 
+// ******************************************************************************
+// ******************************************************************************
+
+void scMessageBox(CScriptVar *c, void *userdata)
+{
+	tstring title = c->getParameter(_T("title"))->getString();
+	tstring msg = c->getParameter(_T("msg"))->getString();
+
+	CProgressDlg *_this = (CProgressDlg *)userdata;
+
+	MessageBox(_this->GetSafeHwnd(), msg.c_str(), title.c_str(), MB_OK);
+}
+
+void CProgressDlg::Echo(const TCHAR *msg)
+{
+	m_Status.SetSel(-1, 0, TRUE);
+	m_Status.ReplaceSel(msg);
+}
+
+void scEcho(CScriptVar *c, void *userdata)
+{
+	tstring msg = c->getParameter(_T("msg"))->getString(), _msg;
+	ReplaceEnvironmentVariables(msg, _msg);
+	ReplaceRegistryKeys(_msg, msg);
+
+	CProgressDlg *_this = (CProgressDlg *)userdata;
+	_this->Echo(msg.c_str());
+}
+
+void scCreateDirectoryTree(CScriptVar *c, void *userdata)
+{
+	tstring path = c->getParameter(_T("path"))->getString(), _path;
+	ReplaceEnvironmentVariables(path, _path);
+	ReplaceRegistryKeys(_path, path);
+
+	bool create_result = FLZACreateDirectories(path.c_str());
+	c->getReturnVar()->setInt(create_result ? 1 : 0);
+}
+
+void scCopyFile(CScriptVar *c, void *userdata)
+{
+	tstring src = c->getParameter(_T("src"))->getString(), _src;
+	ReplaceEnvironmentVariables(src, _src);
+	ReplaceRegistryKeys(_src, src);
+
+	tstring dst = c->getParameter(_T("dst"))->getString(), _dst;
+	ReplaceEnvironmentVariables(dst, _dst);
+	ReplaceRegistryKeys(_dst, dst);
+
+	BOOL copy_result = CopyFile(src.c_str(), dst.c_str(), false);
+	c->getReturnVar()->setInt(copy_result ? 1 : 0);
+}
+
+void scDeleteFile(CScriptVar *c, void *userdata)
+{
+	tstring path = c->getParameter(_T("path"))->getString(), _path;
+	ReplaceEnvironmentVariables(path, _path);
+	ReplaceRegistryKeys(_path, path);
+
+	BOOL delete_result = DeleteFile(path.c_str());
+	c->getReturnVar()->setInt(delete_result ? 1 : 0);
+}
+
+// ******************************************************************************
+// ******************************************************************************
+
 DWORD CProgressDlg::RunInstall()
 {
 	DWORD ret = 0;
@@ -219,9 +288,25 @@ DWORD CProgressDlg::RunInstall()
 
 	m_Progress.SetPos(0);
 
+	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
+	theApp.m_js.addNative(_T("function CreateDirectoryTree(path)"), scCreateDirectoryTree, (void *)this);
+	theApp.m_js.addNative(_T("function CopyFile(src, dst)"), scCopyFile, (void *)this);
+	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
+	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
+
+	theApp.m_InstallPath.Replace(_T("\\"), _T("/"));
+
 	if (!theApp.m_Script[CSfxApp::EScriptType::INIT].empty())
 	{
-		theApp.m_js.execute(theApp.m_Script[CSfxApp::EScriptType::INIT]);
+		tstring iscr;
+
+		iscr += _T("var BASEPATH = \"");
+		iscr += (LPCTSTR)(theApp.m_InstallPath);
+		iscr += _T("\";  // the base install path\n\n");
+
+		iscr += theApp.m_Script[CSfxApp::EScriptType::INIT];
+
+		theApp.m_js.execute(iscr);
 	}
 
 	bool cancelled = false;
@@ -260,10 +345,30 @@ DWORD CProgressDlg::RunInstall()
 					continue;
 				}
 
-				tstring fname;
-				tstring fpath;
+				tstring fname, fpath, snippet;
 				uint64_t usize;
-				pie->GetFileInfo(i, &fname, &fpath, NULL, &usize);
+				FILETIME created_time, modified_time;
+				pie->GetFileInfo(i, &fname, &fpath, NULL, &usize, &created_time, &modified_time, &snippet);
+
+				tstring ffull;
+				if (!fpath.empty())
+				{
+					ffull = fpath.c_str();
+					ffull += _T("\\");
+				}
+				ffull += fname;
+
+				for (tstring::iterator rit = ffull.begin(), last_rit = ffull.end(); rit != last_rit; rit++)
+				{
+					if (*rit == _T('\\'))
+						*rit = _T('/');
+				}
+
+				for (tstring::iterator rit = fpath.begin(), last_rit = fpath.end(); rit != last_rit; rit++)
+				{
+					if (*rit == _T('\\'))
+						*rit = _T('/');
+				}
 
 				m_Progress.SetPos((int)i + 1);
 
@@ -271,11 +376,35 @@ DWORD CProgressDlg::RunInstall()
 				switch (er)
 				{
 					case IExtractor::ER_OK:
-						msg.Format(_T("    %s%s%s (%" PRId64 "KB) [ok]\r\n"), fpath.c_str(), fpath.empty() ? _T("") : _T("\\"), fname.c_str(), usize / 1024);
+						if (!theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty())
+						{
+							tstring pfscr;
+
+							pfscr += _T("var FILENAME = \"");
+							pfscr += fname.c_str();
+							pfscr += _T("\";  // the name of the file that was just extracted\n");
+
+							pfscr += _T("var PATH = \"");
+							pfscr += fpath.c_str();
+							pfscr += _T("\";  // the output path of that file\n");
+
+							pfscr += _T("var FILEPATH = \"");
+							pfscr += ffull.c_str();
+							pfscr += _T("\";  // the full filename (path + name)\n\n");
+
+							pfscr += theApp.m_Script[CSfxApp::EScriptType::PERFILE];
+
+							pfscr += _T("\n\n");
+							pfscr += snippet;
+
+							theApp.m_js.execute(pfscr);
+						}
+
+						msg.Format(_T("    %s (%" PRId64 "KB) [ok]\r\n"), ffull.c_str(), usize / 1024);
 						break;
 
 					default:
-						msg.Format(_T("    %s%s%s [failed]\r\n"), fpath.c_str(), fpath.empty() ? _T("") : _T("\\"), fname.c_str());
+						msg.Format(_T("    %s [failed]\r\n"), ffull.c_str());
 						extract_ok = false;
 						break;
 				}
@@ -292,7 +421,15 @@ DWORD CProgressDlg::RunInstall()
 
 	if (!theApp.m_Script[CSfxApp::EScriptType::FINISH].empty())
 	{
-		theApp.m_js.execute(theApp.m_Script[CSfxApp::EScriptType::FINISH]);
+		tstring fscr;
+
+		fscr += _T("var BASEPATH = \"");
+		fscr += (LPCTSTR)(theApp.m_InstallPath);
+		fscr += _T("\";  // the base install path\n\n");
+
+		fscr += theApp.m_Script[CSfxApp::EScriptType::FINISH];
+
+		theApp.m_js.execute(fscr);
 	}
 
 	msg.Format(_T("Done.\r\n"));

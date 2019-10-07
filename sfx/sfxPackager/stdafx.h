@@ -72,6 +72,7 @@
 #include <tchar.h>
 
 #include <afxwin.h>
+#include <afxwin.h>
 
 typedef std::basic_string<TCHAR> tstring;
 

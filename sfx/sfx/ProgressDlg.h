@@ -22,6 +22,8 @@ public:
 	CProgressDlg(CWnd* pParent = NULL);   // standard constructor
 	virtual ~CProgressDlg();
 
+	void Echo(const TCHAR *msg);
+
 // Dialog Data
 	enum { IDD = IDD_PROGRESS_DIALOG };
 

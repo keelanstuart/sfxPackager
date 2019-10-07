@@ -17,6 +17,9 @@
 #include "sfxPackager.h"
 
 #include "MainFrm.h"
+#include "ChildFrm.h"
+#include "sfxPackagerView.h"
+
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -37,6 +40,10 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWndEx)
 	ON_REGISTERED_MESSAGE(AFX_WM_CREATETOOLBAR, &CMainFrame::OnToolbarCreateNew)
 	ON_COMMAND_RANGE(ID_VIEW_APPLOOK_WIN_2000, ID_VIEW_APPLOOK_WINDOWS_7, &CMainFrame::OnApplicationLook)
 	ON_UPDATE_COMMAND_UI_RANGE(ID_VIEW_APPLOOK_WIN_2000, ID_VIEW_APPLOOK_WINDOWS_7, &CMainFrame::OnUpdateApplicationLook)
+	ON_UPDATE_COMMAND_UI(ID_APP_BUILDSFX, &CMainFrame::OnUpdateAppBuildsfx)
+	ON_COMMAND(ID_APP_BUILDSFX, &CMainFrame::OnAppBuildsfx)
+	ON_UPDATE_COMMAND_UI(ID_APP_CANCELSFX, &CMainFrame::OnUpdateAppCancelSfx)
+	ON_COMMAND(ID_APP_CANCELSFX, &CMainFrame::OnAppCancelSfx)
 	ON_WM_SETTINGCHANGE()
 END_MESSAGE_MAP()
 
@@ -426,4 +433,58 @@ void CMainFrame::OnSettingChange(UINT uFlags, LPCTSTR lpszSection)
 {
 	CMDIFrameWndEx::OnSettingChange(uFlags, lpszSection);
 	m_wndOutput.UpdateFonts();
+}
+
+void CMainFrame::OnUpdateAppBuildsfx(CCmdUI *pCmdUI)
+{
+	CChildFrame *pcf = (CChildFrame *)MDIGetActive();
+	if (!pcf)
+	{
+		pCmdUI->Enable(false);
+		return;
+	}
+
+	CWnd* pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
+	if (pView)
+		pView->OnUpdateAppBuildsfx(pCmdUI);
+}
+
+void CMainFrame::OnAppBuildsfx()
+{
+	CChildFrame *pcf = (CChildFrame *)MDIGetActive();
+	if (!pcf)
+		return;
+
+	CWnd* pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
+	if (pView)
+		pView->OnAppBuildsfx();
+}
+
+void CMainFrame::OnUpdateAppCancelSfx(CCmdUI *pCmdUI)
+{
+	CChildFrame *pcf = (CChildFrame *)MDIGetActive();
+	if (!pcf)
+	{
+		pCmdUI->Enable(false);
+		return;
+	}
+
+	CWnd* pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
+	if (pView)
+		pView->OnUpdateAppCancelSfx(pCmdUI);
+}
+
+void CMainFrame::OnAppCancelSfx()
+{
+	CChildFrame *pcf = (CChildFrame *)MDIGetActive();
+	if (!pcf)
+		return;
+
+	CWnd* pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
+	if (pView)
+		pView->OnAppCancelSfx();
 }

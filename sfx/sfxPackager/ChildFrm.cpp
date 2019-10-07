@@ -17,6 +17,8 @@
 #include "sfxPackager.h"
 #include "sfxPackagerDoc.h"
 #include "sfxPackagerView.h"
+#include "CScriptEditView.h"
+#include "MainFrm.h"
 
 #include "ChildFrm.h"
 
@@ -32,7 +34,6 @@ BEGIN_MESSAGE_MAP(CChildFrame, CMDIChildWndEx)
 	ON_WM_NCPAINT()
 	ON_WM_SETFOCUS()
 	ON_WM_SIZE()
-	ON_UPDATE_COMMAND_UI(ID_APP_BUILDSFX, &CChildFrame::OnUpdateAppBuildsfx)
 END_MESSAGE_MAP()
 
 // CChildFrame construction/destruction
@@ -108,7 +109,7 @@ BOOL CChildFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext *pContext)
 			GetClientRect(r);
 
 			if (!m_wndSplitter.CreateView(0, 0, RUNTIME_CLASS(CSfxPackagerView), CSize(r.Width(), r.Height() * 2 / 3), pContext) ||
-				!m_wndSplitter.CreateView(1, 0, RUNTIME_CLASS(CEditView), CSize(r.Width(), r.Height() / 3), pContext))
+				!m_wndSplitter.CreateView(1, 0, RUNTIME_CLASS(CScriptEditView), CSize(r.Width(), r.Height() / 3), pContext))
 			{
 				m_wndSplitter.DestroyWindow();
 				ret = FALSE;
@@ -118,7 +119,7 @@ BOOL CChildFrame::OnCreateClient(LPCREATESTRUCT lpcs, CCreateContext *pContext)
 			if (pv)
 				pv->SetSplitterWnd(&m_wndSplitter);
 
-			CEditView *pe = dynamic_cast<CEditView *>(m_wndSplitter.GetPane(1, 0));
+			CScriptEditView *pe = dynamic_cast<CScriptEditView *>(m_wndSplitter.GetPane(1, 0));
 			if (pe)
 				pv->SetScriptEditView(pe);
 		}
@@ -177,13 +178,4 @@ CEditView *CChildFrame::GetScriptEditPane()
 	CWnd* pWnd = m_wndSplitter.GetPane(1, 0);
 	CEditView* pView = DYNAMIC_DOWNCAST(CEditView, pWnd);
 	return pView;
-}
-
-
-void CChildFrame::OnUpdateAppBuildsfx(CCmdUI *pCmdUI)
-{
-	CWnd* pWnd = m_wndSplitter.GetPane(0, 0);
-	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
-	if (pView)
-		pView->OnUpdateAppBuildsfx(pCmdUI);
 }

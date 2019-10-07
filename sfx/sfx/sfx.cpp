@@ -31,6 +31,10 @@
 #endif
 
 
+extern bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst);
+extern bool ReplaceRegistryKeys(const tstring &src, tstring &dst);
+
+
 // CSfxApp
 
 BEGIN_MESSAGE_MAP(CSfxApp, CWinApp)
@@ -157,6 +161,16 @@ BOOL CSfxApp::InitInstance()
 		runnow = true;
 	}
 
+	if (m_InstallPath.IsEmpty())
+		m_InstallPath = _T(".\\");
+	else
+	{
+		tstring tmp = m_InstallPath, _tmp;
+		ReplaceEnvironmentVariables(tmp, _tmp);
+		ReplaceRegistryKeys(_tmp, tmp);
+		m_InstallPath = tmp.c_str();
+	}
+
 	SFixupResourceData *furd = NULL;
 	hfr = FindResource(NULL, _T("SFX_FIXUPDATA"), _T("SFX"));
 	if (hfr)
@@ -199,7 +213,7 @@ BOOL CSfxApp::InitInstance()
 
 				HINSTANCE shellret = ShellExecute(NULL, _T("runas"), exepath, NULL, NULL, SW_SHOWNORMAL);
 
-				if ((int)shellret <= 32)
+				if ((size_t)shellret <= 32)
 				{
 					MessageBox(NULL, _T("Permission elevation was not successful - Installation aborted."), _T("UAC Override Failure"), MB_OK);
 				}
@@ -228,12 +242,23 @@ BOOL CSfxApp::InitInstance()
 		if (nResponse == IDOK)
 		{
 			dt++;
+
+			// if we don't allow the destination to be changed, don't show the settings dialog
+			// this will likely change... but it's unknown how just yet. more settings are needed.
+			if ((dt == DT_SETTINGS) && !(m_Flags & SFX_FLAG_ALLOWDESTCHG))
+				dt++;
+
 			if (dt > DT_LAST)
 				break;
 		}
 		else if (nResponse == IDCANCEL)
 		{
 			dt--;
+
+			// if we don't allow the destination to be changed, don't show the settings dialog
+			// this will likely change... but it's unknown how just yet. more settings are needed.
+			if ((dt == DT_SETTINGS) && !(m_Flags & SFX_FLAG_ALLOWDESTCHG))
+				dt--;
 		}
 
 		RemoveQuitMessage(hwnd);

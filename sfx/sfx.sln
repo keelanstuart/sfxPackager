@@ -16,8 +16,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sfxPackager", "sfxPackager\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Archiver", "..\Archiver\Source\Archiver.vcxproj", "{8C1567E6-714B-435B-96CA-4D8BF20E46A2}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PowerProps", "..\..\PowerProps\PowerProps.vcxproj", "{6BEE76CE-1EE0-4FE1-A88C-F18AE45FF9BF}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -36,10 +34,6 @@ Global
 		{8C1567E6-714B-435B-96CA-4D8BF20E46A2}.Debug|x64.Build.0 = Debug|x64
 		{8C1567E6-714B-435B-96CA-4D8BF20E46A2}.Release|x64.ActiveCfg = Release|x64
 		{8C1567E6-714B-435B-96CA-4D8BF20E46A2}.Release|x64.Build.0 = Release|x64
-		{6BEE76CE-1EE0-4FE1-A88C-F18AE45FF9BF}.Debug|x64.ActiveCfg = Debug|x64
-		{6BEE76CE-1EE0-4FE1-A88C-F18AE45FF9BF}.Debug|x64.Build.0 = Debug|x64
-		{6BEE76CE-1EE0-4FE1-A88C-F18AE45FF9BF}.Release|x64.ActiveCfg = Release|x64
-		{6BEE76CE-1EE0-4FE1-A88C-F18AE45FF9BF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

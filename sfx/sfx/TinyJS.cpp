@@ -1791,7 +1791,7 @@ void CTinyJS::execute(const tstring &code)
 		delete l;
 		l = oldLex;
 
-		throw new CScriptException(msg.str());
+		//throw new CScriptException(msg.str());
 	}
 
 	delete l;

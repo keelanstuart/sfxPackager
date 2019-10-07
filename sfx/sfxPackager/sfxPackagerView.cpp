@@ -26,6 +26,7 @@
 #include "PropertiesWnd.h"
 #include "RepathDlg.h"
 #include "ChildFrm.h"
+#include "CScriptEditView.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -50,13 +51,9 @@ BEGIN_MESSAGE_MAP(CSfxPackagerView, CListView)
 	ON_NOTIFY_REFLECT(LVN_ITEMACTIVATE, &CSfxPackagerView::OnLvnItemActivate)
 	ON_NOTIFY_REFLECT(NM_CLICK, &CSfxPackagerView::OnNMClick)
 	ON_NOTIFY_REFLECT(LVN_KEYDOWN, &CSfxPackagerView::OnLvnKeydown)
-	ON_UPDATE_COMMAND_UI(ID_APP_BUILDSFX, &CSfxPackagerView::OnUpdateAppBuildsfx)
-	ON_COMMAND(ID_APP_BUILDSFX, &CSfxPackagerView::OnAppBuildsfx)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_NEWFILE, &CSfxPackagerView::OnUpdateEditNewfile)
 	ON_COMMAND(ID_EDIT_REPATHSRC, &CSfxPackagerView::OnEditRepathSource)
 	ON_WM_SETFOCUS()
-	ON_UPDATE_COMMAND_UI(ID_APP_CANCELSFX, &CSfxPackagerView::OnUpdateAppCancelSfx)
-	ON_COMMAND(ID_APP_CANCELSFX, &CSfxPackagerView::OnAppCancelSfx)
 	ON_WM_SIZE()
 END_MESSAGE_MAP()
 
@@ -163,24 +160,30 @@ void CSfxPackagerView::OnUpdate(CView* /*pSender*/, LPARAM /*lHint*/, CObject* /
 
 			CRect r;
 			GetClientRect(r);
-			int fifth = r.Width() / 5;
+			int ninth = r.Width() / 9;
 
 			hdi.pszText = _T("Filename");
-			hdi.cxy = fifth;
+			hdi.cxy = ninth * 2;
 			list.InsertColumn(0, hdi.pszText, LVCFMT_LEFT);
-			list.SetColumnWidth(0, hdi.cxy);
 			phc->SetItem(0, &hdi);
+			list.SetColumnWidth(0, hdi.cxy);
 
 			hdi.pszText = _T("Source");
-			hdi.cxy = fifth * 2;
+			hdi.cxy = ninth * 3;
 			list.InsertColumn(1, hdi.pszText, LVCFMT_LEFT);
-			list.SetColumnWidth(1, hdi.cxy);
 			phc->SetItem(1, &hdi);
+			list.SetColumnWidth(1, hdi.cxy);
 
 			hdi.pszText = _T("Destination");
 			list.InsertColumn(2, hdi.pszText, LVCFMT_LEFT);
-			list.SetColumnWidth(2, hdi.cxy);
 			phc->SetItem(2, &hdi);
+			list.SetColumnWidth(2, hdi.cxy);
+
+			hdi.pszText = _T("Exclude");
+			hdi.cxy = ninth;
+			list.InsertColumn(3, hdi.pszText, LVCFMT_LEFT);
+			phc->SetItem(3, &hdi);
+			list.SetColumnWidth(3, hdi.cxy);
 
 			list.SetExtendedStyle(LVS_EX_FULLROWSELECT);
 
@@ -195,11 +198,9 @@ void CSfxPackagerView::OnUpdate(CView* /*pSender*/, LPARAM /*lHint*/, CObject* /
 				lvi.iItem = i;
 				lvi.lParam = i;
 
-				for (lvi.iSubItem = 0; lvi.iSubItem < 3; lvi.iSubItem++)
+				for (lvi.iSubItem = 0; lvi.iSubItem < 4; lvi.iSubItem++)
 					list.InsertItem(&lvi);
 			}
-
-			m_ScriptEditor->SetWindowText(pDoc->m_scrInit);
 		}
 	}
 }
@@ -238,7 +239,7 @@ void CSfxPackagerView::ImportLivingFolder(const TCHAR *dir, const TCHAR *include
 #endif
 
 		CSfxPackagerDoc *pDoc = GetDocument();
-		UINT handle = pDoc->AddFile(e, dir, _T("\\"));
+		UINT handle = pDoc->AddFile(e, dir, _T("\\"), _T(""), _T(""));
 
 		CListCtrl &list = GetListCtrl();
 
@@ -255,7 +256,7 @@ void CSfxPackagerView::ImportLivingFolder(const TCHAR *dir, const TCHAR *include
 			lvi.lParam = handle;
 			lvi.pszText = LPSTR_TEXTCALLBACK;
 
-			for (lvi.iSubItem = 0; lvi.iSubItem < 3; lvi.iSubItem++)
+			for (lvi.iSubItem = 0; lvi.iSubItem < 4; lvi.iSubItem++)
 				list.InsertItem(&lvi);
 		}
 	}
@@ -330,7 +331,7 @@ void CSfxPackagerView::ImportFile(const TCHAR *filename, UINT depth, bool refres
 	}
 
 	CListCtrl &list = GetListCtrl();
-	UINT handle = pDoc->AddFile(PathFindFileName(filename), srcdir, start ? start : _T("\\"));
+	UINT handle = pDoc->AddFile(PathFindFileName(filename), srcdir, start ? start : _T("\\"), _T(""), _T(""));
 
 	LVINSERTMARK im;
 	ZeroMemory(&im, sizeof(LVINSERTMARK));
@@ -345,7 +346,7 @@ void CSfxPackagerView::ImportFile(const TCHAR *filename, UINT depth, bool refres
 		lvi.lParam = handle;
 		lvi.pszText = LPSTR_TEXTCALLBACK;
 
-		for (lvi.iSubItem = 0; lvi.iSubItem < 3; lvi.iSubItem++)
+		for (lvi.iSubItem = 0; lvi.iSubItem < 4; lvi.iSubItem++)
 			list.InsertItem(&lvi);
 	}
 
@@ -587,6 +588,8 @@ void CSfxPackagerView::OnUpdateAppBuildsfx(CCmdUI *pCmdUI)
 
 void CSfxPackagerView::OnAppBuildsfx()
 {
+	m_ScriptEditor->UpdateDocWithActiveScript();
+
 	m_hPackageThread = CreateThread(NULL, 0, CSfxPackagerDoc::RunCreateSFXPackage, this, 0, NULL);
 }
 
@@ -640,7 +643,10 @@ void CSfxPackagerView::SetDestFolderForSelection(const TCHAR *dst, const TCHAR *
 			UINT handle = (UINT)list.GetItemData(item);
 
 			CString val = pDoc->GetFileData(handle, CSfxPackagerDoc::FDT_DSTPATH);
-			val.Replace(rootdst, dst);
+			if (val.IsEmpty())
+				val = dst;
+			else
+				val.Replace(rootdst, dst);
 
 			pDoc->SetFileData(handle, CSfxPackagerDoc::FDT_DSTPATH, val);
 		}
@@ -698,6 +704,60 @@ void CSfxPackagerView::SetFilenameForSelection(const TCHAR *name)
 		UINT handle = (UINT)list.GetItemData(item);
 
 		pDoc->SetFileData(handle, CSfxPackagerDoc::FDT_NAME, name);
+	}
+
+	list.RedrawItems(list.GetTopIndex(), list.GetTopIndex() + list.GetCountPerPage());
+	Invalidate(NULL);
+
+	RefreshProperties();
+}
+
+void CSfxPackagerView::SetExclusionsForSelection(const TCHAR *exclude)
+{
+	CSfxPackagerDoc *pDoc = GetDocument();
+
+	CListCtrl &list = GetListCtrl();
+	UINT selcount = list.GetSelectedCount();
+	int item = -1;
+
+	// Update all of the selected items.
+	if (selcount > 0)
+	{
+		for (UINT i = 0; i < selcount; i++)
+		{
+			item = list.GetNextItem(item, LVNI_SELECTED);
+
+			UINT handle = (UINT)list.GetItemData(item);
+
+			pDoc->SetFileData(handle, CSfxPackagerDoc::FDT_EXCLUDE, exclude);
+		}
+	}
+
+	list.RedrawItems(list.GetTopIndex(), list.GetTopIndex() + list.GetCountPerPage());
+	Invalidate(NULL);
+
+	RefreshProperties();
+}
+
+void CSfxPackagerView::SetScriptSnippetForSelection(const TCHAR *snippet)
+{
+	CSfxPackagerDoc *pDoc = GetDocument();
+
+	CListCtrl &list = GetListCtrl();
+	UINT selcount = list.GetSelectedCount();
+	int item = -1;
+
+	// Update all of the selected items.
+	if (selcount > 0)
+	{
+		for (UINT i = 0; i < selcount; i++)
+		{
+			item = list.GetNextItem(item, LVNI_SELECTED);
+
+			UINT handle = (UINT)list.GetItemData(item);
+
+			pDoc->SetFileData(handle, CSfxPackagerDoc::FDT_SNIPPET, snippet);
+		}
 	}
 
 	list.RedrawItems(list.GetTopIndex(), list.GetTopIndex() + list.GetCountPerPage());

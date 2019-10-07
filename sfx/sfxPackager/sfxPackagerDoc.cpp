@@ -284,9 +284,17 @@ public:
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_DESCRIPTION"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_Description), (m_pDoc->m_Description.GetLength() + 1) * sizeof(TCHAR));
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_DEFAULTPATH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_DefaultPath), (m_pDoc->m_DefaultPath.GetLength() + 1) * sizeof(TCHAR));
 
-			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INIT"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_scrInit), (m_pDoc->m_scrInit.GetLength() + 1) * sizeof(TCHAR));
-			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PERFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_scrPerFile), (m_pDoc->m_scrPerFile.GetLength() + 1) * sizeof(TCHAR));
-			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_FINISH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_scrFinish), (m_pDoc->m_scrFinish.GetLength() + 1) * sizeof(TCHAR));
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INIT"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+				(void *)((LPCTSTR)m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::INIT]),
+				(m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::INIT].GetLength() + 1) * sizeof(TCHAR));
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PERFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+				(void *)((LPCTSTR)m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::PERFILE]),
+				(m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::PERFILE].GetLength() + 1) * sizeof(TCHAR));
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_FINISH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+				(void *)((LPCTSTR)m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::FINISH]),
+				(m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::FINISH].GetLength() + 1) * sizeof(TCHAR));
 
 			SFixupResourceData furd;
 			ZeroMemory(&furd, sizeof(SFixupResourceData));
@@ -322,7 +330,7 @@ public:
 		if (pdata)
 		{
 			SetFilePointer(hf, 0, NULL, FILE_BEGIN);
-			ReadFile(hf, pdata, ofs.QuadPart, &cb, NULL);
+			ReadFile(hf, pdata, (DWORD)ofs.QuadPart, &cb, NULL);
 
 			char ss[16];
 			strcpy(ss, SFX_FIXUP_SEARCH_STRING);
@@ -330,7 +338,7 @@ public:
 			// search for our identifier string in the exe file... when we find it, then replace the data ourselves instead of using the resource API
 			BYTE *p = pdata;
 			bool found = false;
-			while (p && ((p - pdata) < (ofs.QuadPart - sizeof(SFixupResourceData))))
+			while (p && ((uint64_t)(p - pdata) < (uint64_t)(ofs.QuadPart - sizeof(SFixupResourceData))))
 			{
 				p = (BYTE *)memchr((char *)p, ss[0], ofs.QuadPart - (p - pdata));
 
@@ -349,7 +357,7 @@ public:
 
 			if (found)
 			{
-				SetFilePointer(hf, (p - pdata), NULL, FILE_BEGIN);
+				SetFilePointer(hf, (LONG)(p - pdata), NULL, FILE_BEGIN);
 
 				SFixupResourceData *furd = (SFixupResourceData *)p;
 				_tcscpy_s(furd->m_LaunchCmd, MAX_PATH, launchcmd);
@@ -499,7 +507,7 @@ BOOL CSfxPackagerDoc::EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPTSTR lpNa
 {
 	CSfxPackagerDoc *_this = (CSfxPackagerDoc *)lParam;
 
-	if ((ULONG)lpName & 0xFFFF0000)
+	if ((ULONGLONG)lpName & 0xFFFF0000)
 	{
 	}
 
@@ -524,12 +532,6 @@ DWORD CSfxPackagerDoc::RunCreateSFXPackage(LPVOID param)
 {
 	CSfxPackagerView *pv = (CSfxPackagerView *)param;
 
-	CEditView *pe = nullptr;
-	if (pv)
-	{
-		pe = pv->GetScriptEditView();
-	}
-
 	CSfxPackagerDoc *pd = pv->GetDocument(); // should be this
 
 	pd->m_hThread = GetCurrentThread();
@@ -539,7 +541,7 @@ DWORD CSfxPackagerDoc::RunCreateSFXPackage(LPVOID param)
 	{
 		if (!_tcsicmp(ext, _T(".exe")))
 		{
-			pd->CreateSFXPackage(NULL, pv, pe);
+			pd->CreateSFXPackage(NULL, pv);
 		}
 		else if (!_tcsicmp(ext, _T(".gz")) || !_tcsicmp(ext, _T(".gzip")))
 		{
@@ -570,7 +572,47 @@ DWORD GetFileSizeByName(const TCHAR *filename)
 	return ret;
 }
 
-bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, uint64_t *sz_uncomp, uint64_t *sz_comp, UINT recursion)
+bool ShouldExclude(const TCHAR *filename, const TCHAR *excludespec)
+{
+	// this SHOULD never happen...?
+	if (!filename)
+		return false;
+
+	if (!excludespec || !*excludespec)
+		return false;
+
+	TCHAR *buf = (TCHAR *)_malloca((_tcslen(excludespec) + 1) * sizeof(TCHAR));
+	if (!buf)
+		return false;
+
+	_tcscpy(buf, excludespec);
+
+	bool ret = false;
+
+	TCHAR *c = buf, *d;
+	while (c && *c)
+	{
+		d = _tcschr(c, _T(';'));
+		if (d)
+			*d = _T('\0');
+
+		if (PathMatchSpec(filename, c))
+		{
+			ret = true;
+			break;
+		}
+
+		c = d;
+		if (d)
+			c++;
+	}
+
+	_freea(buf);
+
+	return ret;
+}
+
+bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *excludespec, const TCHAR *scriptsnippet, const TCHAR *dstpath, const TCHAR *dstfilename, uint64_t *sz_uncomp, uint64_t *sz_comp, UINT recursion)
 {
 	DWORD wr = WaitForSingleObject(m_hCancelEvent, 0);
 	if ((wr == WAIT_OBJECT_0) || (wr == WAIT_ABANDONED))
@@ -652,7 +694,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 						_tcscat(local_dstpath, fd.cFileName);
 
 						uint64_t rcomp = 0, runcomp = 0;
-						ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, fullfilename, local_dstpath, NULL, &runcomp, &rcomp, recursion + 1);
+						ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, fullfilename, excludespec, scriptsnippet, local_dstpath, NULL, &runcomp, &rcomp, recursion + 1);
 						if (ret)
 						{
 							uncomp = runcomp;
@@ -662,21 +704,24 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 				}
 				else if (PathMatchSpec(fd.cFileName, filespec))
 				{
-					if (*dstpath == _T('\\'))
-						dstpath++;
+					if (!ShouldExclude(fd.cFileName, excludespec))
+					{
+						if (*dstpath == _T('\\'))
+							dstpath++;
 
-					TCHAR dst[MAX_PATH];
-					_tcscpy(dst, dstpath ? dstpath : _T(""));
+						TCHAR dst[MAX_PATH];
+						_tcscpy(dst, dstpath ? dstpath : _T(""));
 
-					if (dst[0] != _T('\0'))
-						PathAddBackslash(dst);
+						if (dst[0] != _T('\0'))
+							PathAddBackslash(dst);
 
-					_tcscat(dst, (dstfilename && !wildcard) ? dstfilename : fd.cFileName);
+						_tcscat(dst, (dstfilename && !wildcard) ? dstfilename : fd.cFileName);
 
-					msg.Format(_T("    Adding \"%s\" from \"%s\"...\r\n"), dst, fullfilename);
-					pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+						msg.Format(_T("    Adding \"%s\" from \"%s\"...\r\n"), dst, fullfilename);
+						pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
-					parc->AddFile(fullfilename, dst, &uncomp, &comp);
+						parc->AddFile(fullfilename, dst, &uncomp, &comp, scriptsnippet);
+					}
 				}
 
 				if (sz_uncomp)
@@ -702,17 +747,12 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 }
 
 
-bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *pview, CEditView *pedit)
+bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *pview)
 {
 	time_t start_op, finish_op;
 	time(&start_op);
 
-	if (pedit)
-	{
-		pedit->GetWindowText(m_scrInit);
-	}
-
-	UINT c = 0, maxc = m_FileData.size();
+	UINT c = 0, maxc = (UINT)m_FileData.size();
 	if (!maxc)
 		return true;
 
@@ -789,11 +829,11 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 				PathAddBackslash(srcpath);
 				_tcscat(srcpath, it->second.name.c_str());
 
-				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, srcpath, it->second.dstpath.c_str(), nullptr, &sz_uncomp, &sz_comp);
+				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, srcpath, it->second.exclude.c_str(), it->second.snippet.c_str(), it->second.dstpath.c_str(), nullptr, &sz_uncomp, &sz_comp);
 			}
 			else
 			{
-				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, it->second.srcpath.c_str(), it->second.dstpath.c_str(), it->second.name.c_str(), &sz_uncomp, &sz_comp);
+				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, it->second.srcpath.c_str(), nullptr, it->second.snippet.c_str(), it->second.dstpath.c_str(), it->second.name.c_str(), &sz_uncomp, &sz_comp);
 			}
 
 			sz_totalcomp = sz_comp;
@@ -836,7 +876,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	return ret;
 }
 
-bool CSfxPackagerDoc::CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, UINT recursion)
+bool CSfxPackagerDoc::CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, const TCHAR *excludespec, UINT recursion)
 {
 	DWORD wr = WaitForSingleObject(m_hCancelEvent, 0);
 	if ((wr == WAIT_OBJECT_0) || (wr == WAIT_ABANDONED))
@@ -915,10 +955,10 @@ bool CSfxPackagerDoc::CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcsp
 							PathAddBackslash(local_dstpath);
 						_tcscat(local_dstpath, fd.cFileName);
 
-						ret &= CopyFileToTemp(pview, fullfilename, local_dstpath, NULL, recursion + 1);
+						ret &= CopyFileToTemp(pview, fullfilename, local_dstpath, NULL, excludespec, recursion + 1);
 					}
 				}
-				else if (PathMatchSpec(fd.cFileName, filespec))
+				else if (PathMatchSpec(fd.cFileName, filespec) && !ShouldExclude(fd.cFileName, excludespec))
 				{
 					if (*dstpath == _T('\\'))
 						dstpath++;
@@ -960,7 +1000,7 @@ bool CSfxPackagerDoc::CreateTarGzipPackage(const TCHAR *filename, CSfxPackagerVi
 	time_t start_op, finish_op;
 	time(&start_op);
 
-	UINT c = 0, maxc = m_FileData.size();
+	UINT c = 0, maxc = (UINT)m_FileData.size();
 	if (!maxc)
 		return true;
 
@@ -1041,17 +1081,16 @@ bool CSfxPackagerDoc::CreateTarGzipPackage(const TCHAR *filename, CSfxPackagerVi
 
 		if (wildcard)
 		{
-			// TODO: add include / exclude lists
 			TCHAR srcpath[MAX_PATH];
 			_tcscpy(srcpath, it->second.srcpath.c_str());
 			PathAddBackslash(srcpath);
 			_tcscat(srcpath, it->second.name.c_str());
 
-			ret &= CopyFileToTemp(pview, srcpath, tempdir, it->second.dstpath.c_str());
+			ret &= CopyFileToTemp(pview, srcpath, tempdir, it->second.dstpath.c_str(), it->second.exclude.c_str());
 		}
 		else
 		{
-			ret &= CopyFileToTemp(pview, it->second.srcpath.c_str(), it->second.dstpath.c_str(), it->second.name.c_str());
+			ret &= CopyFileToTemp(pview, it->second.srcpath.c_str(), it->second.dstpath.c_str(), it->second.name.c_str(), it->second.exclude.c_str());
 		}
 
 		it++;
@@ -1154,13 +1193,15 @@ bool CSfxPackagerDoc::CreateTarGzipPackage(const TCHAR *filename, CSfxPackagerVi
 	return ret;
 }
 
-UINT CSfxPackagerDoc::AddFile(const TCHAR *filename, const TCHAR *srcpath, const TCHAR *dstpath)
+UINT CSfxPackagerDoc::AddFile(const TCHAR *filename, const TCHAR *srcpath, const TCHAR *dstpath, const TCHAR *exclude, const TCHAR *scriptsnippet)
 {
 	TFileDataPair fd;
 	fd.first = m_Key;
 	fd.second.name = filename;
 	fd.second.srcpath = srcpath;
 	fd.second.dstpath = dstpath;
+	fd.second.exclude = exclude ? exclude : _T("");
+	fd.second.snippet = scriptsnippet ? scriptsnippet : _T("");
 
 	m_FileData.insert(fd);
 
@@ -1179,7 +1220,7 @@ void CSfxPackagerDoc::RemoveFile(UINT handle)
 
 UINT CSfxPackagerDoc::GetNumFiles()
 {
-	return m_FileData.size();
+	return (UINT)m_FileData.size();
 }
 
 const TCHAR *CSfxPackagerDoc::GetFileData(UINT handle, EFileDataType fdt)
@@ -1200,6 +1241,14 @@ const TCHAR *CSfxPackagerDoc::GetFileData(UINT handle, EFileDataType fdt)
 
 		case FDT_DSTPATH:
 			return it->second.dstpath.c_str();
+			break;
+
+		case FDT_EXCLUDE:
+			return it->second.exclude.c_str();
+			break;
+
+		case FDT_SNIPPET:
+			return it->second.snippet.c_str();
 			break;
 	}
 
@@ -1224,6 +1273,14 @@ void CSfxPackagerDoc::SetFileData(UINT handle, EFileDataType fdt, const TCHAR *d
 
 		case FDT_DSTPATH:
 			it->second.dstpath = data;
+			break;
+
+		case FDT_EXCLUDE:
+			it->second.exclude = data;
+			break;
+
+		case FDT_SNIPPET:
+			it->second.snippet = data;
 			break;
 	}
 }
@@ -1263,6 +1320,7 @@ void UnescapeString(const TCHAR *in, tstring &out)
 
 void EscapeString(const TCHAR *in, tstring &out)
 {
+	out.clear();
 	out.reserve(_tcslen(in) * 2);
 	const TCHAR *c = in;
 	while (c && *c)
@@ -1359,7 +1417,7 @@ void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 
 void CSfxPackagerDoc::ReadScripts(CGenParser &gp)
 {
-	tstring name, value;
+	tstring stype;
 
 	while (gp.NextToken())
 	{
@@ -1369,34 +1427,45 @@ void CSfxPackagerDoc::ReadScripts(CGenParser &gp)
 
 			if (!gp.IsToken(_T("/")))
 			{
-				name = gp.GetCurrentTokenString();
+				if (gp.IsToken(_T("script")))
+				{
+					gp.NextToken();
+
+					if (gp.IsToken(_T("type")))
+					{
+						gp.NextToken(); // skip '='
+
+						gp.NextToken();
+						tstring t = gp.GetCurrentTokenString();
+
+						gp.NextToken(); // skip '>'
+
+						gp.FindBoundedRawString(_T('<'));
+						tstring s = gp.GetCurrentTokenString();
+
+						if (!_tcsicmp(t.c_str(), _T("init")))
+						{
+							m_Script[EScriptType::INIT] = s.c_str();
+						}
+						else if (!_tcsicmp(t.c_str(), _T("perfile")))
+						{
+							m_Script[EScriptType::PERFILE] = s.c_str();
+						}
+						else if (!_tcsicmp(t.c_str(), _T("finish")))
+						{
+							m_Script[EScriptType::FINISH] = s.c_str();
+						}
+					}
+				}
 			}
 			else
 			{
 				gp.NextToken();
-				if (gp.IsToken(_T("script")))
+				if (gp.IsToken(_T("scripts")))
 				{
 					while (gp.NextToken() && !gp.IsToken(_T(">"))) { }
 					break;
 				}
-			}
-		}
-		else if (gp.IsToken(_T("value")))
-		{
-			gp.NextToken(); // skip '='
-
-			gp.NextToken();
-			value = gp.GetCurrentTokenString();
-		}
-		else if (gp.IsToken(_T(">")))
-		{
-			gp.FindBoundedRawString(_T('<'));
-
-			if (!_tcsicmp(value.c_str(), _T("init")))
-			{
-				tstring temp;
-				UnescapeString(gp.GetCurrentTokenString(), temp);
-				m_scrInit = temp.c_str();
 			}
 		}
 	}
@@ -1404,7 +1473,7 @@ void CSfxPackagerDoc::ReadScripts(CGenParser &gp)
 
 void CSfxPackagerDoc::ReadFiles(CGenParser &gp)
 {
-	tstring name, src, dst;
+	tstring name, src, dst, exclude, scriptsnippet;
 
 	while (gp.NextToken())
 	{
@@ -1413,6 +1482,8 @@ void CSfxPackagerDoc::ReadFiles(CGenParser &gp)
 			name.clear();
 			src.clear();
 			dst.clear();
+			exclude.clear();
+			scriptsnippet.clear();
 
 			gp.NextToken();
 			if (!gp.IsToken(_T("file")))
@@ -1422,7 +1493,7 @@ void CSfxPackagerDoc::ReadFiles(CGenParser &gp)
 		{
 			if (!name.empty() && !src.empty() && !dst.empty())
 			{
-				UINT handle = AddFile(name.c_str(), src.c_str(), dst.c_str());
+				UINT handle = AddFile(name.c_str(), src.c_str(), dst.c_str(), exclude.c_str(), scriptsnippet.c_str());
 			}
 
 			while (gp.NextToken() && !gp.IsToken(_T(">"))) { }
@@ -1447,6 +1518,20 @@ void CSfxPackagerDoc::ReadFiles(CGenParser &gp)
 
 			gp.NextToken();
 			dst = gp.GetCurrentTokenString();
+		}
+		else if (gp.IsToken(_T("exclude")))
+		{
+			gp.NextToken(); // skip '='
+
+			gp.NextToken();
+			exclude = gp.GetCurrentTokenString();
+		}
+		else if (gp.IsToken(_T("snippet")))
+		{
+			gp.NextToken(); // skip '='
+
+			gp.NextToken();
+			scriptsnippet = gp.GetCurrentTokenString();
 		}
 	}
 }
@@ -1529,43 +1614,36 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 				break;
 		}
 
-		CEditView *pe = nullptr;
+		CScriptEditView *pe = nullptr;
 		if (ppv)
 		{
-			pe = dynamic_cast<CEditView *>(ppv->GetSplitterWnd()->GetPane(1, 0));
+			pe = dynamic_cast<CScriptEditView *>(ppv->GetSplitterWnd()->GetPane(1, 0));
+			if (pe)
+				pe->UpdateDocWithActiveScript();
 		}
 
-		if (pe)
-			pe->GetWindowText(m_scrInit);
+		tstring scr;
 
-		tstring scrInit;
-		EscapeString(m_scrInit, scrInit);
-		if (!scrInit.empty())
-			s += _T("\n\t\t<script value=\"init\">\n"); s += scrInit.c_str(); s += _T("\n\t\t</script>");
-
-#if 0
-		len = 0;
-		UrlEscape(m_scrPerFile, nullptr, &len, 0);
-		if (len)
-			{
-			TCHAR *pscript = (TCHAR *)malloc(sizeof(TCHAR) * len);
-			UrlEscape(m_scrPerFile, pscript, &len, 0);
-
-			s += _T("\n\t\t<script value=\"perfile\">"); s += pscript; s += _T("</script>");
-			free(pscript);
-		}
-
-		len = 0;
-		UrlEscape(m_scrFinish, nullptr, &len, 0);
-		if (len)
+		if (!m_Script[EScriptType::INIT].IsEmpty())
 		{
-			TCHAR *pscript = (TCHAR *)malloc(sizeof(TCHAR) * len);
-			UrlEscape(m_scrFinish, pscript, &len, 0);
-
-			s += _T("\n\t\t<script value=\"finish\">"); s += pscript; s += _T("</script>");
-			free(pscript);
+			EscapeString(m_Script[EScriptType::INIT], scr);
+			if (!scr.empty())
+				s += _T("\n\t\t<script type=\"init\">"); s += scr.c_str(); s += _T("</script>");
 		}
-#endif
+
+		if (!m_Script[EScriptType::PERFILE].IsEmpty())
+		{
+			EscapeString(m_Script[EScriptType::PERFILE], scr);
+			if (!scr.empty())
+				s += _T("\n\t\t<script type=\"perfile\">"); s += scr.c_str(); s += _T("</script>");
+		}
+
+		if (!m_Script[EScriptType::FINISH].IsEmpty())
+		{
+			EscapeString(m_Script[EScriptType::FINISH], scr);
+			if (!scr.empty())
+				s += _T("\n\t\t<script type=\"finish\">"); s += scr.c_str(); s += _T("</script>");
+		}
 
 		s += _T("\n\t</scripts>\n");
 
@@ -1588,7 +1666,7 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 
 		for (TFileDataMap::iterator it = m_FileData.begin(), last_it = m_FileData.end(); it != last_it; it++)
 		{
-			s.Format(_T("\t\t<file name=\"%s\" src=\"%s\" dst=\"%s\" />\n"), it->second.name.c_str(), it->second.srcpath.c_str(), it->second.dstpath.c_str());
+			s.Format(_T("\t\t<file name=\"%s\" src=\"%s\" dst=\"%s\" exclude=\"%s\" snippet=\"%s\" />\n"), it->second.name.c_str(), it->second.srcpath.c_str(), it->second.dstpath.c_str(), it->second.exclude.c_str(), it->second.snippet.c_str());
 
 #if defined(UNICODE)
 			nLen = WideCharToMultiByte(CP_UTF8, 0, (LPCTSTR)s, -1, NULL, NULL, NULL, NULL);
@@ -1632,7 +1710,7 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 		char *pbuf = (char *)malloc(sz);
 		if (pbuf)
 		{
-			if (sz == ar.Read(pbuf, sz))
+			if (sz == ar.Read(pbuf, (UINT)sz))
 			{
 				TCHAR *ptbuf;
 
@@ -1646,7 +1724,7 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 				if (ptbuf)
 				{
 					CGenParser gp;
-					gp.SetSourceData(ptbuf, sz);
+					gp.SetSourceData(ptbuf, (UINT)sz);
 					ReadProject(gp);
 
 #if defined(UNICODE)

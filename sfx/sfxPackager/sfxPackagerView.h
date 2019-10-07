@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "CScriptEditView.h"
+
 
 class CSfxPackagerView : public CListView
 {
@@ -32,8 +34,8 @@ public:
 	void SetSplitterWnd(CSplitterWndEx *ps) { m_Splitter = ps; }
 	CSplitterWndEx *GetSplitterWnd() { return m_Splitter; }
 
-	void SetScriptEditView(CEditView *pe) { m_ScriptEditor = pe; }
-	CEditView *GetScriptEditView() { return m_ScriptEditor; }
+	void SetScriptEditView(CScriptEditView *pe) { m_ScriptEditor = pe; }
+	CScriptEditView *GetScriptEditView() { return m_ScriptEditor; }
 
 	void RefreshProperties(CSfxPackagerDoc *pd = NULL);
 
@@ -51,6 +53,8 @@ public:
 	void SetDestFolderForSelection(const TCHAR *dst, const TCHAR *rootdst);
 	void SetSrcFolderForSelection(const TCHAR *src, const TCHAR *rootsrc);
 	void SetFilenameForSelection(const TCHAR *name);
+	void SetExclusionsForSelection(const TCHAR *exclude);
+	void SetScriptSnippetForSelection(const TCHAR *snippet);
 
 protected:
 	void ImportLivingFolder(const TCHAR *dir, const TCHAR *include_ext = _T("*"), const TCHAR *exclude_ext = NULL);
@@ -59,7 +63,7 @@ protected:
 	bool m_bFirstUpdate;
 	HANDLE m_hPackageThread;
 	CSplitterWndEx *m_Splitter;
-	CEditView *m_ScriptEditor;
+	CScriptEditView *m_ScriptEditor;
 
 // Generated message map functions
 	afx_msg void OnFilePrintPreview();

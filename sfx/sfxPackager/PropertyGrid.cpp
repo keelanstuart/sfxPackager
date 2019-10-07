@@ -126,6 +126,18 @@ void CPropertyGrid::OnPropertyChanged(CMFCPropertyGridProperty* pProp) const
 
 		pv->SetFilenameForSelection(newname);
 	}
+	else if (!_tcsicmp(pProp->GetName(), _T("Exclude")))
+	{
+		CString exclude = pProp->GetValue();
+
+		pv->SetExclusionsForSelection(exclude);
+	}
+	else if (!_tcsicmp(pProp->GetName(), _T("Script Add-On")))
+	{
+		CString snippet = pProp->GetValue();
+
+		pv->SetScriptSnippetForSelection(snippet);
+	}
 	else if (!_tcsicmp(pProp->GetName(), _T("Temporary Directory")))
 	{
 		CString tempdir = pProp->GetValue();

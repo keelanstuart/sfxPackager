@@ -62,7 +62,7 @@ size_t CFastLZArchiver::GetFileCount(IArchiver::INFO_MODE mode)
 }
 
 // Adds a file to the archive
-CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp, uint64_t *sz_comp)
+CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp, uint64_t *sz_comp, const TCHAR *scriptsnippet)
 {
 	CFastLZArchiver::ADD_RESULT ret = AR_OK;
 
@@ -93,6 +93,8 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 		SFileBlock b;
 
 		fte.m_Offset = m_pah->GetOffset();
+
+		fte.m_ScriptSnippet = scriptsnippet;
 
 		// read uncompressed blocks of data from the file
 		while (b.ReadUncompressedData(hin))
@@ -275,6 +277,13 @@ bool sFileTableEntry::Write(HANDLE hOut) const
 	ret &= (bool)WriteFile(hOut, &m_BlockCount, sizeof(m_BlockCount), &wb, NULL);
 	ret &= (bool)WriteFile(hOut, &m_Offset, sizeof(m_Offset), &wb, NULL);
 
+	sz = (uint32_t)m_ScriptSnippet.size();
+	ret &= (bool)WriteFile(hOut, &sz, sizeof(sz), &wb, NULL);
+	if (sz)
+	{
+		ret &= (bool)WriteFile(hOut, m_ScriptSnippet.c_str(), sizeof(TCHAR) * sz, &wb, NULL);
+	}
+
 	return ret;
 }
 
@@ -319,13 +328,24 @@ bool sFileTableEntry::Read(HANDLE hIn)
 	ret &= (bool)ReadFile(hIn, &m_BlockCount, sizeof(m_BlockCount), &rb, NULL);
 	ret &= (bool)ReadFile(hIn, &m_Offset, sizeof(m_Offset), &rb, NULL);
 
+	ret &= (bool)ReadFile(hIn, &sz, sizeof(sz), &rb, NULL);
+	if (sz)
+	{
+		m_ScriptSnippet.resize(sz, _T('#'));
+		ret &= (bool)ReadFile(hIn, (TCHAR *)(m_ScriptSnippet.data()), sizeof(TCHAR) * sz, &rb, NULL);
+	}
+	else
+	{
+		m_ScriptSnippet.clear();
+	}
+
 	return ret;
 }
 
 
 size_t sFileTableEntry::Size() const
 {
-	size_t ret = (m_Filename.size() + m_Path.size()) * sizeof(TCHAR);
+	size_t ret = (m_Filename.size() + m_Path.size() + m_ScriptSnippet.size()) * sizeof(TCHAR);
 
 	ret +=
 		sizeof(uint64_t) + /* m_Flags */ 
@@ -337,7 +357,8 @@ size_t sFileTableEntry::Size() const
 		sizeof(FILETIME) + /* m_FTCreated */ 
 		sizeof(FILETIME) + /* m_FTModified */ 
 		sizeof(uint32_t) + /* m_Filename LENGTH */ 
-		sizeof(uint32_t);  /* m_Path LENGTH */
+		sizeof(uint32_t) + /* m_Path LENGTH */
+		sizeof(uint32_t);  /* m_ScriptSnippet LENGTH */
 
 	return ret;
 }
@@ -487,7 +508,136 @@ size_t CFastLZExtractor::GetFileCount()
 	return m_FileTable.size();
 }
 
-bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *filepath, uint64_t *csize, uint64_t *usize, FILETIME *ctime, FILETIME *mtime)
+bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst)
+{
+	dst.clear();
+
+	tstring::const_iterator it = src.cbegin(), next_it = std::find(src.cbegin(), src.cend(), _T('%'));
+
+	do
+	{
+		dst += tstring(it, next_it);
+
+		if (next_it == src.cend())
+			break;
+
+		tstring::const_iterator env_start = next_it + 1;
+
+		it = next_it;
+		next_it = std::find(env_start, src.cend(), _T('%'));
+
+		if (next_it != src.cend())
+		{
+			tstring env(env_start, next_it);
+
+			if (!env.empty())
+			{
+				DWORD sz = GetEnvironmentVariable(env.c_str(), nullptr, 0);
+				TCHAR *val = (TCHAR *)_alloca(sizeof(TCHAR) * (sz + 1));
+				GetEnvironmentVariable(env.c_str(), val, sz + 1);
+				dst += val;
+			}
+			else
+			{
+				dst += _T("%");
+			}
+
+			it = next_it + 1;
+			if (it == src.end())
+				next_it = it;
+			else
+				next_it = std::find(it + 1, src.cend(), _T('%'));
+		}
+	}
+	while (it != src.cend());
+
+	return true;
+}
+
+bool ReplaceRegistryKeys(const tstring &src, tstring &dst)
+{
+	dst.clear();
+
+	tstring::const_iterator it = src.cbegin(), next_it = std::find(src.cbegin(), src.cend(), _T('@'));
+
+	do
+	{
+		dst += tstring(it, next_it);
+
+		if (next_it == src.cend())
+			break;
+
+		tstring::const_iterator reg_start = next_it + 1;
+
+		it = next_it;
+		next_it = std::find(reg_start, src.cend(), _T('@'));
+
+		if (next_it != src.cend())
+		{
+			tstring reg(reg_start, next_it);
+
+			if (!reg.empty())
+			{
+				HKEY root = HKEY_LOCAL_MACHINE;;
+				if (_tcsstr(reg.c_str(), _T("HKEY_CURRENT_USER")) == reg.c_str())
+					root = HKEY_CURRENT_USER;
+				else if (_tcsstr(reg.c_str(), _T("HKEY_CLASSES_ROOT")) == reg.c_str())
+					root = HKEY_CLASSES_ROOT;
+				else if (_tcsstr(reg.c_str(), _T("HKEY_CURRENT_CONFIG")) == reg.c_str())
+					root = HKEY_CURRENT_CONFIG;
+				else if (_tcsstr(reg.c_str(), _T("HKEY_USERS")) == reg.c_str())
+					root = HKEY_USERS;
+
+				reg = reg.substr(reg.find(_T('\\')) + 1);
+				tstring key = reg;
+				size_t sofs = reg.rfind(_T('\\'));
+				if (sofs != tstring::npos)
+				{
+					reg = reg.substr(0, sofs);
+					key = key.substr(sofs + 1);
+
+					HKEY hkey;
+					if (RegOpenKeyEx(root, reg.c_str(), 0, KEY_READ, &hkey) == ERROR_SUCCESS)
+					{
+						DWORD cb;
+						DWORD type;
+						BYTE val[(MAX_PATH + 1) * 2 * sizeof(TCHAR)];
+						if (RegGetValue(hkey, nullptr, key.c_str(), RRF_RT_DWORD | RRF_RT_QWORD | RRF_RT_REG_SZ, &type, val, &cb) == ERROR_SUCCESS)
+						{
+							switch (type)
+							{
+								case REG_SZ:
+								dst += (TCHAR *)val;
+								break;
+
+								default:
+								break;
+							}
+
+						}
+
+						RegCloseKey(hkey);
+					}
+				}
+			}
+			else
+			{
+				dst += _T("@");
+			}
+
+			it = next_it + 1;
+			if (it == src.end())
+				next_it = it;
+			else
+				next_it = std::find(it + 1, src.cend(), _T('@'));
+		}
+	}
+	while (it != src.cend());
+
+	return true;
+}
+
+bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *filepath, uint64_t *csize, uint64_t *usize, FILETIME *ctime, FILETIME *mtime, tstring *snippet)
 {
 	if (file_idx >= m_FileTable.size())
 		return false;
@@ -495,10 +645,20 @@ bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *
 	SFileTableEntry &fte = m_FileTable.at(file_idx);
 
 	if (filename)
-		*filename = fte.m_Filename;
+	{
+		tstring tmp, _tmp;
+		ReplaceEnvironmentVariables(fte.m_Filename, _tmp);
+		ReplaceRegistryKeys(_tmp, tmp);
+		*filename = tmp;
+	}
 
 	if (filepath)
-		*filepath = fte.m_Path;
+	{
+		tstring tmp, _tmp;
+		ReplaceEnvironmentVariables(fte.m_Path, _tmp);
+		ReplaceRegistryKeys(_tmp, tmp);
+		*filepath = tmp;
+	}
 
 	if (csize)
 		*csize = fte.m_CompressedSize;
@@ -511,6 +671,9 @@ bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *
 
 	if (mtime)
 		*mtime = fte.m_FTModified;
+
+	if (snippet)
+		*snippet = fte.m_ScriptSnippet;
 
 	return true;
 }
@@ -551,27 +714,38 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 	}
 
 	TCHAR path[MAX_PATH];
+
+	tstring _cvtpath, cvtpath;
+	ReplaceEnvironmentVariables(fte.m_Path, _cvtpath);
+	ReplaceRegistryKeys(_cvtpath, cvtpath);
+
+	tstring _cvtfile, cvtfile;
+	ReplaceEnvironmentVariables(fte.m_Filename, _cvtfile);
+	ReplaceRegistryKeys(_cvtfile, cvtfile);
+
 	if (!override_filename)
 	{
-		if (PathIsRelative(fte.m_Path.c_str()))
+		if (PathIsRelative(cvtpath.c_str()))
 		{
 			_tcscpy_s(path, MAX_PATH, m_BasePath);
 			PathAddBackslash(path);
 
-			_tcscat_s(path, MAX_PATH, fte.m_Path.c_str());
+			_tcscat_s(path, MAX_PATH, cvtpath.c_str());
 			PathRemoveBackslash(path);
 		}
 		else
-			_tcscpy_s(path, MAX_PATH, fte.m_Path.c_str());
+			_tcscpy_s(path, MAX_PATH, cvtpath.c_str());
+
 
 		FLZACreateDirectories(path);
 
 		PathAddBackslash(path);
-		_tcscat_s(path, MAX_PATH, fte.m_Filename.c_str());
-
+		_tcscat_s(path, MAX_PATH, cvtfile.c_str());
 	}
 	else
+	{
 		_tcscat_s(path, MAX_PATH, override_filename);
+	}
 
 	bool append = false;
 	// if we're spanned and the file index we want is 0, then we need to append to the file rather than creating a new one
@@ -628,7 +802,7 @@ bool CFastLZExtractor::ReadFileTable()
 	SFileTableEntry fte;
 	for (size_t i = 0; i < ftec; i++)
 	{
-		// write each entry in the file table
+		// read each entry from the file table
 		ret &= fte.Read(m_pah->GetHandle());
 
 		m_FileTable.push_back(fte);
