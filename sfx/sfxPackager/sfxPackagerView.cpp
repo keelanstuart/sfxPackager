@@ -430,6 +430,9 @@ void CSfxPackagerView::OnEditDelete()
 	// Update all of the selected items.
 	if (selcount > 0)
 	{
+		if (MessageBox(_T("Do you really want to delete the selected item(s)"), _T("Confirm Delete"), MB_YESNO) == IDNO)
+			return;
+
 		UINT *pdi = (UINT *)_alloca(sizeof(UINT) * selcount);
 
 		for (UINT i = 0; i < selcount; i++)
