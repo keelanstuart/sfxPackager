@@ -488,3 +488,18 @@ void CMainFrame::OnAppCancelSfx()
 	if (pView)
 		pView->OnAppCancelSfx();
 }
+
+
+BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
+{
+	//now check the focus of the edit control, and if it doesn't have it do the TranslateAccelarator
+	CWnd *pfw = GetFocus();
+	CRichEditCtrl *pre = dynamic_cast<CRichEditCtrl *>(pfw);
+	CEdit *pe = dynamic_cast<CEdit *>(pfw);
+	if (pre || pe)
+	{
+		return pfw->PreTranslateMessage(pMsg);
+	}
+
+	return CMDIFrameWndEx::PreTranslateMessage(pMsg);
+}

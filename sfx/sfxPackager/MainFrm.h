@@ -74,6 +74,8 @@ protected:
 
 	BOOL CreateDockingWindows();
 	void SetDockingWindowIcons(BOOL bHiColorIcons);
+public:
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 };
 
 
