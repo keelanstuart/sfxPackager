@@ -29,6 +29,8 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 
 	HICON m_hIcon;
+	//CHtmlView *m_pHtmlView;
+	//CWnd m_Browser;
 
 	DECLARE_MESSAGE_MAP()
 public:

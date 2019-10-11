@@ -12,7 +12,7 @@ enum { CID_SELECTOR = 1, CID_HELPER, CID_HELPERFRAME, CID_EDITOR };
 const TCHAR *helpers[CSfxPackagerDoc::EScriptType::NUMTYPES] =
 {
 	_T("var BASEPATH;\t// (string) the base install path"),
-	_T("var FILENAME;\t// (string) the name of the file that was just extracted\r\nvar PATH;\t// (string) the output path of that file\r\nvar FILEPATH;\t// (string) the full filename, PATH + FILENAME"),
+	_T("var BASEPATH;\t// (string) the base install path\r\nvar FILENAME;\t// (string) the name of the file that was just extracted\r\nvar PATH;\t// (string) the output path of that file\r\nvar FILEPATH;\t// (string) the full filename, PATH + FILENAME"),
 	_T("var BASEPATH;\t// (string) the base install path")
 };
 
@@ -154,7 +154,7 @@ void CScriptEditView::OnSize(UINT nType, int cx, int cy)
 	}
 
 	r.top = r.bottom + 4;
-	r.bottom = (GetSystemMetrics(SM_CYMENU) * 4) + 2;
+	r.bottom = (GetSystemMetrics(SM_CYMENU) * 6) + 2;
 	if (m_stHelper.GetSafeHwnd())
 	{
 		CRect rh(r);

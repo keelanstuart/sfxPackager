@@ -58,6 +58,8 @@
     <None Include="res\sfx_script_finish.bin">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="res\html1.htm" />
+    <None Include="res\empty.htm" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sfx.h">

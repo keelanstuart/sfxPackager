@@ -14,7 +14,7 @@
     <ProjectGuid>{729159FA-E208-40A0-9BC5-F4C5B53EE6FB}</ProjectGuid>
     <RootNamespace>sfx</RootNamespace>
     <Keyword>MFCProj</Keyword>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -22,7 +22,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -30,7 +30,7 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -67,7 +67,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;PowerProps$(PlatformArchitecture)$(ShortConfiguration).lib</AdditionalDependencies>
+      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -95,7 +95,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
       <AdditionalLibraryDirectories>$(SolutionDir)Lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;PowerProps$(PlatformArchitecture)$(ShortConfiguration).lib</AdditionalDependencies>
+      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -110,6 +110,12 @@
   <ItemGroup>
     <None Include="ReadMe.txt" />
     <None Include="res\bitmap1.bmp" />
+    <None Include="res\empty.htm">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="res\html1.htm">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="res\sfx.ico" />
     <None Include="res\sfx.rc2" />
     <None Include="res\sfx1.bin" />

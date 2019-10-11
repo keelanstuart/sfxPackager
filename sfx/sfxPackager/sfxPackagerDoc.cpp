@@ -706,7 +706,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 				{
 					if (!ShouldExclude(fd.cFileName, excludespec))
 					{
-						if (*dstpath == _T('\\'))
+						if (!PathIsNetworkPath(dstpath) && *dstpath == _T('\\'))
 							dstpath++;
 
 						TCHAR dst[MAX_PATH];

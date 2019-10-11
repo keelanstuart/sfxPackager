@@ -158,6 +158,33 @@ void scStringFromCharCode(CScriptVar *c, void *)
 	c->getReturnVar()->setString(str);
 }
 
+void scStringIncludes(CScriptVar *c, void *)
+{
+	tstring t = c->getParameter(_T("this"))->getString();
+	tstring s = c->getParameter(_T("str"))->getString();
+
+	// optionally check 
+	bool case_sensitive = true;
+	CScriptVar *csv = c->getParameter(_T("sensitive"));
+	if (csv)
+	{
+		case_sensitive = csv->getBool();
+	}
+
+	if (!case_sensitive)
+	{
+		std::transform(t.begin(), t.end(), t.end(), _tolower);
+		std::transform(s.begin(), s.end(), s.end(), _tolower);
+	}
+
+	bool ret = false;
+
+	if (t.find(s) < t.length())
+		ret = true;
+
+	c->getReturnVar()->setInt(ret ? 1 : 0);
+}
+
 void scIntegerParseInt(CScriptVar *c, void *)
 {
 	tstring str = c->getParameter(_T("str"))->getString();
@@ -297,6 +324,7 @@ void registerFunctions(CTinyJS *tinyJS)
 	tinyJS->addNative(_T("function String.charCodeAt(pos)"), scStringCharCodeAt, 0);
 	tinyJS->addNative(_T("function String.fromCharCode(char)"), scStringFromCharCode, 0);
 	tinyJS->addNative(_T("function String.split(separator)"), scStringSplit, 0);
+	tinyJS->addNative(_T("function String.includes(str, sensitive)"), scStringIncludes, 0);
 	tinyJS->addNative(_T("function Integer.parseInt(str)"), scIntegerParseInt, 0); // string to int
 	tinyJS->addNative(_T("function Integer.valueOf(str)"), scIntegerValueOf, 0); // value of a single character
 	tinyJS->addNative(_T("function JSON.stringify(obj, replacer)"), scJSONStringify, 0); // convert to JSON. replacer is ignored at the moment

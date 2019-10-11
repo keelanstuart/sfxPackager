@@ -680,7 +680,7 @@ bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *
 
 bool FLZACreateDirectories(const TCHAR *dir)
 {
-	if (PathIsRoot(dir) || PathFileExists(dir))
+	if (!dir || !*dir || PathIsRoot(dir) || PathFileExists(dir))
 		return false;
 
 	bool ret = true;
@@ -688,6 +688,11 @@ bool FLZACreateDirectories(const TCHAR *dir)
 	TCHAR _dir[MAX_PATH];
 	_tcscpy_s(_dir, dir);
 	PathRemoveFileSpec(_dir);
+
+	// it's a network path and this is the network device... don't try to create it and don't try to go any further
+	if (!_tcscmp(_dir, _T("\\\\")) || !_tcscmp(_dir, _T("//")))
+		return true;
+
 	ret &= FLZACreateDirectories(_dir);
 
 	ret &= (CreateDirectory(dir, NULL) ? true : false);

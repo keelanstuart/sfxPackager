@@ -57,17 +57,42 @@ BOOL CFinishDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
-	SetWindowText(theApp.m_Caption);
+	int wd = 0;
+
+	CWnd *pImg = GetDlgItem(IDC_IMAGE);
+	if (pImg)
+	{
+		CBitmap bmp;
+		bmp.LoadBitmap(_T("PACKAGE"));
+		BITMAP b;
+		bmp.GetBitmap(&b);
+
+		CRect ri;
+		pImg->GetWindowRect(ri);
+		wd = b.bmWidth - ri.Width();
+		ri.right += wd;
+		ScreenToClient(ri);
+		pImg->MoveWindow(ri, FALSE);
+	}
+
+	CWnd *pt = GetDlgItem(IDC_FINISHMSG);
+	if (pt)
+	{
+		CRect rt;
+		pt->GetWindowRect(rt);
+		rt.left += wd;
+		ScreenToClient(rt);
+		pt->MoveWindow(rt, FALSE);
+	}
 
 	if (theApp.m_Flags & SFX_FLAG_SPAN)
 	{
-		CWnd *pw = GetDlgItem(IDC_FINISHMSG);
-		if (pw)
-			pw->SetWindowText(_T("Click Continue to install the remaining files in this package..."));
+		if (pt)
+			pt->SetWindowText(_T("Click Continue to install the remaining files in this package..."));
 
-		pw = GetDlgItem(IDOK);
-		if (pw)
-			pw->SetWindowText(_T("Continue"));
+		CWnd *pb = GetDlgItem(IDOK);
+		if (pb)
+			pb->SetWindowText(_T("Continue"));
 	}
 
 	if ((theApp.m_Flags & SFX_FLAG_EXPLORE) && !(theApp.m_Flags & SFX_FLAG_SPAN))
@@ -75,6 +100,12 @@ BOOL CFinishDlg::OnInitDialog()
 		CButton *pcb = (CButton *)GetDlgItem(IDC_CHECK_EXPLORE);
 		if (pcb)
 		{
+			CRect rb;
+			pcb->GetWindowRect(rb);
+			rb.left += wd;
+			ScreenToClient(rb);
+			pcb->MoveWindow(rb, FALSE);
+
 			pcb->ShowWindow(SW_SHOWNORMAL);
 			pcb->SetCheck(BST_CHECKED);
 		}
@@ -85,6 +116,12 @@ BOOL CFinishDlg::OnInitDialog()
 		CButton *pcb = (CButton *)GetDlgItem(IDC_CHECK_RUNCMD);
 		if (pcb)
 		{
+			CRect rb;
+			pcb->GetWindowRect(rb);
+			rb.left += wd;
+			ScreenToClient(rb);
+			pcb->MoveWindow(rb, FALSE);
+
 			CString s;
 			s.Format(_T("Run command (\"%s\")"), theApp.m_RunCommand);
 			pcb->SetWindowText(s);
@@ -94,13 +131,7 @@ BOOL CFinishDlg::OnInitDialog()
 		}
 	}
 
-#if 0
-	CRect wr, dr;
-	GetClientRect(wr);
-	GetDesktopWindow()->GetClientRect(dr);
-	wr.OffsetRect((dr.Width() / 2) - (wr.Width() / 2), (dr.Height() / 2) - (wr.Height() / 2));
-	MoveWindow(wr);
-#endif
+	SetWindowText(theApp.m_Caption);
 
 	ShowWindow(SW_SHOWNORMAL);
 

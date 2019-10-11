@@ -66,14 +66,56 @@ BOOL CProgressDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
-	SetWindowText(theApp.m_Caption);
+	int wd = 0;
 
-	m_Progress.SubclassDlgItem(IDC_PROGRESS, this);
-	m_Status.SubclassDlgItem(IDC_STATUS, this);
+	CWnd *pImg = GetDlgItem(IDC_IMAGE);
+	if (pImg)
+	{
+		CBitmap bmp;
+		bmp.LoadBitmap(_T("PACKAGE"));
+		BITMAP b;
+		bmp.GetBitmap(&b);
+
+		CRect ri;
+		pImg->GetWindowRect(ri);
+		wd = b.bmWidth - ri.Width();
+		ri.right += wd;
+		ScreenToClient(ri);
+		pImg->MoveWindow(ri, FALSE);
+	}
+
+	CRect r;
+
+	if (m_Progress.SubclassDlgItem(IDC_PROGRESS, this))
+	{
+		m_Progress.GetWindowRect(r);
+		r.left += wd;
+		ScreenToClient(r);
+		m_Progress.MoveWindow(r, FALSE);
+	}
+
+	CWnd *pst = GetDlgItem(IDC_PROGRESSTEXT);
+	if (pst)
+	{
+		pst->GetWindowRect(r);
+		r.left += wd;
+		ScreenToClient(r);
+		pst->MoveWindow(r, FALSE);
+	}
+
+	if (m_Status.SubclassDlgItem(IDC_STATUS, this))
+	{
+		m_Status.GetWindowRect(r);
+		r.left += wd;
+		ScreenToClient(r);
+		m_Status.MoveWindow(r, FALSE);
+	}
 
 	m_Status.SetLimitText(0);
 
 	m_Thread = CreateThread(NULL, 0, InstallThreadProc, this, 0, NULL);
+
+	SetWindowText(theApp.m_Caption);
 
 	ShowWindow(SW_SHOWNORMAL);
 
@@ -273,6 +315,28 @@ void scDeleteFile(CScriptVar *c, void *userdata)
 	c->getReturnVar()->setInt(delete_result ? 1 : 0);
 }
 
+void scSpawnProcess(CScriptVar *c, void *userdata)
+{
+	tstring cmd = c->getParameter(_T("cmd"))->getString(), _cmd;
+	ReplaceEnvironmentVariables(cmd, _cmd);
+	ReplaceRegistryKeys(_cmd, cmd);
+
+	tstring params = c->getParameter(_T("params"))->getString(), _params;
+	ReplaceEnvironmentVariables(params, _params);
+	ReplaceRegistryKeys(_params, params);
+
+	bool block = c->getParameter(_T("block"))->getBool();
+
+	STARTUPINFO si = { 0 };
+	si.cb = sizeof(si);
+	PROCESS_INFORMATION pi;
+	BOOL created = CreateProcess(cmd.c_str(), (TCHAR *)(params.c_str()), NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+	if (created && block)
+		WaitForSingleObject(pi.hProcess, INFINITE);
+
+	c->getReturnVar()->setInt(created ? 1 : 0);
+}
+
 // ******************************************************************************
 // ******************************************************************************
 
@@ -293,6 +357,7 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function CopyFile(src, dst)"), scCopyFile, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
+	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, block)"), scMessageBox, (void *)this);
 
 	theApp.m_InstallPath.Replace(_T("\\"), _T("/"));
 
@@ -379,6 +444,10 @@ DWORD CProgressDlg::RunInstall()
 						if (!theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty())
 						{
 							tstring pfscr;
+
+							pfscr += _T("var BASEPATH = \"");
+							pfscr += (LPCTSTR)(theApp.m_InstallPath);
+							pfscr += _T("\";  // the base install path\n\n");
 
 							pfscr += _T("var FILENAME = \"");
 							pfscr += fname.c_str();

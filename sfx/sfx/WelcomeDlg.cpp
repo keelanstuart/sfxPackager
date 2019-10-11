@@ -56,9 +56,33 @@ BOOL CWelcomeDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
+	int wd = 0;
+
+	CWnd *pImg = GetDlgItem(IDC_IMAGE);
+	if (pImg)
+	{
+		CBitmap bmp;
+		bmp.LoadBitmap(_T("PACKAGE"));
+		BITMAP b;
+		bmp.GetBitmap(&b);
+
+		CRect ri;
+		pImg->GetWindowRect(ri);
+		wd = b.bmWidth - ri.Width();
+		ri.right += wd;
+		ScreenToClient(ri);
+		pImg->MoveWindow(ri, FALSE);
+	}
+
+	CRect rw;
 	CEdit *pDesc = (CEdit *)GetDlgItem(IDC_WELCOMEMSG);
 	if (pDesc)
 	{
+		pDesc->GetWindowRect(rw);
+		rw.left += wd;
+		ScreenToClient(rw);
+		pDesc->MoveWindow(rw, FALSE);
+
 		pDesc->FmtLines(TRUE);
 
 		HRSRC hfr = FindResource(NULL, _T("SFX_DESCRIPTION"), _T("SFX"));
@@ -70,13 +94,68 @@ BOOL CWelcomeDlg::OnInitDialog()
 				TCHAR *desc = (TCHAR *)LockResource(hg);
 
 				pDesc->SetWindowText(desc);
+
+				UnlockResource(hg);
+				GlobalFree(hg);
 			}
 		}
 	}
 
+#if 0
+	CRuntimeClass *rtc = RUNTIME_CLASS(CHtmlView);
+	m_pHtmlView = (CHtmlView *)rtc->CreateObject();
+	CString cn = rtc->m_lpszClassName;
+
+	if (m_pHtmlView && m_pHtmlView->Create(cn, _T("Browser"), WS_VISIBLE | WS_CHILD, rw, this, 200, nullptr))
+	{
+
+		HRSRC hfr = FindResource(NULL, _T("SFX_DESCRIPTION"), _T("SFX"));
+		if (hfr)
+		{
+			HGLOBAL hg = LoadResource(NULL, hfr);
+			if (hg)
+			{
+				TCHAR *desc = (TCHAR *)LockResource(hg);
+				m_pHtmlView->Navigate(_T("about:blank"), NULL, NULL, NULL, NULL);
+				IHTMLDocument2 *dp = (IHTMLDocument2 *)m_pHtmlView->GetDocument();
+				if (dp)
+				{
+					// construct text to be written to browser as SAFEARRAY
+					SAFEARRAY *safe_array = SafeArrayCreateVector(VT_VARIANT, 0, 1);
+
+					VARIANT *variant;
+
+					SafeArrayAccessData(safe_array, (LPVOID *)&variant);
+
+					variant->vt = VT_BSTR;
+					variant->bstrVal = CString(desc).AllocSysString();
+
+					SafeArrayUnaccessData(safe_array);
+
+					// write SAFEARRAY to browser dp
+
+					dp->write(safe_array);
+
+					dp->Release();
+					dp = NULL;
+				}
+
+				UnlockResource(hg);
+				GlobalFree(hg);
+			}
+		}
+	}
+#endif
+
 	CWnd *pVerStr = GetDlgItem(IDC_VERSIONID);
 	if (pVerStr)
 	{
+		CRect rv;
+		pVerStr->GetWindowRect(rv);
+		rv.left += wd;
+		ScreenToClient(rv);
+		pVerStr->MoveWindow(rv, FALSE);
+
 		pVerStr->SetWindowText(theApp.m_VersionID);
 	}
 

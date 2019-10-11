@@ -58,14 +58,48 @@ BOOL CSfxDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
-	SetWindowText(theApp.m_Caption);
+	int wd = 0;
+
+	CWnd *pImg = GetDlgItem(IDC_IMAGE);
+	if (pImg)
+	{
+		CBitmap bmp;
+		bmp.LoadBitmap(_T("PACKAGE"));
+		BITMAP b;
+		bmp.GetBitmap(&b);
+
+		CRect ri;
+		pImg->GetWindowRect(ri);
+		wd = b.bmWidth - ri.Width();
+		ri.right += wd;
+		ScreenToClient(ri);
+		pImg->MoveWindow(ri, FALSE);
+	}
+
+	CWnd *pt = GetDlgItem(IDC_CHOOSETEXT);
+	if (pt)
+	{
+		CRect rt;
+		pt->GetWindowRect(rt);
+		rt.left += wd;
+		ScreenToClient(rt);
+		pt->MoveWindow(rt, FALSE);
+	}
 
 	CWnd *pe = GetDlgItem(IDC_EDIT_INSTALLPATH);
 	if (pe)
 	{
+		CRect re;
+		pe->GetWindowRect(re);
+		re.left += wd;
+		ScreenToClient(re);
+		pe->MoveWindow(re, FALSE);
+
 		pe->SetWindowText(theApp.m_InstallPath);
 		pe->EnableWindow(theApp.m_Flags & SFX_FLAG_ALLOWDESTCHG);
 	}
+
+	SetWindowText(theApp.m_Caption);
 
 	ShowWindow(SW_SHOWNORMAL);
 
