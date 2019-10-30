@@ -24,6 +24,9 @@
   THE SOFTWARE.
 */
 
+#pragma warning( disable : 4244 )	// everywhere this is used is someplace where I'm comfortable (in this use case) having the things truncated to 32 bits, since
+									// nothing will be de/compressed that is more than 4KB
+
 #if !defined(FASTLZ__COMPRESSOR) && !defined(FASTLZ_DECOMPRESSOR)
 
 /*

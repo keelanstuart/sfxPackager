@@ -378,6 +378,9 @@ public:
 				if (m_pDoc->m_bRequireAdmin)
 					flags |= SFX_FLAG_ADMINONLY;
 
+				if (m_pDoc->m_bRequireReboot)
+					flags |= SFX_FLAG_REBOOTNEEDED;
+
 				furd->m_Flags = flags;
 				furd->m_SpaceRequired = m_pDoc->m_UncompressedSize;
 
@@ -436,6 +439,7 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 	m_DefaultPath = _T("");
 	m_bAllowDestChg = true;
 	m_bRequireAdmin = false;
+	m_bRequireReboot = false;
 
 	m_hCancelEvent = CreateEvent(NULL, true, false, NULL);
 	m_hThread = NULL;
@@ -1409,6 +1413,8 @@ void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 				m_VersionID = value.c_str();
 			else if (!_tcsicmp(name.c_str(), _T("requireadmin")))
 				m_bRequireAdmin = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
+			else if (!_tcsicmp(name.c_str(), _T("requirereboot")))
+				m_bRequireReboot = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
 			else if (!_tcsicmp(name.c_str(), _T("allowdestchg")))
 				m_bAllowDestChg = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
 		}
@@ -1595,6 +1601,8 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 		s += _T("\n\t\t<versionid value=\""); s += m_VersionID; s += _T("\"/>");
 
 		s += _T("\n\t\t<requireadmin value=\""); s += m_bRequireAdmin ? _T("true") : _T("false"); s += _T("\"/>");
+
+		s += _T("\n\t\t<requirereboot value=\""); s += m_bRequireReboot ? _T("true") : _T("false"); s += _T("\"/>");
 
 		s += _T("\n\t\t<allowdestchg value=\""); s += m_bAllowDestChg ? _T("true") : _T("false"); s += _T("\"/>");
 

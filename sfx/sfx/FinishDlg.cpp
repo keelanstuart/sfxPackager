@@ -230,6 +230,19 @@ void CFinishDlg::OnOK()
 		ShellExecute(NULL, _T("explore"), theApp.m_InstallPath, NULL, NULL, SW_SHOWNORMAL);
 	}
 
+	if (theApp.m_Flags & SFX_FLAG_REBOOTNEEDED)
+	{
+		tstring msg;
+		msg = _T("Following successful installation of ");
+		msg += theApp.m_Caption;
+		msg += _T(", a restart is recommended. Would you like to do that now?");
+
+		if (MessageBox(msg.c_str(), _T("Confirmation of Restart"), MB_YESNO) == IDYES)
+		{
+			InitiateShutdown(NULL, (LPTSTR)((LPCTSTR)theApp.m_Caption), MAX_SHUTDOWN_TIMEOUT, SHUTDOWN_RESTART | SHUTDOWN_RESTARTAPPS, SHTDN_REASON_MAJOR_APPLICATION | SHTDN_REASON_MINOR_INSTALLATION | SHTDN_REASON_FLAG_PLANNED);
+		}
+	}
+
 	CDialogEx::OnOK();
 }
 

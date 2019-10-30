@@ -66,6 +66,10 @@ void CPropertyGrid::OnPropertyChanged(CMFCPropertyGridProperty* pProp) const
 	{
 		pd->m_bRequireAdmin = pProp->GetValue().boolVal;
 	}
+	else if (!_tcsicmp(pProp->GetName(), _T("Require Reboot")))
+	{
+		pd->m_bRequireReboot = pProp->GetValue().boolVal;
+	}
 	else if (!_tcsicmp(pProp->GetName(), _T("Allow Destination Change")))
 	{
 		pd->m_bAllowDestChg = pProp->GetValue().boolVal;

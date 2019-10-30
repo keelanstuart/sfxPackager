@@ -252,6 +252,62 @@ protected:
 	HANDLE m_hFile;
 };
 
+HRESULT CreateShortcut(const TCHAR *targetFile, const TCHAR *targetArgs, const TCHAR *linkFile, const TCHAR *description,
+					   int showMode, const TCHAR *curDir, const TCHAR *iconFile, int iconIndex)
+{
+	HRESULT hr = E_INVALIDARG;
+
+	if ((targetFile && *targetFile) && (linkFile && linkFile))
+	{
+		CoInitialize(NULL);
+
+		IShellLink *pl;
+		hr = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLink, (LPVOID*)&pl);
+
+		if (SUCCEEDED(hr))
+		{
+			hr = pl->SetPath(targetFile);
+			hr = pl->SetArguments(targetArgs ? targetArgs : _T(""));
+
+			if (description && *description)
+				hr = pl->SetDescription(description);
+
+			if (showMode > 0)
+				hr = pl->SetShowCmd(showMode);
+
+			if (curDir && curDir)
+				hr = pl->SetWorkingDirectory(curDir);
+
+			if (iconFile && *iconFile && (iconIndex >= 0))
+				hr = pl->SetIconLocation(iconFile, iconIndex);
+
+			IPersistFile* pf;
+			hr = pl->QueryInterface(IID_IPersistFile, (LPVOID*)&pf);
+			if (SUCCEEDED(hr))
+			{
+				wchar_t *fn;
+				LOCAL_TCS2WCS(linkFile, fn);
+
+				hr = pf->Save(fn, TRUE);
+				pf->Release();
+			}
+			pl->Release();
+		}
+
+		CoUninitialize();
+	}
+
+	return (hr);
+}
+
+
+void CProgressDlg::Echo(const TCHAR *msg)
+{
+	m_Status.SetSel(-1, 0, TRUE);
+	m_Status.ReplaceSel(msg);
+}
+
+
 // ******************************************************************************
 // ******************************************************************************
 
@@ -265,11 +321,20 @@ void scMessageBox(CScriptVar *c, void *userdata)
 	MessageBox(_this->GetSafeHwnd(), msg.c_str(), title.c_str(), MB_OK);
 }
 
-void CProgressDlg::Echo(const TCHAR *msg)
+
+void scMessageBoxYesNo(CScriptVar *c, void *userdata)
 {
-	m_Status.SetSel(-1, 0, TRUE);
-	m_Status.ReplaceSel(msg);
+	tstring title = c->getParameter(_T("title"))->getString();
+	tstring msg = c->getParameter(_T("msg"))->getString();
+
+	CProgressDlg *_this = (CProgressDlg *)userdata;
+
+	bool bret = (MessageBox(_this->GetSafeHwnd(), msg.c_str(), title.c_str(), MB_YESNO) == IDYES) ? 1 : 0;
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(bret);
 }
+
 
 void scEcho(CScriptVar *c, void *userdata)
 {
@@ -281,6 +346,7 @@ void scEcho(CScriptVar *c, void *userdata)
 	_this->Echo(msg.c_str());
 }
 
+
 void scCreateDirectoryTree(CScriptVar *c, void *userdata)
 {
 	tstring path = c->getParameter(_T("path"))->getString(), _path;
@@ -288,8 +354,11 @@ void scCreateDirectoryTree(CScriptVar *c, void *userdata)
 	ReplaceRegistryKeys(_path, path);
 
 	bool create_result = FLZACreateDirectories(path.c_str());
-	c->getReturnVar()->setInt(create_result ? 1 : 0);
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(create_result ? 1 : 0);
 }
+
 
 void scCopyFile(CScriptVar *c, void *userdata)
 {
@@ -302,8 +371,11 @@ void scCopyFile(CScriptVar *c, void *userdata)
 	ReplaceRegistryKeys(_dst, dst);
 
 	BOOL copy_result = CopyFile(src.c_str(), dst.c_str(), false);
-	c->getReturnVar()->setInt(copy_result ? 1 : 0);
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(copy_result ? 1 : 0);
 }
+
 
 void scDeleteFile(CScriptVar *c, void *userdata)
 {
@@ -312,8 +384,64 @@ void scDeleteFile(CScriptVar *c, void *userdata)
 	ReplaceRegistryKeys(_path, path);
 
 	BOOL delete_result = DeleteFile(path.c_str());
-	c->getReturnVar()->setInt(delete_result ? 1 : 0);
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(delete_result ? 1 : 0);
 }
+
+
+void scCreateShortcut(CScriptVar *c, void *userdata)
+{
+	tstring file = c->getParameter(_T("file"))->getString(), _file;
+	ReplaceEnvironmentVariables(file, _file);
+	ReplaceRegistryKeys(_file, file);
+
+	tstring targ = c->getParameter(_T("target"))->getString(), _targ;
+	ReplaceEnvironmentVariables(targ, _targ);
+	ReplaceRegistryKeys(_targ, targ);
+
+	tstring args = c->getParameter(_T("args"))->getString(), _args;
+	ReplaceEnvironmentVariables(args, _args);
+	ReplaceRegistryKeys(_args, args);
+
+	tstring rundir = c->getParameter(_T("rundir"))->getString(), _rundir;
+	ReplaceEnvironmentVariables(rundir, _rundir);
+	ReplaceRegistryKeys(_rundir, rundir);
+
+	tstring desc = c->getParameter(_T("desc"))->getString(), _desc;
+	ReplaceEnvironmentVariables(desc, _desc);
+	ReplaceRegistryKeys(_desc, desc);
+
+	int showmode = c->getParameter(_T("showmode"))->getInt();
+
+	tstring icon = c->getParameter(_T("icon"))->getString(), _icon;
+	ReplaceEnvironmentVariables(icon, _icon);
+	ReplaceRegistryKeys(_icon, icon);
+
+	int iconidx = c->getParameter(_T("iconidx"))->getInt();
+
+	CreateShortcut(targ.c_str(), args.c_str(), file.c_str(), desc.c_str(),
+				   showmode, rundir.c_str(), icon.c_str(), iconidx);
+}
+
+
+void scSetGlobalEnvironmentVariable(CScriptVar *c, void *userdata)
+{
+	tstring var = c->getParameter(_T("var"))->getString(), _var;
+	ReplaceEnvironmentVariables(var, _var);
+	ReplaceRegistryKeys(_var, var);
+
+	tstring val = c->getParameter(_T("val"))->getString(), _val;
+	ReplaceEnvironmentVariables(val, _val);
+	ReplaceRegistryKeys(_val, val);
+
+	CRegKey cKey;
+	if (SUCCEEDED(cKey.Create(HKEY_LOCAL_MACHINE, _T("SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment"))))
+	{
+		cKey.SetStringValue(var.c_str(), val.c_str());
+	}
+}
+
 
 void scSpawnProcess(CScriptVar *c, void *userdata)
 {
@@ -325,16 +453,22 @@ void scSpawnProcess(CScriptVar *c, void *userdata)
 	ReplaceEnvironmentVariables(params, _params);
 	ReplaceRegistryKeys(_params, params);
 
+	tstring rundir = c->getParameter(_T("rundir"))->getString(), _rundir;
+	ReplaceEnvironmentVariables(rundir, _rundir);
+	ReplaceRegistryKeys(_rundir, rundir);
+
 	bool block = c->getParameter(_T("block"))->getBool();
 
 	STARTUPINFO si = { 0 };
 	si.cb = sizeof(si);
 	PROCESS_INFORMATION pi;
-	BOOL created = CreateProcess(cmd.c_str(), (TCHAR *)(params.c_str()), NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
+	BOOL created = CreateProcess(cmd.c_str(), (TCHAR *)(params.c_str()), NULL, NULL, FALSE, NULL, NULL, rundir.c_str(), &si, &pi);
 	if (created && block)
 		WaitForSingleObject(pi.hProcess, INFINITE);
 
-	c->getReturnVar()->setInt(created ? 1 : 0);
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(created ? 1 : 0);
 }
 
 // ******************************************************************************
@@ -356,8 +490,11 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function CreateDirectoryTree(path)"), scCreateDirectoryTree, (void *)this);
 	theApp.m_js.addNative(_T("function CopyFile(src, dst)"), scCopyFile, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
+	theApp.m_js.addNative(_T("function CreateShortcut(file, target, args, rundir, desc, showmode, icon, iconidx)"), scCreateShortcut, (void *)this);
+	theApp.m_js.addNative(_T("function SetGlobalEnvironmentVariable(var, val)"), scSetGlobalEnvironmentVariable, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
-	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, block)"), scMessageBox, (void *)this);
+	theApp.m_js.addNative(_T("function MessageBoxYesNo(title, msg)"), scMessageBox, (void *)this);
+	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, rundir, block)"), scMessageBox, (void *)this);
 
 	theApp.m_InstallPath.Replace(_T("\\"), _T("/"));
 

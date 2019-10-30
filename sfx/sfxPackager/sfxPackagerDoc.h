@@ -104,6 +104,7 @@ public:
 	CString m_VersionID;
 	bool m_bExploreOnComplete;
 	bool m_bRequireAdmin;
+	bool m_bRequireReboot;
 	bool m_bAllowDestChg;
 	CString m_LaunchCmd;
 	long m_MaxSize;

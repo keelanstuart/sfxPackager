@@ -161,10 +161,6 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 	if (!pd)
 		return;
 
-	CSfxPackagerView *pv = CSfxPackagerView::GetView();
-	if (!pv)
-		return;
-
 	if (s == PS_AUTODETECT)
 	{
 		UINT sel = m_wndObjectCombo.GetCurSel();
@@ -187,6 +183,10 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 				break;
 		}
 	}
+
+	CSfxPackagerView *pv = CSfxPackagerView::GetView();
+	if ((s == PS_FILE) && !pv)
+		return;
 
 	static const TCHAR szIcoFilter[] = _T("Icon Files(*.ico)|*.ico|All Files(*.*)|*.*||");
 	static const TCHAR szBmpFilter[] = _T("Bitmap Files(*.bmp)|*.bmp|All Files(*.*)|*.*||");
@@ -238,9 +238,11 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 
 				CMFCPropertyGridProperty *pPostInstallGroup = new CMFCPropertyGridProperty(_T("Post-Install"));
 				{
+					CMFCPropertyGridProperty *pRequireRebootProp = new CMFCPropertyGridProperty(_T("Require Reboot"), (_variant_t)((bool)pd->m_bRequireReboot), _T("If set, will inform that user that a reboot of the system is recommended and prompt to do that."));
 					CMFCPropertyGridProperty *pShowOpenProp = new CMFCPropertyGridProperty(_T("Explore"), (_variant_t)((bool)pd->m_bExploreOnComplete), _T("If set, will open a windows explorer window to the install directory upon completion"));
 					CMFCPropertyGridProperty *pLaunchCmdProp = new CMFCPropertyGridProperty(_T("Launch"), pd->m_LaunchCmd, _T("A command that will be issued when installation is complete (see full docs for parameter options)"));
 
+					pPostInstallGroup->AddSubItem(pRequireRebootProp);
 					pPostInstallGroup->AddSubItem(pShowOpenProp);
 					pPostInstallGroup->AddSubItem(pLaunchCmdProp);
 				}

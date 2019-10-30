@@ -17,12 +17,14 @@ enum ESfxFlagShift
 	FS_SPAN,
 	FS_ADMINONLY,
 	FS_ALLOWDESTCHG,
+	FS_REBOOTNEEDED,
 };
 
 #define SFX_FLAG_EXPLORE			(1 << FS_EXPLORE)				// show a check box on the installer that will allow the user to explore the destination folder
 #define SFX_FLAG_SPAN				(1 << FS_SPAN)					// internal use only: indicates that the archive spans multiple files
 #define SFX_FLAG_ADMINONLY			(1 << FS_ADMINONLY)				// the install requires admin rights and will try to elevate privileges
 #define SFX_FLAG_ALLOWDESTCHG		(1 << FS_ALLOWDESTCHG)			// indicates that the installer allows the destination directory to be changed
+#define SFX_FLAG_REBOOTNEEDED		(1 << FS_REBOOTNEEDED)			// indicates that the system should be restarted for changes to take effect
 
 struct sFixupResourceData
 {
