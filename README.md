@@ -4,7 +4,17 @@ A light-weight, self-extracting install creation utility for Windows
 Copyright (C) 2013-2019 Keelan Stuart (keelanstuart@gmail.com)
 
 --------------------------
-A full users manual is unavailable at this time (and may be forthcoming at some point), but for simple operation, drag your files from Windows explorer onto the file list in your sfxpp project. The files will show up there and, if you included a folder, you will be prompted as to whether you desire a live file system or a fixed one... meaning, do you want the directory to be re-examined when your project is built and any new files included? Conversely, do you want the currently existing files only, meaning that if you add files in the future they will not be automatically included?
+A full users manual is unavailable at this time (though it may be forthcoming soon), but for simple operation,
+drag your files from Windows explorer onto the file list in your sfxpp project. The files will show up there and, 
+if you included a folder, you will be prompted as to whether you desire a live file system or a fixed one... 
+meaning, do you want the directory to be re-examined when your project is built and any new files included?
+Conversely, do you want the currently existing files only, meaning that if you add files in the future they will 
+not be automatically included? I took this idea, notionally, from the venerable (and discontinued)
+PackageForTheWeb from InstallShield.
+
+More complicated operations can be done with the integrated JavaScript-ish capability. You can write scripts
+that run during initialization, per file, and at successful completion. If you want to see what functions are available,
+you'll currently have to look in the code.
 
 I'll be happy to answer any questions.
 
