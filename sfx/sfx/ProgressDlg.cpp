@@ -427,7 +427,7 @@ void scCreateShortcut(CScriptVar *c, void *userdata)
 
 void scSetGlobalEnvironmentVariable(CScriptVar *c, void *userdata)
 {
-	tstring var = c->getParameter(_T("var"))->getString(), _var;
+	tstring var = c->getParameter(_T("varname"))->getString(), _var;
 	ReplaceEnvironmentVariables(var, _var);
 	ReplaceRegistryKeys(_var, var);
 
@@ -439,6 +439,77 @@ void scSetGlobalEnvironmentVariable(CScriptVar *c, void *userdata)
 	if (SUCCEEDED(cKey.Create(HKEY_LOCAL_MACHINE, _T("SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment"))))
 	{
 		cKey.SetStringValue(var.c_str(), val.c_str());
+	}
+}
+
+
+void scRegistryKeyValueExists(CScriptVar *c, void *userdata)
+{
+	CScriptVar *ret = c->getReturnVar();
+	if (!ret)
+		return;
+
+	ret->setInt(0);
+
+	tstring root = c->getParameter(_T("root"))->getString();
+	std::transform(root.begin(), root.end(), root.begin(), toupper);
+	HKEY hr = HKEY_LOCAL_MACHINE;
+	if (root == _T("HKEY_CURRENT_USER"))
+		hr = HKEY_CURRENT_USER;
+	else if (root == _T("HKEY_CURRENT_CONFIG"))
+		hr = HKEY_CURRENT_CONFIG;
+	else if (root != _T("HKEY_LOCAL_MACHINE"))
+		return;
+
+	tstring key = c->getParameter(_T("key"))->getString(), _key;
+	ReplaceEnvironmentVariables(key, _key);
+	ReplaceRegistryKeys(_key, key);
+
+	tstring name = c->getParameter(_T("name"))->getString(), _name;
+	ReplaceEnvironmentVariables(name, _name);
+	ReplaceRegistryKeys(_name, name);
+
+	CRegKey cKey;
+	if (SUCCEEDED(cKey.Open(hr, key.c_str())))
+	{
+		TCHAR tmp;
+		ULONG tmps = 1;
+		if (cKey.QueryStringValue(name.c_str(), &tmp, &tmps) != ERROR_FILE_NOT_FOUND)
+			ret->setInt(1);
+
+		cKey.Close();
+	}
+}
+
+
+void scSetRegistryKeyValue(CScriptVar *c, void *userdata)
+{
+	tstring root = c->getParameter(_T("root"))->getString();
+	std::transform(root.begin(), root.end(), root.begin(), toupper);
+	HKEY hr = HKEY_LOCAL_MACHINE;
+	if (root == _T("HKEY_CURRENT_USER"))
+		hr = HKEY_CURRENT_USER;
+	else if (root == _T("HKEY_CURRENT_CONFIG"))
+		hr = HKEY_CURRENT_CONFIG;
+	else if (root != _T("HKEY_LOCAL_MACHINE"))
+		return;
+
+	tstring key = c->getParameter(_T("key"))->getString(), _key;
+	ReplaceEnvironmentVariables(key, _key);
+	ReplaceRegistryKeys(_key, key);
+
+	tstring name = c->getParameter(_T("name"))->getString(), _name;
+	ReplaceEnvironmentVariables(name, _name);
+	ReplaceRegistryKeys(_name, name);
+
+	tstring val = c->getParameter(_T("val"))->getString(), _val;
+	ReplaceEnvironmentVariables(val, _val);
+	ReplaceRegistryKeys(_val, val);
+
+	CRegKey cKey;
+	if (SUCCEEDED(cKey.Create(hr, key.c_str())))
+	{
+		cKey.SetStringValue(name.c_str(), val.c_str());
 	}
 }
 
@@ -486,15 +557,17 @@ DWORD CProgressDlg::RunInstall()
 
 	m_Progress.SetPos(0);
 
-	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
-	theApp.m_js.addNative(_T("function CreateDirectoryTree(path)"), scCreateDirectoryTree, (void *)this);
 	theApp.m_js.addNative(_T("function CopyFile(src, dst)"), scCopyFile, (void *)this);
-	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
+	theApp.m_js.addNative(_T("function CreateDirectoryTree(path)"), scCreateDirectoryTree, (void *)this);
 	theApp.m_js.addNative(_T("function CreateShortcut(file, target, args, rundir, desc, showmode, icon, iconidx)"), scCreateShortcut, (void *)this);
-	theApp.m_js.addNative(_T("function SetGlobalEnvironmentVariable(var, val)"), scSetGlobalEnvironmentVariable, (void *)this);
+	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
+	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
-	theApp.m_js.addNative(_T("function MessageBoxYesNo(title, msg)"), scMessageBox, (void *)this);
-	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, rundir, block)"), scMessageBox, (void *)this);
+	theApp.m_js.addNative(_T("function MessageBoxYesNo(title, msg)"), scMessageBoxYesNo, (void *)this);
+	theApp.m_js.addNative(_T("function RegistryKeyValueExists(root, key, name)"), scRegistryKeyValueExists, (void *)this);
+	theApp.m_js.addNative(_T("function SetGlobalEnvironmentVariable(varname, val)"), scSetGlobalEnvironmentVariable, (void *)this);
+	theApp.m_js.addNative(_T("function SetRegistryKeyValue(root, key, name, val)"), scSetRegistryKeyValue, (void *)this);
+	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, rundir, block)"), scSpawnProcess, (void *)this);
 
 	theApp.m_InstallPath.Replace(_T("\\"), _T("/"));
 
@@ -547,18 +620,14 @@ DWORD CProgressDlg::RunInstall()
 					continue;
 				}
 
-				tstring fname, fpath, snippet;
+				tstring fname, fpath, snippet, ffull;
 				uint64_t usize;
 				FILETIME created_time, modified_time;
 				pie->GetFileInfo(i, &fname, &fpath, NULL, &usize, &created_time, &modified_time, &snippet);
 
-				tstring ffull;
-				if (!fpath.empty())
-				{
-					ffull = fpath.c_str();
-					ffull += _T("\\");
-				}
-				ffull += fname;
+				m_Progress.SetPos((int)i + 1);
+
+				IExtractor::EXTRACT_RESULT er = pie->ExtractFile(i, &ffull);
 
 				for (tstring::iterator rit = ffull.begin(), last_rit = ffull.end(); rit != last_rit; rit++)
 				{
@@ -572,12 +641,10 @@ DWORD CProgressDlg::RunInstall()
 						*rit = _T('/');
 				}
 
-				m_Progress.SetPos((int)i + 1);
-
-				IExtractor::EXTRACT_RESULT er = pie->ExtractFile(i);
 				switch (er)
 				{
 					case IExtractor::ER_OK:
+					{
 						if (!theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty())
 						{
 							tstring pfscr;
@@ -608,6 +675,7 @@ DWORD CProgressDlg::RunInstall()
 
 						msg.Format(_T("    %s (%" PRId64 "KB) [ok]\r\n"), ffull.c_str(), usize / 1024);
 						break;
+					}
 
 					default:
 						msg.Format(_T("    %s [failed]\r\n"), ffull.c_str());
