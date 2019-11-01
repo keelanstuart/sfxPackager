@@ -112,6 +112,8 @@ BOOL CProgressDlg::OnInitDialog()
 	}
 
 	m_Status.SetLimitText(0);
+	m_Status.SetReadOnly(TRUE);
+	m_Status.EnableWindow(TRUE);
 
 	m_Thread = CreateThread(NULL, 0, InstallThreadProc, this, 0, NULL);
 

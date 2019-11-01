@@ -14,7 +14,6 @@
 //
 
 #pragma once
-#include "FileView.h"
 #include "OutputWnd.h"
 #include "PropertiesWnd.h"
 #include "ProgressStatusBar.h"
