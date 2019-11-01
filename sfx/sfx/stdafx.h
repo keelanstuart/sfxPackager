@@ -61,7 +61,6 @@
 #include <windows.h>
 #include <tchar.h>
 
-typedef std::basic_string<TCHAR> tstring;
 
 // macros to convert to and from wide- and multi-byte- character
 // strings from the other type... all on the stack.
@@ -102,6 +101,7 @@ typedef std::basic_string<TCHAR> tstring;
 #endif
 
 
+typedef std::basic_string<TCHAR> tstring;
 typedef std::basic_ios<TCHAR, std::char_traits<TCHAR>> tios;
 typedef std::basic_streambuf<TCHAR, std::char_traits<TCHAR>> tstreambuf;
 typedef std::basic_istream<TCHAR, std::char_traits<TCHAR>> tistream;

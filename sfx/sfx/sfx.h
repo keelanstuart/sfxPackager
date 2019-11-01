@@ -54,6 +54,9 @@ public:
 
 	tstring m_Script[EScriptType::NUMTYPES];
 
+	typedef std::map<tstring, int> TIntMap;
+	TIntMap m_jsGlobalIntMap;
+
 // Overrides
 public:
 	virtual BOOL InitInstance();

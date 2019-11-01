@@ -334,6 +334,7 @@ private:
 #ifdef TINYJS_CALL_STACK
     std::vector<tstring> call_stack; /// Names of places called so we can show when erroring
 #endif
+	tstring last_error;
 
     CScriptVar *stringClass; /// Built in string class
     CScriptVar *objectClass; /// Built in object class

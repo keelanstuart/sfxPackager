@@ -1286,20 +1286,20 @@ const tstring &CScriptVar::getString()
 	 * I should really just use char* :) */
 	static tstring s_null = _T("null");
 	static tstring s_undefined = _T("undefined");
-	
+
+	tstringstream ss;
+
 	if (isInt())
 	{
-		TCHAR buffer[32];
-		_stprintf_s(buffer, sizeof(buffer), _T("%ld"), intData);
-		data = buffer;
+		ss << intData;
+		data = ss.str();
 		return data;
 	}
 	
 	if (isDouble())
 	{
-		TCHAR buffer[32];
-		_stprintf_s(buffer, sizeof(buffer), _T("%f"), doubleData);
-		data = buffer;
+		ss << doubleData;
+		data = ss.str();
 		return data;
 	}
 	
@@ -1780,7 +1780,7 @@ void CTinyJS::execute(const tstring &code)
 	}
 	catch (CScriptException *e)
 	{
-		tostringstream msg;
+		tstringstream msg;
 		msg << _T("Error ") << e->text;
 
 #ifdef TINYJS_CALL_STACK
@@ -1788,6 +1788,8 @@ void CTinyJS::execute(const tstring &code)
 			msg << _T("\n") << i << _T(": ") << call_stack.at(i);
 #endif
 		msg << _T(" at ") << l->getPosition();
+		last_error = msg.str();
+
 		delete l;
 		l = oldLex;
 

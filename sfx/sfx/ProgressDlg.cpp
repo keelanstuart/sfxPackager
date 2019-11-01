@@ -311,6 +311,35 @@ void CProgressDlg::Echo(const TCHAR *msg)
 // ******************************************************************************
 // ******************************************************************************
 
+void scSetGlobalInt(CScriptVar *c, void *userdata)
+{
+	tstring name = c->getParameter(_T("name"))->getString();
+	int val = c->getParameter(_T("val"))->getInt();
+
+	CProgressDlg *_this = (CProgressDlg *)userdata;
+
+	std::pair<CSfxApp::TIntMap::iterator, bool> insret = theApp.m_jsGlobalIntMap.insert(CSfxApp::TIntMap::value_type(name, val));
+	if (!insret.second)
+		insret.first->second = val;
+}
+
+
+void scGetGlobalInt(CScriptVar *c, void *userdata)
+{
+	tstring name = c->getParameter(_T("name"))->getString();
+
+	CProgressDlg *_this = (CProgressDlg *)userdata;
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+	{
+		CSfxApp::TIntMap::iterator it = theApp.m_jsGlobalIntMap.find(name);
+
+		ret->setInt((it != theApp.m_jsGlobalIntMap.end()) ? it->second : 0);
+	}
+}
+
+
 void scMessageBox(CScriptVar *c, void *userdata)
 {
 	tstring title = c->getParameter(_T("title"))->getString();
@@ -464,18 +493,26 @@ void scRegistryKeyValueExists(CScriptVar *c, void *userdata)
 	tstring key = c->getParameter(_T("key"))->getString(), _key;
 	ReplaceEnvironmentVariables(key, _key);
 	ReplaceRegistryKeys(_key, key);
+	for (tstring::iterator it = key.begin(), last_it = key.end(); it != last_it; it++)
+	{
+		if (*it == _T('/'))
+			*it = _T('\\');
+	}
 
 	tstring name = c->getParameter(_T("name"))->getString(), _name;
 	ReplaceEnvironmentVariables(name, _name);
 	ReplaceRegistryKeys(_name, name);
 
 	CRegKey cKey;
-	if (SUCCEEDED(cKey.Open(hr, key.c_str())))
+	if (SUCCEEDED(cKey.Open(hr, key.c_str())) && cKey.m_hKey)
 	{
-		TCHAR tmp;
-		ULONG tmps = 1;
-		if (cKey.QueryStringValue(name.c_str(), &tmp, &tmps) != ERROR_FILE_NOT_FOUND)
-			ret->setInt(1);
+		if (!name.empty())
+		{
+			TCHAR tmp;
+			ULONG tmps = 1;
+			if (cKey.QueryStringValue(name.c_str(), &tmp, &tmps) != ERROR_FILE_NOT_FOUND)
+				ret->setInt(1);
+		}
 
 		cKey.Close();
 	}
@@ -497,6 +534,11 @@ void scSetRegistryKeyValue(CScriptVar *c, void *userdata)
 	tstring key = c->getParameter(_T("key"))->getString(), _key;
 	ReplaceEnvironmentVariables(key, _key);
 	ReplaceRegistryKeys(_key, key);
+	for (tstring::iterator it = key.begin(), last_it = key.end(); it != last_it; it++)
+	{
+		if (*it == _T('/'))
+			*it = _T('\\');
+	}
 
 	tstring name = c->getParameter(_T("name"))->getString(), _name;
 	ReplaceEnvironmentVariables(name, _name);
@@ -562,10 +604,12 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function CreateShortcut(file, target, args, rundir, desc, showmode, icon, iconidx)"), scCreateShortcut, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
 	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
+	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBoxYesNo(title, msg)"), scMessageBoxYesNo, (void *)this);
 	theApp.m_js.addNative(_T("function RegistryKeyValueExists(root, key, name)"), scRegistryKeyValueExists, (void *)this);
 	theApp.m_js.addNative(_T("function SetGlobalEnvironmentVariable(varname, val)"), scSetGlobalEnvironmentVariable, (void *)this);
+	theApp.m_js.addNative(_T("function SetGlobalInt(name, val)"), scSetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function SetRegistryKeyValue(root, key, name, val)"), scSetRegistryKeyValue, (void *)this);
 	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, rundir, block)"), scSpawnProcess, (void *)this);
 
