@@ -408,6 +408,23 @@ void scCopyFile(CScriptVar *c, void *userdata)
 }
 
 
+void scRenameFile(CScriptVar *c, void *userdata)
+{
+	tstring filename = c->getParameter(_T("filename"))->getString(), _filename;
+	ReplaceEnvironmentVariables(filename, _filename);
+	ReplaceRegistryKeys(_filename, filename);
+
+	tstring newname = c->getParameter(_T("newname"))->getString(), _newname;
+	ReplaceEnvironmentVariables(newname, _newname);
+	ReplaceRegistryKeys(_newname, newname);
+
+	int rename_result = _trename(filename.c_str(), newname.c_str());
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt((rename_result == 0) ? 1 : 0);
+}
+
+
 void scDeleteFile(CScriptVar *c, void *userdata)
 {
 	tstring path = c->getParameter(_T("path"))->getString(), _path;
@@ -610,6 +627,7 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBoxYesNo(title, msg)"), scMessageBoxYesNo, (void *)this);
 	theApp.m_js.addNative(_T("function RegistryKeyValueExists(root, key, name)"), scRegistryKeyValueExists, (void *)this);
+	theApp.m_js.addNative(_T("function RenameFile(filename, newname)"), scRenameFile, (void *)this);
 	theApp.m_js.addNative(_T("function SetGlobalEnvironmentVariable(varname, val)"), scSetGlobalEnvironmentVariable, (void *)this);
 	theApp.m_js.addNative(_T("function SetGlobalInt(name, val)"), scSetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function SetRegistryKeyValue(root, key, name, val)"), scSetRegistryKeyValue, (void *)this);
