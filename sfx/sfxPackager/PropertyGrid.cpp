@@ -54,8 +54,16 @@ END_MESSAGE_MAP()
 void CPropertyGrid::OnPropertyChanged(CMFCPropertyGridProperty* pProp) const
 {
 	CSfxPackagerDoc *pd = CSfxPackagerDoc::GetDoc();
-	CSfxPackagerView *pv = CSfxPackagerView::GetView();
-	if (!pd || !pv)
+	POSITION pos = pd->GetFirstViewPosition();
+	CView *pv = nullptr;
+	CSfxPackagerView *ppv = nullptr;
+	while ((pv = pd->GetNextView(pos)) != nullptr)
+	{
+		ppv = dynamic_cast<CSfxPackagerView *>(pv);
+		if (ppv)
+			break;
+	}
+	if (!pd || !ppv)
 		return;
 
 	if (!_tcsicmp(pProp->GetName(), _T("Caption")))
@@ -115,32 +123,32 @@ void CPropertyGrid::OnPropertyChanged(CMFCPropertyGridProperty* pProp) const
 		CString newdst = pProp->GetValue();
 		CString rootdst = pProp->GetOriginalValue();
 
-		pv->SetDestFolderForSelection(newdst, rootdst);
+		ppv->SetDestFolderForSelection(newdst, rootdst);
 	}
 	else if (!_tcsicmp(pProp->GetName(), _T("Source")))
 	{
 		CString newsrc = pProp->GetValue();
 		CString rootsrc = pProp->GetOriginalValue();
 
-		pv->SetSrcFolderForSelection(newsrc, rootsrc);
+		ppv->SetSrcFolderForSelection(newsrc, rootsrc);
 	}
 	else if (!_tcsicmp(pProp->GetName(), _T("Filename")))
 	{
 		CString newname = pProp->GetValue();
 
-		pv->SetFilenameForSelection(newname);
+		ppv->SetFilenameForSelection(newname);
 	}
 	else if (!_tcsicmp(pProp->GetName(), _T("Exclude")))
 	{
 		CString exclude = pProp->GetValue();
 
-		pv->SetExclusionsForSelection(exclude);
+		ppv->SetExclusionsForSelection(exclude);
 	}
 	else if (!_tcsicmp(pProp->GetName(), _T("Script Add-On")))
 	{
 		CString snippet = pProp->GetValue();
 
-		pv->SetScriptSnippetForSelection(snippet);
+		ppv->SetScriptSnippetForSelection(snippet);
 	}
 	else if (!_tcsicmp(pProp->GetName(), _T("Temporary Directory")))
 	{
