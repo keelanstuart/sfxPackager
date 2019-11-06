@@ -9,6 +9,8 @@
 	For inquiries, contact: keelanstuart@gmail.com
 */
 
+#include "HtmlCtrl.h"
+
 #pragma once
 
 
@@ -29,8 +31,7 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 
 	HICON m_hIcon;
-	//CHtmlView *m_pHtmlView;
-	//CWnd m_Browser;
+	CHtmlCtrl m_Desc;
 
 	DECLARE_MESSAGE_MAP()
 public:

@@ -60,6 +60,7 @@
     </None>
     <None Include="res\html1.htm" />
     <None Include="res\empty.htm" />
+    <None Include="res\welcome.htm" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sfx.h">
@@ -95,6 +96,9 @@
     <ClInclude Include="TinyJS_MathFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="HtmlCtrl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sfx.cpp">
@@ -122,6 +126,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TinyJS_MathFunctions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HtmlCtrl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

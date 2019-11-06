@@ -14,6 +14,7 @@
 
 #include "stdafx.h"
 #include "sfx.h"
+#include "HtmlCtrl.h"
 #include "WelcomeDlg.h"
 #include "afxdialogex.h"
 
@@ -75,7 +76,9 @@ BOOL CWelcomeDlg::OnInitDialog()
 	}
 
 	CRect rw;
-	CEdit *pDesc = (CEdit *)GetDlgItem(IDC_WELCOMEMSG);
+	m_Desc.CreateFromStatic(IDC_BROWSER, this);
+
+	CHtmlCtrl *pDesc = &m_Desc;
 	if (pDesc)
 	{
 		pDesc->GetWindowRect(rw);
@@ -83,21 +86,7 @@ BOOL CWelcomeDlg::OnInitDialog()
 		ScreenToClient(rw);
 		pDesc->MoveWindow(rw, FALSE);
 
-		pDesc->FmtLines(TRUE);
-
-		HRSRC hfr = FindResource(NULL, _T("SFX_DESCRIPTION"), _T("SFX"));
-		if (hfr)
-		{
-			HGLOBAL hg = LoadResource(NULL, hfr);
-			if (hg)
-			{
-				TCHAR *desc = (TCHAR *)LockResource(hg);
-
-				pDesc->SetWindowText(desc);
-
-				UnlockResource(hg);
-			}
-		}
+		pDesc->LoadFromResource(_T("welcome"));
 	}
 
 	CWnd *pVerStr = GetDlgItem(IDC_VERSIONID);

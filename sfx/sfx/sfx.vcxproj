@@ -129,9 +129,13 @@
     <None Include="res\sfx_script_finish.bin" />
     <None Include="res\sfx_script_init.bin" />
     <None Include="res\sfx_script_perfile.bin" />
+    <None Include="res\welcome.htm">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FinishDlg.h" />
+    <ClInclude Include="HtmlCtrl.h" />
     <ClInclude Include="ProgressDlg.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="sfx.h" />
@@ -145,6 +149,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FinishDlg.cpp" />
+    <ClCompile Include="HtmlCtrl.cpp" />
     <ClCompile Include="ProgressDlg.cpp" />
     <ClCompile Include="sfx.cpp" />
     <ClCompile Include="sfxDlg.cpp" />

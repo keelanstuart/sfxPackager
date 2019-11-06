@@ -358,8 +358,38 @@ public:
 				caption.Format(_T("%s%s"), m_pDoc->m_Caption, m_spanIdx ? spanstr : _T(""));
 
 				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_CAPTION"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)caption), (caption.GetLength() + 1) * sizeof(TCHAR));
-				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_DESCRIPTION"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_Description), (m_pDoc->m_Description.GetLength() + 1) * sizeof(TCHAR));
 				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_DEFAULTPATH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_DefaultPath), (m_pDoc->m_DefaultPath.GetLength() + 1) * sizeof(TCHAR));
+
+				char *shtml;
+				bool created_shtml = false;
+				if (PathFileExists(m_pDoc->m_Description))
+				{
+					HANDLE hhtmlfile = CreateFile(m_pDoc->m_Description, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+					if (hhtmlfile)
+					{
+						DWORD fsz = GetFileSize(hhtmlfile, NULL);
+						shtml = (char *)malloc(fsz);
+						if (shtml)
+						{
+							created_shtml = true;
+							DWORD rb;
+							ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
+						}
+
+						CloseHandle(hhtmlfile);
+					}
+				}
+				else
+				{
+					LOCAL_TCS2MBCS((LPCTSTR)m_pDoc->m_Description, shtml);
+				}
+
+				bresult = UpdateResource(hbur, RT_HTML, _T("welcome"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, strlen(shtml) * sizeof(char));
+
+				if (created_shtml)
+				{
+					free(shtml);
+				}
 
 				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INIT"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
 					(void *)((LPCTSTR)m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::INIT]),
@@ -1392,6 +1422,11 @@ void UnescapeString(const TCHAR *in, tstring &out)
 				out += _T('&');
 				c += 4;
 			}
+			else if (!memcmp(c, _T("&quot;"), sizeof(TCHAR) * 6))
+			{
+				out += _T('\"');
+				c += 5;
+			}
 		}
 		else
 			out += *c;
@@ -1422,6 +1457,11 @@ void EscapeString(const TCHAR *in, tstring &out)
 			case _T('&'):
 			{
 				out += _T("&amp;");
+				break;
+			}
+			case _T('\"'):
+			{
+				out += _T("&quot;");
 				break;
 			}
 			default:
@@ -1474,7 +1514,11 @@ void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 			else if (!_tcsicmp(name.c_str(), _T("caption")))
 				m_Caption = value.c_str();
 			else if (!_tcsicmp(name.c_str(), _T("description")))
-				m_Description = value.c_str();
+			{
+				tstring desc;
+				UnescapeString(value.c_str(), desc);
+				m_Description = desc.c_str();
+			}
 			else if (!_tcsicmp(name.c_str(), _T("icon")))
 				m_IconFile = value.c_str();
 			else if (!_tcsicmp(name.c_str(), _T("image")))
@@ -1664,7 +1708,9 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 
 		s += _T("\n\t\t<caption value=\""); s += m_Caption; s += _T("\"/>");
 
-		s += _T("\n\t\t<description value=\""); s += m_Description; s += _T("\"/>");
+		tstring desc;
+		EscapeString(m_Description, desc);
+		s += _T("\n\t\t<description value=\""); s += desc.c_str(); s += _T("\"/>");
 
 		s += _T("\n\t\t<icon value=\""); s += m_IconFile; s += _T("\"/>");
 
