@@ -63,8 +63,18 @@ public:
 		NUMTYPES
 	};
 
+	enum EMoveType
+	{
+		UP = 0,
+		DOWN,
+		TOP,
+		BOTTOM
+	};
+
 	const TCHAR *GetFileData(UINT handle, EFileDataType fdt);
 	void SetFileData(UINT handle, EFileDataType fdt, const TCHAR *data);
+
+	bool AdjustFileOrder(UINT key, EMoveType mt, UINT *swap_key);
 
 	UINT GetNumFiles();
 

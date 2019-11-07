@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "sfxPackagerDoc.h"
 #include "CScriptEditView.h"
 
 
@@ -50,6 +51,8 @@ public:
 	void DonePackaging();
 	bool IsPackaging() { return (m_hPackageThread != NULL); }
 
+	void TestSfx();
+
 	void SetDestFolderForSelection(const TCHAR *dst, const TCHAR *rootdst);
 	void SetSrcFolderForSelection(const TCHAR *src, const TCHAR *rootsrc);
 	void SetFilenameForSelection(const TCHAR *name);
@@ -60,10 +63,13 @@ protected:
 	void ImportLivingFolder(const TCHAR *dir, const TCHAR *include_ext = _T("*"), const TCHAR *exclude_ext = NULL);
 	void ImportFile(const TCHAR *filename, UINT depth = 0, bool refresh_props = true);
 
+	void AdjustSelectionPos(CSfxPackagerDoc::EMoveType mt);
+
 	bool m_bFirstUpdate;
 	HANDLE m_hPackageThread;
 	CSplitterWndEx *m_Splitter;
 	CScriptEditView *m_ScriptEditor;
+	HACCEL m_hAccelTable;
 
 // Generated message map functions
 	afx_msg void OnFilePrintPreview();
@@ -97,6 +103,13 @@ public:
 	afx_msg void OnUpdateAppCancelSfx(CCmdUI *pCmdUI);
 	afx_msg void OnAppCancelSfx();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnAdjustPosUp();
+	afx_msg void OnAdjustPosDown();
+	afx_msg void OnAdjustPosTop();
+	afx_msg void OnAdjustPosBottom();
+	afx_msg void OnUpdateAdjustPos(CCmdUI *pCmdUI);
+
+	virtual BOOL PreTranslateMessage(MSG *pMsg);
 };
 
 #ifndef _DEBUG  // debug version in sfxPackagerView.cpp

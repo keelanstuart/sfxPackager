@@ -55,6 +55,14 @@ BEGIN_MESSAGE_MAP(CSfxPackagerView, CListView)
 	ON_COMMAND(ID_EDIT_REPATHSRC, &CSfxPackagerView::OnEditRepathSource)
 	ON_WM_SETFOCUS()
 	ON_WM_SIZE()
+	ON_COMMAND(ID_ADJUSTPOS_UP, &CSfxPackagerView::OnAdjustPosUp)
+	ON_COMMAND(ID_ADJUSTPOS_DOWN, &CSfxPackagerView::OnAdjustPosDown)
+	ON_COMMAND(ID_ADJUSTPOS_TOP, &CSfxPackagerView::OnAdjustPosTop)
+	ON_COMMAND(ID_ADJUSTPOS_BOTTOM, &CSfxPackagerView::OnAdjustPosBottom)
+	ON_UPDATE_COMMAND_UI(ID_ADJUSTPOS_UP, &CSfxPackagerView::OnUpdateAdjustPos)
+	ON_UPDATE_COMMAND_UI(ID_ADJUSTPOS_DOWN, &CSfxPackagerView::OnUpdateAdjustPos)
+	ON_UPDATE_COMMAND_UI(ID_ADJUSTPOS_TOP, &CSfxPackagerView::OnUpdateAdjustPos)
+	ON_UPDATE_COMMAND_UI(ID_ADJUSTPOS_BOTTOM, &CSfxPackagerView::OnUpdateAdjustPos)
 END_MESSAGE_MAP()
 
 // CSfxPackagerView construction/destruction
@@ -65,6 +73,7 @@ CSfxPackagerView::CSfxPackagerView()
 	m_hPackageThread = NULL;
 	m_Splitter = nullptr;
 	m_ScriptEditor = nullptr;
+	m_hAccelTable = LoadAccelerators(theApp.m_hInstance, MAKEINTRESOURCE(IDR_MAINFRAME));
 }
 
 CSfxPackagerView::~CSfxPackagerView()
@@ -903,4 +912,100 @@ void CSfxPackagerView::OnSize(UINT nType, int cx, int cy)
 #endif
 
 	CListView::OnSize(nType, cx, cy);
+}
+
+void CSfxPackagerView::AdjustSelectionPos(CSfxPackagerDoc::EMoveType mt)
+{
+	CSfxPackagerDoc *pDoc = GetDocument();
+	CListCtrl &list = GetListCtrl();
+	UINT selcount = list.GetSelectedCount();
+	int item = -1;
+
+	// Update all of the selected items.
+	if (selcount != 1)
+		return;
+
+	item = list.GetNextItem(item, LVNI_SELECTED);
+	UINT handle = (UINT)list.GetItemData(item);
+	UINT swap_handle;
+	if (pDoc->AdjustFileOrder(handle, mt, &swap_handle))
+	{
+		for (int i = 0, maxi = list.GetItemCount(); i < maxi; i++)
+		{
+			list.SetItemState(i, (list.GetItemData(i) == swap_handle) ? (LVIS_SELECTED | LVIS_FOCUSED) : 0, LVIS_SELECTED | LVIS_FOCUSED);
+		}
+
+		list.RedrawItems(0, list.GetItemCount());
+		RefreshProperties();
+	}
+}
+
+void CSfxPackagerView::OnAdjustPosUp()
+{
+	AdjustSelectionPos(CSfxPackagerDoc::EMoveType::UP);
+}
+
+void CSfxPackagerView::OnAdjustPosDown()
+{
+	AdjustSelectionPos(CSfxPackagerDoc::EMoveType::DOWN);
+}
+
+void CSfxPackagerView::OnAdjustPosTop()
+{
+	AdjustSelectionPos(CSfxPackagerDoc::EMoveType::TOP);
+}
+
+void CSfxPackagerView::OnAdjustPosBottom()
+{
+	AdjustSelectionPos(CSfxPackagerDoc::EMoveType::BOTTOM);
+}
+
+void CSfxPackagerView::OnUpdateAdjustPos(CCmdUI *pCmdUI)
+{
+	CListCtrl &list = GetListCtrl();
+	pCmdUI->Enable((list.GetSelectedCount() == 1) && (m_hPackageThread == NULL));
+}
+
+
+BOOL CSfxPackagerView::PreTranslateMessage(MSG *pMsg)
+{
+	if (m_hAccelTable)
+	{
+		if (::TranslateAccelerator(m_hWnd, m_hAccelTable, pMsg))
+			return(TRUE);
+	}
+
+	return CListView::PreTranslateMessage(pMsg);
+}
+
+
+void CSfxPackagerView::TestSfx()
+{
+	CSfxPackagerDoc *pDoc = GetDocument();
+	if (!pDoc)
+		return;
+
+	STARTUPINFO si = { 0 };
+	si.cb = sizeof(si);
+	PROCESS_INFORMATION pi;
+
+	TCHAR fullfilename[MAX_PATH];
+
+	if (PathIsRelative(pDoc->m_SfxOutputFile))
+	{
+		TCHAR docpath[MAX_PATH];
+		_tcscpy(docpath, pDoc->GetPathName());
+		PathRemoveFileSpec(docpath);
+		PathCombine(fullfilename, docpath, pDoc->m_SfxOutputFile);
+	}
+	else
+	{
+		_tcscpy(fullfilename, pDoc->m_SfxOutputFile);
+	}
+
+	TCHAR path[MAX_PATH];
+	_tcscpy(path, fullfilename);
+	PathRemoveFileSpec(path);
+
+	BOOL created = CreateProcess(fullfilename, _T(""), NULL, NULL, FALSE, NULL, NULL, path, &si, &pi);
 }

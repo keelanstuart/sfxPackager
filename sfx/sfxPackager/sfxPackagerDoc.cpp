@@ -337,12 +337,21 @@ public:
 						{
 							DWORD fsz = GetFileSize(himgbin, NULL);
 							BYTE *pbin = (BYTE *)malloc(fsz);
+							BITMAPINFOHEADER *pbmphdr = (BITMAPINFOHEADER *)(pbin + sizeof(BITMAPFILEHEADER));
 							if (pbin)
 							{
 								DWORD rb;
 								ReadFile(himgbin, pbin, fsz, &rb, NULL);
 
-								bresult = UpdateResource(hbur, RT_BITMAP, _T("PACKAGE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), pbin + sizeof(BITMAPFILEHEADER), fsz - sizeof(BITMAPFILEHEADER));
+								if (pbmphdr->biBitCount <= 24)
+								{
+									bresult = UpdateResource(hbur, RT_BITMAP, _T("PACKAGE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), pbin + sizeof(BITMAPFILEHEADER), fsz - sizeof(BITMAPFILEHEADER));
+								}
+								else
+								{
+									CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
+									pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, _T("WARNING: Image file may not be more than 24bpp!\r\n"));
+								}
 
 								free(pbin);
 							}
@@ -1328,6 +1337,53 @@ void CSfxPackagerDoc::RemoveFile(UINT handle)
 	TFileDataMap::iterator it = m_FileData.find(handle);
 	if (it != m_FileData.end())
 		m_FileData.erase(it);
+}
+
+bool CSfxPackagerDoc::AdjustFileOrder(UINT key, EMoveType mt, UINT *swap_key)
+{
+	TFileDataMap::iterator it = m_FileData.find(key);
+	if (it == m_FileData.end())
+		return false;
+
+	TFileDataMap::iterator swap_it = it;
+	TFileDataMap::iterator last_it = m_FileData.find(m_FileData.rbegin()->first);
+
+	switch (mt)
+	{
+		case EMoveType::UP:
+		{
+			if (it == m_FileData.begin())
+				return false;
+			swap_it--;
+			break;
+		}
+
+		case EMoveType::DOWN:
+			swap_it++;
+			break;
+
+		case EMoveType::TOP:
+			swap_it = m_FileData.begin();
+			break;
+
+		case EMoveType::BOTTOM:
+			swap_it = last_it;
+			break;
+	}
+
+	if (swap_it != m_FileData.end())
+	{
+		if (swap_key)
+			*swap_key = swap_it->first;
+
+		TFileDataMap::mapped_type tmp = swap_it->second;
+		swap_it->second = it->second;
+		it->second = tmp;
+
+		return true;
+	}
+
+	return false;
 }
 
 UINT CSfxPackagerDoc::GetNumFiles()

@@ -44,6 +44,7 @@ BEGIN_MESSAGE_MAP(CSfxDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDOK, &CSfxDlg::OnBnClickedOk)
+	ON_WM_SYSCOMMAND()
 END_MESSAGE_MAP()
 
 
@@ -190,4 +191,16 @@ void CSfxDlg::OnBnClickedOk()
 	}
 
 	CDialogEx::OnOK();
+}
+
+
+void CSfxDlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	if (nID == SC_CLOSE)
+	{
+		ExitProcess(0);
+		return;
+	}
+
+	CDialogEx::OnSysCommand(nID, lParam);
 }

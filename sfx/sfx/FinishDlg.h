@@ -37,4 +37,5 @@ public:
 	afx_msg HCURSOR OnQueryDragIcon();
 	virtual void OnOK();
 	virtual void OnCancel();
+	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 };

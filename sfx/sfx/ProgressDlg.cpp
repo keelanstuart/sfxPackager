@@ -51,6 +51,7 @@ void CProgressDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CProgressDlg, CDialog)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_WM_SYSCOMMAND()
 END_MESSAGE_MAP()
 
 
@@ -794,4 +795,18 @@ DWORD CProgressDlg::InstallThreadProc(LPVOID param)
 	CProgressDlg *_this = (CProgressDlg *)param;
 
 	return _this->RunInstall();
+}
+
+
+void CProgressDlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	if (nID == SC_CLOSE)
+	{
+		if (MessageBox(_T("Do you really want to cancel this installation process and exit?"), _T("Confirm Exit"), MB_YESNO) == IDYES)
+			ExitProcess(0);
+
+		return;
+	}
+
+	CDialogEx::OnSysCommand(nID, lParam);
 }

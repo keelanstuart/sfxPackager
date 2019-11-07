@@ -42,6 +42,7 @@ void CFinishDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CFinishDlg, CDialog)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_WM_SYSCOMMAND()
 END_MESSAGE_MAP()
 
 
@@ -250,4 +251,17 @@ void CFinishDlg::OnOK()
 void CFinishDlg::OnCancel()
 {
 	CDialogEx::OnCancel();
+}
+
+
+void CFinishDlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	if (nID == SC_CLOSE)
+	{
+		// it's the finish dlg - just kill the process if they click close
+		ExitProcess(0);
+		return;
+	}
+
+	CDialogEx::OnSysCommand(nID, lParam);
 }
