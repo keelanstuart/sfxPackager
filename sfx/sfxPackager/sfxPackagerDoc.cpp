@@ -1562,6 +1562,9 @@ void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 
 			gp.NextToken();
 			value = gp.GetCurrentTokenString();
+			tstring tmp;
+			UnescapeString(value.c_str(), tmp);
+			value = tmp;
 		}
 		else if (gp.IsToken(_T(">")))
 		{
@@ -1570,11 +1573,7 @@ void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 			else if (!_tcsicmp(name.c_str(), _T("caption")))
 				m_Caption = value.c_str();
 			else if (!_tcsicmp(name.c_str(), _T("description")))
-			{
-				tstring desc;
-				UnescapeString(value.c_str(), desc);
-				m_Description = desc.c_str();
-			}
+				m_Description = value.c_str();
 			else if (!_tcsicmp(name.c_str(), _T("icon")))
 				m_IconFile = value.c_str();
 			else if (!_tcsicmp(name.c_str(), _T("image")))
@@ -1626,18 +1625,20 @@ void CSfxPackagerDoc::ReadScripts(CGenParser &gp)
 
 						gp.FindBoundedRawString(_T('<'));
 						tstring s = gp.GetCurrentTokenString();
+						tstring ues;
+						UnescapeString(s.c_str(), ues);
 
 						if (!_tcsicmp(t.c_str(), _T("init")))
 						{
-							m_Script[EScriptType::INIT] = s.c_str();
+							m_Script[EScriptType::INIT] = ues.c_str();
 						}
 						else if (!_tcsicmp(t.c_str(), _T("perfile")))
 						{
-							m_Script[EScriptType::PERFILE] = s.c_str();
+							m_Script[EScriptType::PERFILE] = ues.c_str();
 						}
 						else if (!_tcsicmp(t.c_str(), _T("finish")))
 						{
-							m_Script[EScriptType::FINISH] = s.c_str();
+							m_Script[EScriptType::FINISH] = ues.c_str();
 						}
 					}
 				}
@@ -1760,13 +1761,15 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 		s += _T("<sfxpackager>\n");
 		s += _T("\t<settings>");
 
+		tstring tmp;
+
 		s += _T("\n\t\t<output value=\""); s += m_SfxOutputFile; s += _T("\"/>");
 
-		s += _T("\n\t\t<caption value=\""); s += m_Caption; s += _T("\"/>");
+		EscapeString(m_Caption, tmp);
+		s += _T("\n\t\t<caption value=\""); s += tmp.c_str(); s += _T("\"/>");
 
-		tstring desc;
-		EscapeString(m_Description, desc);
-		s += _T("\n\t\t<description value=\""); s += desc.c_str(); s += _T("\"/>");
+		EscapeString(m_Description, tmp);
+		s += _T("\n\t\t<description value=\""); s += tmp.c_str(); s += _T("\"/>");
 
 		s += _T("\n\t\t<icon value=\""); s += m_IconFile; s += _T("\"/>");
 
@@ -1778,7 +1781,8 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 
 		s += _T("\n\t\t<defaultpath value=\""); s += m_DefaultPath; s += _T("\"/>");
 
-		s += _T("\n\t\t<versionid value=\""); s += m_VersionID; s += _T("\"/>");
+		EscapeString(m_VersionID, tmp);
+		s += _T("\n\t\t<versionid value=\""); s += tmp.c_str(); s += _T("\"/>");
 
 		s += _T("\n\t\t<requireadmin value=\""); s += m_bRequireAdmin ? _T("true") : _T("false"); s += _T("\"/>");
 
