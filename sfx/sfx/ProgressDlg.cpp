@@ -439,6 +439,44 @@ void scDeleteFile(CScriptVar *c, void *userdata)
 }
 
 
+void scFileExists(CScriptVar *c, void *userdata)
+{
+	tstring path = c->getParameter(_T("path"))->getString(), _path;
+	ReplaceEnvironmentVariables(path, _path);
+	ReplaceRegistryKeys(_path, path);
+
+	BOOL result = PathFileExists(path.c_str());
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(result ? 1 : 0);
+}
+
+void scIsDirectory(CScriptVar *c, void *userdata)
+{
+	tstring path = c->getParameter(_T("path"))->getString(), _path;
+	ReplaceEnvironmentVariables(path, _path);
+	ReplaceRegistryKeys(_path, path);
+
+	BOOL result = PathIsDirectory(path.c_str());
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(result ? 1 : 0);
+}
+
+
+void scIsDirectoryEmpty(CScriptVar *c, void *userdata)
+{
+	tstring path = c->getParameter(_T("path"))->getString(), _path;
+	ReplaceEnvironmentVariables(path, _path);
+	ReplaceRegistryKeys(_path, path);
+
+	BOOL result = PathIsDirectoryEmpty(path.c_str());
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(result ? 1 : 0);
+}
+
+
 void scCreateShortcut(CScriptVar *c, void *userdata)
 {
 	tstring file = c->getParameter(_T("file"))->getString(), _file;
@@ -624,7 +662,10 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function CreateShortcut(file, target, args, rundir, desc, showmode, icon, iconidx)"), scCreateShortcut, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
 	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
+	theApp.m_js.addNative(_T("function FileExists(path)"), scFileExists, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
+	theApp.m_js.addNative(_T("function IsDirectory(path)"), scIsDirectory, (void *)this);
+	theApp.m_js.addNative(_T("function IsDirectoryEmpty(path)"), scIsDirectoryEmpty, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBoxYesNo(title, msg)"), scMessageBoxYesNo, (void *)this);
 	theApp.m_js.addNative(_T("function RegistryKeyValueExists(root, key, name)"), scRegistryKeyValueExists, (void *)this);
