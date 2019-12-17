@@ -479,7 +479,42 @@ public:
 				SFixupResourceData *furd = (SFixupResourceData *)p;
 				_tcscpy_s(furd->m_LaunchCmd, MAX_PATH, launchcmd);
 
-				_tcscpy_s(furd->m_VersionID, MAX_PATH, m_pDoc->m_VersionID);
+				CString vers = m_pDoc->m_VersionID;
+				if (PathFileExists(vers))
+				{
+					DWORD  verHandle = 0;
+					UINT   size = 0;
+					LPBYTE lpBuffer = NULL;
+					DWORD  verSize = GetFileVersionInfoSize(vers, &verHandle);
+
+					if (verSize != NULL)
+					{
+						LPSTR verData = new char[verSize];
+
+						if (GetFileVersionInfo(vers, verHandle, verSize, verData))
+						{
+							if (VerQueryValue(verData, _T("\\"), (VOID FAR * FAR*) & lpBuffer, &size))
+							{
+								if (size)
+								{
+									VS_FIXEDFILEINFO* verInfo = (VS_FIXEDFILEINFO*)lpBuffer;
+									if (verInfo->dwSignature == 0xfeef04bd)
+									{
+										vers.Format(_T("Version %d.%d.%d.%d"),
+											(verInfo->dwFileVersionMS >> 16) & 0xffff,
+											(verInfo->dwFileVersionMS >> 0) & 0xffff,
+											(verInfo->dwFileVersionLS >> 16) & 0xffff,
+											(verInfo->dwFileVersionLS >> 0) & 0xffff);
+									}
+								}
+							}
+						}
+
+						delete[] verData;
+					}
+				}
+
+				_tcscpy_s(furd->m_VersionID, MAX_PATH, vers);
 
 				UINT32 flags = 0;
 

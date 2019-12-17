@@ -224,7 +224,7 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 				{
 					CMFCPropertyGridProperty *pTitleProp = new CMFCPropertyGridProperty(_T("Caption"), pd->m_Caption, _T("Specifies the text that will be displayed in the window's title bar"));
 					CMFCPropertyGridProperty *pDescriptionProp = new CMFCPropertyGridProperty(_T("Description"), pd->m_Description, _T("Specifies the text that will be displayed in the window's main area to tell the end-user what the package is. May contain HTML in-line or reference a filename that contains HTML content"));
-					CMFCPropertyGridProperty *pVersionProp = new CMFCPropertyGridProperty(_T("Version ID"), pd->m_VersionID, _T("Specifies the version number that will be displayed by the installer"));
+					CMFCPropertyGridProperty *pVersionProp = new CMFCPropertyGridProperty(_T("Version ID"), pd->m_VersionID, _T("Specifies the version number that will be displayed by the installer. This is EITHER a string literal or the path to an .EXE, from which a version number will be extracted"));
 					CMFCPropertyGridFileProperty *pIconProp = new CMFCPropertyGridFileProperty(_T("Icon"), TRUE, pd->m_IconFile, _T("ico"), 0, szIcoFilter, _T("Specifies the ICO-format window icon"));
 					CMFCPropertyGridFileProperty *pImageProp = new CMFCPropertyGridFileProperty(_T("Image"), TRUE, pd->m_ImageFile, _T("bmp"), 0, szBmpFilter, _T("Specifies a BMP-format image that will be displayed on the window"));
 
