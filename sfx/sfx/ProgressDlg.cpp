@@ -642,6 +642,76 @@ void scSpawnProcess(CScriptVar *c, void *userdata)
 		ret->setInt(created ? 1 : 0);
 }
 
+void scGetExeVersion(CScriptVar* c, void* userdata)
+{
+	tstring fn = c->getParameter(_T("file"))->getString(), _fn;
+	ReplaceEnvironmentVariables(fn, _fn);
+	ReplaceRegistryKeys(_fn, fn);
+
+	TCHAR v[128];
+	_tcscpy_s(v, sizeof(v), _T("0.0.0.0"));
+
+	if (PathFileExists(fn.c_str()))
+	{
+		DWORD  verHandle = 0;
+		UINT   size = 0;
+		LPBYTE lpBuffer = NULL;
+		DWORD  verSize = GetFileVersionInfoSize(fn.c_str(), &verHandle);
+
+		if (verSize != NULL)
+		{
+			LPSTR verData = new char[verSize];
+
+			if (GetFileVersionInfo(fn.c_str(), verHandle, verSize, verData))
+			{
+				if (VerQueryValue(verData, _T("\\"), (VOID FAR * FAR*) & lpBuffer, &size))
+				{
+					if (size)
+					{
+						VS_FIXEDFILEINFO* verInfo = (VS_FIXEDFILEINFO*)lpBuffer;
+						if (verInfo->dwSignature == 0xfeef04bd)
+						{
+							_stprintf_s(v, sizeof(v), _T("%d.%d.%d.%d"),
+								(verInfo->dwFileVersionMS >> 16) & 0xffff,
+								(verInfo->dwFileVersionMS >> 0) & 0xffff,
+								(verInfo->dwFileVersionLS >> 16) & 0xffff,
+								(verInfo->dwFileVersionLS >> 0) & 0xffff);
+						}
+					}
+				}
+			}
+
+			delete[] verData;
+		}
+	}
+
+	CScriptVar* ret = c->getReturnVar();
+	if (ret)
+		ret->setString(tstring(v));
+}
+
+
+void scCompareStrings(CScriptVar* c, void* userdata)
+{
+	tstring str1 = c->getParameter(_T("str1"))->getString();
+	tstring str2 = c->getParameter(_T("str2"))->getString();
+
+	int cmp = _tcscmp(str1.c_str(), str2.c_str());
+
+	CScriptVar* ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(cmp);
+}
+
+
+void scAbortInstall(CScriptVar* c, void* userdata)
+{
+	exit(-1);
+}
+
+
+
+
 // ******************************************************************************
 // ******************************************************************************
 
@@ -657,6 +727,8 @@ DWORD CProgressDlg::RunInstall()
 
 	m_Progress.SetPos(0);
 
+	theApp.m_js.addNative(_T("function AbortInstall()"), scAbortInstall, (void*)this);
+	theApp.m_js.addNative(_T("function CompareStrings(str1, str2)"), scCompareStrings, (void*)this);
 	theApp.m_js.addNative(_T("function CopyFile(src, dst)"), scCopyFile, (void *)this);
 	theApp.m_js.addNative(_T("function CreateDirectoryTree(path)"), scCreateDirectoryTree, (void *)this);
 	theApp.m_js.addNative(_T("function CreateShortcut(file, target, args, rundir, desc, showmode, icon, iconidx)"), scCreateShortcut, (void *)this);
@@ -664,6 +736,7 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
 	theApp.m_js.addNative(_T("function FileExists(path)"), scFileExists, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
+	theApp.m_js.addNative(_T("function GetExeVersion(file)"), scGetExeVersion, (void*)this);
 	theApp.m_js.addNative(_T("function IsDirectory(path)"), scIsDirectory, (void *)this);
 	theApp.m_js.addNative(_T("function IsDirectoryEmpty(path)"), scIsDirectoryEmpty, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
