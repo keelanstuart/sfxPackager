@@ -649,7 +649,7 @@ void scGetExeVersion(CScriptVar* c, void* userdata)
 	ReplaceRegistryKeys(_fn, fn);
 
 	TCHAR v[128];
-	_tcscpy_s(v, sizeof(v), _T("0.0.0.0"));
+	_stprintf_s(v, 127, _T("%d.%d.%d.%d"), 0, 0, 0, 0);
 
 	if (PathFileExists(fn.c_str()))
 	{
@@ -671,7 +671,7 @@ void scGetExeVersion(CScriptVar* c, void* userdata)
 						VS_FIXEDFILEINFO* verInfo = (VS_FIXEDFILEINFO*)lpBuffer;
 						if (verInfo->dwSignature == 0xfeef04bd)
 						{
-							_stprintf_s(v, sizeof(v), _T("%d.%d.%d.%d"),
+							_stprintf_s(v, 127, _T("%d.%d.%d.%d"),
 								(verInfo->dwFileVersionMS >> 16) & 0xffff,
 								(verInfo->dwFileVersionMS >> 0) & 0xffff,
 								(verInfo->dwFileVersionLS >> 16) & 0xffff,
