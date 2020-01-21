@@ -262,6 +262,13 @@ BOOL CSfxApp::InitInstance()
 		m_pMainWnd = dlg;
 
 		HWND hwnd = dlg->GetSafeHwnd();
+
+#ifdef _DEBUG
+		// Crash if we don't reset this... not sure when / why this changed (update to VC?), but it definitely did!
+		_AFX_THREAD_STATE* pState = AfxGetThreadState();
+		pState->m_nDisablePumpCount = 0;
+#endif
+
 		INT_PTR nResponse = dlg->DoModal();
 
 		if (nResponse == IDOK)
