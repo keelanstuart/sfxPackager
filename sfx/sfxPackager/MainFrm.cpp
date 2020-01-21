@@ -44,6 +44,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWndEx)
 	ON_COMMAND(ID_APP_BUILDSFX, &CMainFrame::OnAppBuildsfx)
 	ON_UPDATE_COMMAND_UI(ID_APP_CANCELSFX, &CMainFrame::OnUpdateAppCancelSfx)
 	ON_COMMAND(ID_APP_CANCELSFX, &CMainFrame::OnAppCancelSfx)
+	ON_UPDATE_COMMAND_UI(ID_APP_TESTSFX, &CMainFrame::OnUpdateTestSfx)
 	ON_COMMAND(ID_APP_TESTSFX, &CMainFrame::OnTestSfx)
 	ON_WM_SETTINGCHANGE()
 END_MESSAGE_MAP()
@@ -503,6 +504,21 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 	}
 
 	return CMDIFrameWndEx::PreTranslateMessage(pMsg);
+}
+
+void CMainFrame::OnUpdateTestSfx(CCmdUI *pCmdUI)
+{
+	CChildFrame *pcf = (CChildFrame *)MDIGetActive();
+	if (!pcf)
+	{
+		pCmdUI->Enable(false);
+		return;
+	}
+
+	CWnd *pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CSfxPackagerView *pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
+	if (pView)
+		pView->OnUpdateAppTestSfx(pCmdUI);
 }
 
 void CMainFrame::OnTestSfx()

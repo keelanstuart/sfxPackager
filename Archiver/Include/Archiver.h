@@ -159,7 +159,7 @@ public:
 	// archive will be extracted at once, so no choice as to which file to extract is provided
 	// filename_buf will be filled with the absolute path that the file was extracted to, which
 	// is the relative path stored in the archive combined with the base output path provided
-	virtual EXTRACT_RESULT ExtractFile(size_t file_idx, tstring *output_filename = NULL, const TCHAR *override_filename = NULL) = NULL;
+	virtual EXTRACT_RESULT ExtractFile(size_t file_idx, tstring *output_filename = NULL, const TCHAR *override_filename = NULL, bool test_only = false) = NULL;
 
 	// Sets the base output path of the extractor
 	virtual void SetBaseOutputPath(const TCHAR *path) = NULL;

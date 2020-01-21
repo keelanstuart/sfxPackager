@@ -702,7 +702,7 @@ bool FLZACreateDirectories(const TCHAR *dir)
 }
 
 
-IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstring *output_filename, const TCHAR *override_filename)
+IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstring *output_filename, const TCHAR *override_filename, bool test_only)
 {
 	if (file_idx >= m_FileTable.size())
 		return IExtractor::ER_DONE;
@@ -742,8 +742,8 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 		else
 			_tcscpy_s(path, MAX_PATH, cvtpath.c_str());
 
-
-		FLZACreateDirectories(path);
+		if (!test_only)
+			FLZACreateDirectories(path);
 
 		PathAddBackslash(path);
 		_tcscat_s(path, MAX_PATH, cvtfile.c_str());
@@ -758,13 +758,16 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 	if ((fte.m_Flags & SFileTableEntry::FTEFLAG_SPANNED) && (file_idx == 0))
 		append = true;
 
-	HANDLE hf = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? OPEN_EXISTING : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hf != INVALID_HANDLE_VALUE)
+	HANDLE hf = INVALID_HANDLE_VALUE;
+	if (!test_only)
+		hf = CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, NULL, append ? OPEN_EXISTING : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	if ((hf != INVALID_HANDLE_VALUE) || test_only)
 	{
 		if (output_filename)
 			*output_filename = path;
 
-		if (append)
+		if (append && !test_only)
 			SetFilePointer(hf, 0, NULL, FILE_END);
 
 		SFileBlock b;
@@ -772,12 +775,16 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 		{
 			b.ReadCompressedData(m_pah->GetHandle());
 			b.DecompressData();
-			b.WriteUncompressedData(hf);
+			if (!test_only)
+				b.WriteUncompressedData(hf);
 		}
 
-		SetFileTime(hf, &(fte.m_FTCreated), NULL, &(fte.m_FTModified));
+		if (!test_only)
+		{
+			SetFileTime(hf, &(fte.m_FTCreated), NULL, &(fte.m_FTModified));
 
-		CloseHandle(hf);
+			CloseHandle(hf);
+		}
 	}
 	else
 	{

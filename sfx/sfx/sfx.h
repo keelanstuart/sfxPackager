@@ -41,6 +41,8 @@ public:
 	UINT32 m_CompressedFileCount;
 	UINT32 m_ZipParts;
 
+	bool m_TestOnlyMode;
+
 	CTinyJS m_js;
 
 	enum EScriptType
@@ -60,6 +62,7 @@ public:
 // Overrides
 public:
 	virtual BOOL InitInstance();
+	virtual BOOL ProcessMessageFilter(int code, LPMSG lpMsg);
 
 // Implementation
 

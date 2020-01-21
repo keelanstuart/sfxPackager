@@ -100,11 +100,36 @@ void RemoveQuitMessage(HWND hwnd)
 		PeekMessage(&tmp, hwnd, 0, 0, PM_REMOVE);
 }
 
+BOOL CSfxApp::ProcessMessageFilter(int code, LPMSG lpMsg)
+{
+	// Check to see if the modal dialog box is up
+	if (m_pActiveWnd != NULL)
+	{
+		if (lpMsg->hwnd == m_pActiveWnd->GetSafeHwnd() || ::IsChild(m_pActiveWnd->GetSafeHwnd(), lpMsg->hwnd))
+		{
+			// Use the global IsChild() function to get
+			// messages destined for the dialog's controls
+			// Perform customized message processing here
+		}
+	}
+
+	return CWinApp::ProcessMessageFilter(code, lpMsg);
+}
+
+
 // CSfxApp initialization
 
 BOOL CSfxApp::InitInstance()
 {
 	CWinApp::InitInstance();
+
+	m_TestOnlyMode = false;
+	tstring cmdline = m_lpCmdLine;
+	std::transform(cmdline.begin(), cmdline.end(), cmdline.begin(), _tolower);
+	if (!_tcsstr(cmdline.c_str(), _T("-testonly")))
+	{
+		m_TestOnlyMode = true;
+	}
 
 	registerFunctions(&m_js);
 	registerMathFunctions(&m_js);
@@ -263,6 +288,12 @@ BOOL CSfxApp::InitInstance()
 
 		RemoveQuitMessage(hwnd);
 
+#if defined (DEBUG)
+		_AFX_THREAD_STATE *pState = AfxGetThreadState();
+		pState->m_nDisablePumpCount = 0;
+#endif
+
+		m_pMainWnd = nullptr;
 		delete dlg;
 		dlg = NULL;
 	}

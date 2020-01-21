@@ -68,6 +68,7 @@ protected:
 	afx_msg void OnAppBuildsfx();
 	afx_msg void OnUpdateAppCancelSfx(CCmdUI *pCmdUI);
 	afx_msg void OnAppCancelSfx();
+	afx_msg void OnUpdateTestSfx(CCmdUI *pCmdUI);
 	afx_msg void OnTestSfx();
 
 	DECLARE_MESSAGE_MAP()

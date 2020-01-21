@@ -873,10 +873,20 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 
 						_tcscat(dst, (dstfilename && !wildcard) ? dstfilename : fd.cFileName);
 
-						msg.Format(_T("    Adding \"%s\" from \"%s\"...\r\n"), dst, fullfilename);
-						pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+						if (PathFileExists(fullfilename))
+						{
+							msg.Format(_T("    Adding \"%s\" from \"%s\"...\r\n"), dst, fullfilename);
+							pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
-						parc->AddFile(fullfilename, dst, &uncomp, &comp, scriptsnippet);
+							parc->AddFile(fullfilename, dst, &uncomp, &comp, scriptsnippet);
+						}
+						else
+						{
+							msg.Format(_T("    WARNING: \"%s\" NOT FOUND!\r\n"), fullfilename);
+							pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+
+							return false;
+						}
 					}
 				}
 
@@ -1016,7 +1026,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	}
 	else
 	{
-		msg.Format(_T("Added %d files, spanning %d archive(s). Compression ratio: %3.01f%%.\r\n"), parc->GetFileCount(IArchiver::IM_WHOLE), spanct, (double)m_UncompressedSize.QuadPart / (double)sz_totalcomp * 100.0);
+		msg.Format(_T("Added %d files, spanning %d archive(s). Compression ratio: %1.02f :: 1.\r\n"), parc->GetFileCount(IArchiver::IM_WHOLE), spanct, (double)m_UncompressedSize.QuadPart / (double)sz_totalcomp);
 		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 		msg.Format(_T("Done. (completed in: %02d:%02d:%02d)\r\n"), hours, minutes, seconds);

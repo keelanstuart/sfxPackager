@@ -35,10 +35,13 @@ CProgressDlg::CProgressDlg(CWnd* pParent /*=NULL*/)
 
 	m_CancelEvent = CreateEvent(NULL, true, false, NULL);
 	m_Thread = NULL;
+
+	m_mutexInstallStart = CreateMutex(NULL, TRUE, NULL);
 }
 
 CProgressDlg::~CProgressDlg()
 {
+	CloseHandle(m_mutexInstallStart);
 	CloseHandle(m_CancelEvent);
 }
 
@@ -95,13 +98,14 @@ BOOL CProgressDlg::OnInitDialog()
 		m_Progress.MoveWindow(r, FALSE);
 	}
 
-	CWnd *pst = GetDlgItem(IDC_PROGRESSTEXT);
+	CEdit *pst = dynamic_cast<CEdit *>(GetDlgItem(IDC_PROGRESSTEXT));
 	if (pst)
 	{
 		pst->GetWindowRect(r);
 		r.left += wd;
 		ScreenToClient(r);
 		pst->MoveWindow(r, FALSE);
+		pst->SetLimitText(USHORT_MAX);
 	}
 
 	if (m_Status.SubclassDlgItem(IDC_STATUS, this))
@@ -118,6 +122,7 @@ BOOL CProgressDlg::OnInitDialog()
 
 	m_Thread = CreateThread(NULL, 0, InstallThreadProc, this, 0, NULL);
 
+
 	SetWindowText(theApp.m_Caption);
 
 	ShowWindow(SW_SHOWNORMAL);
@@ -132,6 +137,14 @@ BOOL CProgressDlg::OnInitDialog()
 
 void CProgressDlg::OnPaint()
 {
+	static bool first_paint = true;
+	if (first_paint)
+	{
+		ReleaseMutex(m_mutexInstallStart);
+
+		first_paint = false;
+	}
+
 	if (IsIconic())
 	{
 		CPaintDC dc(this); // device context for painting
@@ -186,14 +199,22 @@ void CProgressDlg::OnCancel()
 	{
 		MSG msg;
 		BOOL bRet; 
+
+#if 1
+		while (AfxPumpMessage())
+		{
+
+		}
+#else
 		while ((bRet = GetMessage(&msg, NULL, 0, 0)) != FALSE)
-		{ 
+		{
 			if (bRet != -1)
 			{
-				TranslateMessage(&msg); 
-				DispatchMessage(&msg); 
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
 			}
-		} 
+		}
+#endif
 
 		// then wait for the thread to exit
 		Sleep(50);
@@ -385,7 +406,12 @@ void scCreateDirectoryTree(CScriptVar *c, void *userdata)
 	ReplaceEnvironmentVariables(path, _path);
 	ReplaceRegistryKeys(_path, path);
 
-	bool create_result = FLZACreateDirectories(path.c_str());
+	bool create_result = TRUE;
+	if (!theApp.m_TestOnlyMode)
+	{
+		create_result = FLZACreateDirectories(path.c_str());
+	}
+
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
 		ret->setInt(create_result ? 1 : 0);
@@ -402,7 +428,12 @@ void scCopyFile(CScriptVar *c, void *userdata)
 	ReplaceEnvironmentVariables(dst, _dst);
 	ReplaceRegistryKeys(_dst, dst);
 
-	BOOL copy_result = CopyFile(src.c_str(), dst.c_str(), false);
+	BOOL copy_result;
+	if (!theApp.m_TestOnlyMode)
+	{
+		copy_result = CopyFile(src.c_str(), dst.c_str(), false);
+	}
+
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
 		ret->setInt(copy_result ? 1 : 0);
@@ -419,7 +450,12 @@ void scRenameFile(CScriptVar *c, void *userdata)
 	ReplaceEnvironmentVariables(newname, _newname);
 	ReplaceRegistryKeys(_newname, newname);
 
-	int rename_result = _trename(filename.c_str(), newname.c_str());
+	int rename_result = TRUE;
+	if (!theApp.m_TestOnlyMode)
+	{
+		rename_result = _trename(filename.c_str(), newname.c_str());
+	}
+
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
 		ret->setInt((rename_result == 0) ? 1 : 0);
@@ -432,7 +468,13 @@ void scDeleteFile(CScriptVar *c, void *userdata)
 	ReplaceEnvironmentVariables(path, _path);
 	ReplaceRegistryKeys(_path, path);
 
-	BOOL delete_result = DeleteFile(path.c_str());
+
+	BOOL delete_result = TRUE;
+	if (!theApp.m_TestOnlyMode)
+	{
+		delete_result = DeleteFile(path.c_str());
+	}
+
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
 		ret->setInt(delete_result ? 1 : 0);
@@ -507,8 +549,11 @@ void scCreateShortcut(CScriptVar *c, void *userdata)
 
 	int iconidx = c->getParameter(_T("iconidx"))->getInt();
 
-	CreateShortcut(targ.c_str(), args.c_str(), file.c_str(), desc.c_str(),
-				   showmode, rundir.c_str(), icon.c_str(), iconidx);
+	if (!theApp.m_TestOnlyMode)
+	{
+		CreateShortcut(targ.c_str(), args.c_str(), file.c_str(), desc.c_str(),
+					   showmode, rundir.c_str(), icon.c_str(), iconidx);
+	}
 }
 
 
@@ -522,10 +567,13 @@ void scSetGlobalEnvironmentVariable(CScriptVar *c, void *userdata)
 	ReplaceEnvironmentVariables(val, _val);
 	ReplaceRegistryKeys(_val, val);
 
-	CRegKey cKey;
-	if (SUCCEEDED(cKey.Create(HKEY_LOCAL_MACHINE, _T("SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment"))))
+	if (!theApp.m_TestOnlyMode)
 	{
-		cKey.SetStringValue(var.c_str(), val.c_str());
+		CRegKey cKey;
+		if (SUCCEEDED(cKey.Create(HKEY_LOCAL_MACHINE, _T("SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment"))))
+		{
+			cKey.SetStringValue(var.c_str(), val.c_str());
+		}
 	}
 }
 
@@ -606,10 +654,13 @@ void scSetRegistryKeyValue(CScriptVar *c, void *userdata)
 	ReplaceEnvironmentVariables(val, _val);
 	ReplaceRegistryKeys(_val, val);
 
-	CRegKey cKey;
-	if (SUCCEEDED(cKey.Create(hr, key.c_str())))
+	if (!theApp.m_TestOnlyMode)
 	{
-		cKey.SetStringValue(name.c_str(), val.c_str());
+		CRegKey cKey;
+		if (SUCCEEDED(cKey.Create(hr, key.c_str())))
+		{
+			cKey.SetStringValue(name.c_str(), val.c_str());
+		}
 	}
 }
 
@@ -633,9 +684,14 @@ void scSpawnProcess(CScriptVar *c, void *userdata)
 	STARTUPINFO si = { 0 };
 	si.cb = sizeof(si);
 	PROCESS_INFORMATION pi;
-	BOOL created = CreateProcess(cmd.c_str(), (TCHAR *)(params.c_str()), NULL, NULL, FALSE, NULL, NULL, rundir.c_str(), &si, &pi);
-	if (created && block)
-		WaitForSingleObject(pi.hProcess, INFINITE);
+
+	BOOL created = true;
+	if (!theApp.m_TestOnlyMode)
+	{
+		created = CreateProcess(cmd.c_str(), (TCHAR *)(params.c_str()), NULL, NULL, FALSE, NULL, NULL, rundir.c_str(), &si, &pi);
+		if (created && block)
+			WaitForSingleObject(pi.hProcess, INFINITE);
+	}
 
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
@@ -717,6 +773,8 @@ void scAbortInstall(CScriptVar* c, void* userdata)
 
 DWORD CProgressDlg::RunInstall()
 {
+	WaitForSingleObject(m_mutexInstallStart, INFINITE);
+
 	DWORD ret = 0;
 
 	TCHAR exepath[MAX_PATH];
@@ -806,7 +864,7 @@ DWORD CProgressDlg::RunInstall()
 
 				m_Progress.SetPos((int)i + 1);
 
-				IExtractor::EXTRACT_RESULT er = pie->ExtractFile(i, &ffull);
+				IExtractor::EXTRACT_RESULT er = pie->ExtractFile(i, &ffull, nullptr, theApp.m_TestOnlyMode);
 
 				for (tstring::iterator rit = ffull.begin(), last_rit = ffull.end(); rit != last_rit; rit++)
 				{

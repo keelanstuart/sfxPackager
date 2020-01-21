@@ -40,6 +40,7 @@ protected:
 	CEdit m_Status;
 
 	HICON m_hIcon;
+	HANDLE m_mutexInstallStart;
 
 	DECLARE_MESSAGE_MAP()
 public:

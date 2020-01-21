@@ -108,6 +108,7 @@ public:
 	afx_msg void OnAdjustPosTop();
 	afx_msg void OnAdjustPosBottom();
 	afx_msg void OnUpdateAdjustPos(CCmdUI *pCmdUI);
+	afx_msg void OnUpdateAppTestSfx(CCmdUI *pCmdUI);
 
 	virtual BOOL PreTranslateMessage(MSG *pMsg);
 };

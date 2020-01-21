@@ -979,6 +979,37 @@ BOOL CSfxPackagerView::PreTranslateMessage(MSG *pMsg)
 }
 
 
+void CSfxPackagerView::OnUpdateAppTestSfx(CCmdUI *pCmdUI)
+{
+	CSfxPackagerDoc *pDoc = GetDocument();
+
+	bool enabled = false;
+	bool creating = (pDoc->m_hThread != NULL);
+	if (!creating)
+	{
+		TCHAR fullfilename[MAX_PATH];
+
+		if (PathIsRelative(pDoc->m_SfxOutputFile))
+		{
+			TCHAR docpath[MAX_PATH];
+			_tcscpy(docpath, pDoc->GetPathName());
+			PathRemoveFileSpec(docpath);
+			PathCombine(fullfilename, docpath, pDoc->m_SfxOutputFile);
+		}
+		else
+		{
+			_tcscpy(fullfilename, pDoc->m_SfxOutputFile);
+		}
+
+		bool exists = PathFileExists(fullfilename);
+		if (exists)
+			enabled = true;
+	}
+
+	pCmdUI->Enable(enabled);
+}
+
+
 void CSfxPackagerView::TestSfx()
 {
 	CSfxPackagerDoc *pDoc = GetDocument();
@@ -1007,5 +1038,5 @@ void CSfxPackagerView::TestSfx()
 	_tcscpy(path, fullfilename);
 	PathRemoveFileSpec(path);
 
-	BOOL created = CreateProcess(fullfilename, _T(""), NULL, NULL, FALSE, NULL, NULL, path, &si, &pi);
+	BOOL created = CreateProcess(fullfilename, _T("-testonly"), NULL, NULL, FALSE, NULL, NULL, path, &si, &pi);
 }
