@@ -197,15 +197,15 @@ void CProgressDlg::OnCancel()
 
 	while (m_Thread)
 	{
-		MSG msg;
-		BOOL bRet; 
-
 #if 1
 		while (AfxPumpMessage())
 		{
 
 		}
 #else
+		MSG msg;
+		BOOL bRet;
+
 		while ((bRet = GetMessage(&msg, NULL, 0, 0)) != FALSE)
 		{
 			if (bRet != -1)

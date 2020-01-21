@@ -73,7 +73,11 @@ public:
 		_tcscpy_s(m_CurrentFilename, MAX_PATH, base_filename);
 
 		m_hFile = INVALID_HANDLE_VALUE;
-		SetupSfxExecutable(m_BaseFilename);
+		if (!SetupSfxExecutable(m_BaseFilename))
+		{
+			CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
+			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, _T("SFX setup failed; your output exe may be locked or the directory set to read-only.\r\n"));
+		}
 		ASSERT(m_hFile != INVALID_HANDLE_VALUE);
 	}
 

@@ -1037,6 +1037,9 @@ void CSfxPackagerView::TestSfx()
 	TCHAR path[MAX_PATH];
 	_tcscpy(path, fullfilename);
 	PathRemoveFileSpec(path);
+	TCHAR command[MAX_PATH * 2];
+	_tcscpy(command, fullfilename);
+	_tcscat(command, _T(" -testonly"));
 
-	BOOL created = CreateProcess(fullfilename, _T("-testonly"), NULL, NULL, FALSE, NULL, NULL, path, &si, &pi);
+	BOOL created = CreateProcess(NULL, command, NULL, NULL, FALSE, NULL, NULL, path, &si, &pi);
 }
