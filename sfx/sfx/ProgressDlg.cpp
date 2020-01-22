@@ -17,6 +17,7 @@
 #include "ProgressDlg.h"
 #include "afxdialogex.h"
 #include <vector>
+#include "../sfxPackager/GenParser.h"
 
 #include "../../Archiver/Include/Archiver.h"
 
@@ -771,6 +772,23 @@ void scAbortInstall(CScriptVar* c, void* userdata)
 // ******************************************************************************
 // ******************************************************************************
 
+bool IsScriptEmpty(const tstring &scr)
+{
+	CGenParser gp;
+
+	gp.SetSourceData(scr.c_str(), scr.length());
+	while (gp.NextToken())
+	{
+		tstring t = gp.GetCurrentTokenString();
+		if ((t != _T("function")) && (t != _T("var")))
+			return false;
+
+		gp.NextLine();
+	}
+
+	return true;
+}
+
 DWORD CProgressDlg::RunInstall()
 {
 	WaitForSingleObject(m_mutexInstallStart, INFINITE);
@@ -818,7 +836,8 @@ DWORD CProgressDlg::RunInstall()
 
 		iscr += theApp.m_Script[CSfxApp::EScriptType::INIT];
 
-		theApp.m_js.execute(iscr);
+		if (!IsScriptEmpty(iscr))
+			theApp.m_js.execute(iscr);
 	}
 
 	bool cancelled = false;
@@ -907,7 +926,8 @@ DWORD CProgressDlg::RunInstall()
 							pfscr += _T("\n\n");
 							pfscr += snippet;
 
-							theApp.m_js.execute(pfscr);
+							if (!IsScriptEmpty(pfscr))
+								theApp.m_js.execute(pfscr);
 						}
 
 						msg.Format(_T("    %s (%" PRId64 "KB) [ok]\r\n"), ffull.c_str(), usize / 1024);
@@ -940,7 +960,8 @@ DWORD CProgressDlg::RunInstall()
 
 		fscr += theApp.m_Script[CSfxApp::EScriptType::FINISH];
 
-		theApp.m_js.execute(fscr);
+		if (!IsScriptEmpty(fscr))
+			theApp.m_js.execute(fscr);
 	}
 
 	msg.Format(_T("Done.\r\n"));
