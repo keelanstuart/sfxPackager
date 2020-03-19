@@ -3,6 +3,8 @@ A light-weight, self-extracting install creation utility for Windows
 
 Copyright (C) 2013-2019 Keelan Stuart (keelanstuart@gmail.com)
 
+View the User's Guide to see how it works! (https://github.com/keelanstuart/sfxPackager/blob/master/sfxPackager%20Users%20Guide.pdf)
+
 --------------------------
 A full users manual is unavailable at this time (though it may be forthcoming soon), but for simple operation,
 drag your files from Windows explorer onto the file list in your sfxpp project. The files will show up there and, 
