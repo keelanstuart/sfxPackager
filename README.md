@@ -3,7 +3,7 @@ A light-weight, self-extracting install creation utility for Windows
 
 Copyright (C) 2013-2019 Keelan Stuart (keelanstuart@gmail.com)
 
-View the User's Guide to see how it works! (https://github.com/keelanstuart/sfxPackager/blob/master/sfxPackager%20Users%20Guide.pdf)
+View the User's Guide to see how it works! (https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub?start=false&loop=false&delayms=30000)
 
 --------------------------
 A full users manual is unavailable at this time (though it may be forthcoming soon), but for simple operation,
