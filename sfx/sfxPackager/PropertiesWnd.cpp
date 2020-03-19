@@ -199,9 +199,13 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 			CMFCPropertyGridProperty *pSettingsGroup = new CMFCPropertyGridProperty(_T("Settings"));
 
 			CMFCPropertyGridProperty *pSfxNameProp = new CMFCPropertyGridFileProperty(_T("Output File"), FALSE, pd->m_SfxOutputFile, _T("exe"), 0, szExeFilter, _T("Specifies the output executable file that will be created when this project is built|*.exe"));
+			CMFCPropertyGridProperty *pAppendVersionProp = new CMFCPropertyGridProperty(_T("Append Version"), (_variant_t)((bool)pd->m_bAppendVersion), _T("If set, appends the version to the output file name, immediately before the extension (maj.min.rel.bld format)."));
+			CMFCPropertyGridProperty *pAppendBuildDateProp = new CMFCPropertyGridProperty(_T("Append Current Date"), (_variant_t)((bool)pd->m_bAppendBuildDate), _T("If set, appends the current date to the output file name, immediately before the extension (YYYYMMDD format)."));
 			CMFCPropertyGridProperty *pMaxSizeProp = new CMFCPropertyGridProperty(_T("Maximum Size (MB)"), pd->m_MaxSize, _T("The maximum size (in MB) constraint for generated sfx archives, beyond which, files will be split (-1 is no constraint)."));
 
 			pSettingsGroup->AddSubItem(pSfxNameProp);
+			pSettingsGroup->AddSubItem(pAppendVersionProp);
+			pSettingsGroup->AddSubItem(pAppendBuildDateProp);
 			pSettingsGroup->AddSubItem(pMaxSizeProp);
 
 			m_wndPropList.AddProperty(pSettingsGroup);

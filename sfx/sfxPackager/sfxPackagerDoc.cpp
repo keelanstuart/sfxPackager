@@ -33,6 +33,8 @@
 #include "../sfxFlags.h"
 
 #include <vector>
+#include <chrono>
+#include <ctime>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -58,7 +60,44 @@ bool CreateDirectories(const TCHAR *dir)
 	return true;
 }
 
+bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release, int &build)
+{
+	bool ret = false;
 
+	DWORD  verHandle = 0;
+	UINT   size = 0;
+	LPBYTE lpBuffer = NULL;
+	DWORD  verSize = GetFileVersionInfoSize(filename, &verHandle);
+
+	if (verSize != NULL)
+	{
+		LPSTR verData = new char[verSize];
+
+		if (GetFileVersionInfo(filename, verHandle, verSize, verData))
+		{
+			if (VerQueryValue(verData, _T("\\"), (VOID FAR * FAR *) & lpBuffer, &size))
+			{
+				if (size)
+				{
+					VS_FIXEDFILEINFO *verInfo = (VS_FIXEDFILEINFO *)lpBuffer;
+					if (verInfo->dwSignature == 0xfeef04bd)
+					{
+						major = (verInfo->dwFileVersionMS >> 16) & 0xffff;
+						minor = (verInfo->dwFileVersionMS >> 0) & 0xffff;
+						release = (verInfo->dwFileVersionLS >> 16) & 0xffff;
+						build = (verInfo->dwFileVersionLS >> 0) & 0xffff;
+
+						ret = true;
+					}
+				}
+			}
+		}
+
+		delete[] verData;
+	}
+
+	return ret;
+}
 
 class CSfxHandle : public IArchiveHandle
 {
@@ -397,7 +436,7 @@ public:
 					LOCAL_TCS2MBCS((LPCTSTR)m_pDoc->m_Description, shtml);
 				}
 
-				bresult = UpdateResource(hbur, RT_HTML, _T("welcome"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, strlen(shtml) * sizeof(char));
+				bresult = UpdateResource(hbur, RT_HTML, _T("welcome"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, DWORD(strlen(shtml) * sizeof(char)));
 
 				if (created_shtml)
 				{
@@ -486,35 +525,10 @@ public:
 				CString vers = m_pDoc->m_VersionID;
 				if (PathFileExists(vers))
 				{
-					DWORD  verHandle = 0;
-					UINT   size = 0;
-					LPBYTE lpBuffer = NULL;
-					DWORD  verSize = GetFileVersionInfoSize(vers, &verHandle);
-
-					if (verSize != NULL)
+					int major, minor, release, build;
+					if (GetFileVersion(vers, major, minor, release, build))
 					{
-						LPSTR verData = new char[verSize];
-
-						if (GetFileVersionInfo(vers, verHandle, verSize, verData))
-						{
-							if (VerQueryValue(verData, _T("\\"), (VOID FAR * FAR*) & lpBuffer, &size))
-							{
-								if (size)
-								{
-									VS_FIXEDFILEINFO* verInfo = (VS_FIXEDFILEINFO*)lpBuffer;
-									if (verInfo->dwSignature == 0xfeef04bd)
-									{
-										vers.Format(_T("Version %d.%d.%d.%d"),
-											(verInfo->dwFileVersionMS >> 16) & 0xffff,
-											(verInfo->dwFileVersionMS >> 0) & 0xffff,
-											(verInfo->dwFileVersionLS >> 16) & 0xffff,
-											(verInfo->dwFileVersionLS >> 0) & 0xffff);
-									}
-								}
-							}
-						}
-
-						delete[] verData;
+						vers.Format(_T("Version %d.%d.%d.%d"), major, minor, release, build);
 					}
 				}
 
@@ -596,6 +610,8 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 	m_bAllowDestChg = true;
 	m_bRequireAdmin = false;
 	m_bRequireReboot = false;
+	m_bAppendBuildDate = false;
+	m_bAppendVersion = false;
 
 	m_hCancelEvent = CreateEvent(NULL, true, false, NULL);
 	m_hThread = NULL;
@@ -933,9 +949,6 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 
 	CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
 
-	msg.Format(_T("Beginning build of \"%s\" (%s)...\r\n"), m_Caption, filename);
-	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
-
 	TCHAR fullfilename[MAX_PATH];
 
 	if (PathIsRelative(filename))
@@ -949,6 +962,60 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	{
 		_tcscpy(fullfilename, filename);
 	}
+
+	// if we're suppose to, append the current date to the filename before the extension
+	if (m_bAppendVersion || m_bAppendBuildDate)
+	{
+		TCHAR extcpy[MAX_PATH];
+		TCHAR *ext = PathFindExtension(fullfilename);
+		_tcscpy(extcpy, ext);
+		PathRemoveExtension(fullfilename);
+
+		if (m_bAppendVersion)
+		{
+			if (PathFileExists(m_VersionID))
+			{
+				int major, minor, release, build;
+				if (GetFileVersion(m_VersionID, major, minor, release, build))
+				{
+					_tcscat(fullfilename, _T("_"));
+
+					TCHAR vb[16];
+					_tcscat(fullfilename, _itot(major, vb, 10));
+					_tcscat(fullfilename, _T("."));
+					_tcscat(fullfilename, _itot(minor, vb, 10));
+					if (release || build)
+					{
+						_tcscat(fullfilename, _T("."));
+						_tcscat(fullfilename, _itot(release, vb, 10));
+
+						if (build)
+						{
+							_tcscat(fullfilename, _T("."));
+							_tcscat(fullfilename, _itot(build, vb, 10));
+						}
+					}
+				}
+			}
+		}
+
+		// if we're suppose to, append the current date to the filename before the extension
+		if (m_bAppendBuildDate)
+		{
+			auto now = std::chrono::system_clock::now();
+			std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+			struct tm *parts = std::localtime(&now_c);
+
+			TCHAR dates[MAX_PATH];
+			_stprintf(dates, _T("_%04d%02d%02d"), 1900 + parts->tm_year, 1 + parts->tm_mon, parts->tm_mday);
+			_tcscat(fullfilename, dates);
+		}
+
+		_tcscat(fullfilename, extcpy);
+	}
+
+	msg.Format(_T("Beginning build of \"%s\" (%s)...\r\n"), m_Caption, fullfilename);
+	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 	TStringArray created_archives;
 	TSizeArray created_archive_filecounts;
@@ -1643,6 +1710,10 @@ void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 				m_bRequireReboot = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
 			else if (!_tcsicmp(name.c_str(), _T("allowdestchg")))
 				m_bAllowDestChg = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
+			else if (!_tcsicmp(name.c_str(), _T("appendbuilddate")))
+				m_bAppendBuildDate = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
+			else if (!_tcsicmp(name.c_str(), _T("appendversion")))
+				m_bAppendVersion = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
 		}
 	}
 }
@@ -1838,6 +1909,10 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 		s += _T("\n\t\t<requirereboot value=\""); s += m_bRequireReboot ? _T("true") : _T("false"); s += _T("\"/>");
 
 		s += _T("\n\t\t<allowdestchg value=\""); s += m_bAllowDestChg ? _T("true") : _T("false"); s += _T("\"/>");
+
+		s += _T("\n\t\t<appendbuilddate value=\""); s += m_bAppendBuildDate ? _T("true") : _T("false"); s += _T("\"/>");
+
+		s += _T("\n\t\t<appendversion value=\""); s += m_bAppendVersion ? _T("true") : _T("false"); s += _T("\"/>");
 
 		TCHAR msb[32];
 		s += _T("\n\t\t<maxsize value=\""); _itot_s(m_MaxSize, msb, 32, 10); s += msb; s += _T("\"/>");

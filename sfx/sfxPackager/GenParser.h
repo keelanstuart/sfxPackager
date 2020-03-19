@@ -31,7 +31,7 @@ public:
 		TT_NUMTOKENTYPES
 	};
 
-	void SetSourceData(const TCHAR *data, UINT datalen);
+	void SetSourceData(const TCHAR *data, size_t datalen);
 
 	bool NextToken();
 	bool NextLine();
@@ -44,8 +44,8 @@ public:
 
 protected:
 	TCHAR *m_data;
-	UINT m_datalen;
-	UINT m_pos;
+	size_t m_datalen;
+	size_t m_pos;
 
 	TOKEN_TYPE m_curType;
 	tstring m_curStr;

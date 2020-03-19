@@ -70,6 +70,14 @@ void CPropertyGrid::OnPropertyChanged(CMFCPropertyGridProperty* pProp) const
 	{
 		pd->m_Caption = pProp->GetValue();
 	}
+	else if (!_tcsicmp(pProp->GetName(), _T("Append Current Date")))
+	{
+		pd->m_bAppendBuildDate = pProp->GetValue().boolVal ? true : false;
+	}
+	else if (!_tcsicmp(pProp->GetName(), _T("Append Version")))
+	{
+		pd->m_bAppendVersion = pProp->GetValue().boolVal ? true : false;
+	}
 	else if (!_tcsicmp(pProp->GetName(), _T("Require Admin")))
 	{
 		pd->m_bRequireAdmin = pProp->GetValue().boolVal ? true : false;

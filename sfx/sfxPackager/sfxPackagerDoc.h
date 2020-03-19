@@ -112,6 +112,8 @@ public:
 	CString m_Description;
 	CString m_DefaultPath;
 	CString m_VersionID;
+	bool m_bAppendVersion;
+	bool m_bAppendBuildDate;
 	bool m_bExploreOnComplete;
 	bool m_bRequireAdmin;
 	bool m_bRequireReboot;
