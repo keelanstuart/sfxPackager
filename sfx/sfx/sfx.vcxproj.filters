@@ -58,9 +58,8 @@
     <None Include="res\sfx_script_finish.bin">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="res\html1.htm" />
-    <None Include="res\empty.htm" />
     <None Include="res\welcome.htm" />
+    <None Include="res\license.htm" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sfx.h">
@@ -102,6 +101,12 @@
     <ClInclude Include="..\sfxPackager\GenParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LicenseEntryDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HttpDownload.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sfx.cpp">
@@ -135,6 +140,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\sfxPackager\GenParser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LicenseEntryDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HttpDownload.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

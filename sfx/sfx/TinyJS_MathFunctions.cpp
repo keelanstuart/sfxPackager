@@ -45,7 +45,7 @@ using namespace std;
 #define F_MAX(a,b)          ((a)>(b) ? (a) : (b))
 #define F_SGN(a)            ((a)>0 ? 1 : ((a)<0 ? -1 : 0 ))
 #define F_RNG(a,min,max)    ((a)<(min) ? min : ((a)>(max) ? max : a ))
-#define F_ROUND(a)          ((a)>0 ? (int) ((a)+0.5) : (int) ((a)-0.5) )
+#define F_ROUND(a)          ((a)>0 ? (int64_t) ((a)+0.5) : (int64_t) ((a)-0.5) )
 
 //CScriptVar shortcut macro
 #define scIsInt(a)          ( c->getParameter(a)->isInt() )

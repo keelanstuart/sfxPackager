@@ -105,6 +105,9 @@ void CScriptEditView::OnInitialUpdate()
 	ret &= m_reScriptEditor.Create(style | ES_SELECTIONBAR | ES_MULTILINE | ES_WANTRETURN | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_VSCROLL | WS_HSCROLL, r, this, CID_EDITOR);
 	if (ret)
 	{
+		// 1 MB of text... SHOULD be enough FFS!
+		m_reScriptEditor.LimitText(1 << 20);
+
 		m_reScriptEditor.SetSel(0, -1);
 		int cbi = m_cbScriptSelect.GetCurSel();
 		CString *s = (CString *)m_cbScriptSelect.GetItemData(cbi);

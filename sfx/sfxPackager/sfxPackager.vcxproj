@@ -107,6 +107,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="..\Bin\sfx64%24%28ShortConfiguration%29.exe" />
     <None Include="..\Bin\sfx64.exe" />
     <None Include="ReadMe.txt" />
     <None Include="res\classview.bmp" />

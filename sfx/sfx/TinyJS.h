@@ -47,7 +47,7 @@
 #endif // TRACE
 
 
-const int TINYJS_LOOP_MAX_ITERATIONS = 8192;
+const int64_t TINYJS_LOOP_MAX_ITERATIONS = 8192;
 
 enum LEX_TYPES
 {
@@ -142,34 +142,34 @@ class CScriptLex
 {
 public:
     CScriptLex(const tstring &input);
-    CScriptLex(CScriptLex *owner, int startChar, int endChar);
+    CScriptLex(CScriptLex *owner, int64_t startChar, int64_t endChar);
     ~CScriptLex(void);
 
     TCHAR currCh, nextCh;
-    int tk; ///< The type of the token that we have
-    int tokenStart; ///< Position in the data at the beginning of the token we have here
-    int tokenEnd; ///< Position in the data at the last character of the token we have here
-    int tokenLastEnd; ///< Position in the data at the last character of the last token
+    int64_t tk; ///< The type of the token that we have
+    int64_t tokenStart; ///< Position in the data at the beginning of the token we have here
+    int64_t tokenEnd; ///< Position in the data at the last character of the token we have here
+    int64_t tokenLastEnd; ///< Position in the data at the last character of the last token
     tstring tkStr; ///< Data contained in the token we have here
 
-    void match(int expected_tk); ///< Lexical match wotsit
-    static tstring getTokenStr(int token); ///< Get the string representation of the given token
+    void match(int64_t expected_tk); ///< Lexical match wotsit
+    static tstring getTokenStr(int64_t token); ///< Get the string representation of the given token
     void reset(); ///< Reset this lex so we can start again
 
-    tstring getSubString(int pos); ///< Return a sub-string from the given position up until right now
-    CScriptLex *getSubLex(int lastPosition); ///< Return a sub-lexer from the given position up until right now
+    tstring getSubString(int64_t pos); ///< Return a sub-string from the given position up until right now
+    CScriptLex *getSubLex(int64_t lastPosition); ///< Return a sub-lexer from the given position up until right now
 
-    tstring getPosition(int pos=-1); ///< Return a string representing the position in lines and columns of the character pos given
+    tstring getPosition(int64_t pos=-1); ///< Return a string representing the position in lines and columns of the character pos given
 
 protected:
     /* When we go into a loop, we use getSubLex to get a lexer for just the sub-part of the
        relevant string. This doesn't re-allocate and copy the string, but instead copies
        the data pointer and sets dataOwned to false, and dataStart/dataEnd to the relevant things. */
     TCHAR *data; ///< Data string to get tokens from
-    int dataStart, dataEnd; ///< Start and end position in data string
+    int64_t dataStart, dataEnd; ///< Start and end position in data string
     bool dataOwned; ///< Do we own this data string?
 
-    int dataPos; ///< Position in data (we CAN go past the end of the string here)
+    int64_t dataPos; ///< Position in data (we CAN go past the end of the string here)
 
     void getNextCh();
     void getNextToken(); ///< Get the text token from our text string
@@ -193,8 +193,8 @@ public:
   ~CScriptVarLink();
   void replaceWith(CScriptVar *newVar); ///< Replace the Variable pointed to
   void replaceWith(CScriptVarLink *newVar); ///< Replace the Variable pointed to (just dereferences)
-  int getIntName(); ///< Get the name as an integer (for arrays)
-  void setIntName(int n); ///< Set the name as an integer (for arrays)
+  int64_t getIntName(); ///< Get the name as an integer (for arrays)
+  void setIntName(int64_t n); ///< Set the name as an integer (for arrays)
 };
 
 /// Variable class (containing a doubly-linked list of children)
@@ -202,10 +202,10 @@ class CScriptVar
 {
 public:
     CScriptVar(); ///< Create undefined
-    CScriptVar(const tstring &varData, int varFlags); ///< User defined
+    CScriptVar(const tstring &varData, int64_t varFlags); ///< User defined
     CScriptVar(const tstring &str); ///< Create a string
     CScriptVar(double varData);
-    CScriptVar(int val);
+    CScriptVar(int64_t val);
     ~CScriptVar(void);
 
     CScriptVar *getReturnVar(); ///< If this is a function, get the result value (for use by native functions)
@@ -213,24 +213,24 @@ public:
     CScriptVar *getParameter(const tstring &name); ///< If this is a function, get the parameter with the given name (for use by native functions)
 
     CScriptVarLink *findChild(const tstring &childName); ///< Tries to find a child with the given name, may return 0
-    CScriptVarLink *findChildOrCreate(const tstring &childName, int varFlags = SCRIPTVAR_UNDEFINED); ///< Tries to find a child with the given name, or will create it with the given flags
+    CScriptVarLink *findChildOrCreate(const tstring &childName, int64_t varFlags = SCRIPTVAR_UNDEFINED); ///< Tries to find a child with the given name, or will create it with the given flags
     CScriptVarLink *findChildOrCreateByPath(const tstring &path); ///< Tries to find a child with the given path (separated by dots)
     CScriptVarLink *addChild(const tstring &childName, CScriptVar *child = nullptr);
     CScriptVarLink *addChildNoDup(const tstring &childName, CScriptVar *child = nullptr); ///< add a child overwriting any with the same name
     void removeChild(CScriptVar *child);
     void removeLink(CScriptVarLink *link); ///< Remove a specific link (this is faster than finding via a child)
     void removeAllChildren();
-    CScriptVar *getArrayIndex(int idx); ///< The the value at an array index
-    void setArrayIndex(int idx, CScriptVar *value); ///< Set the value at an array index
-    int getArrayLength(); ///< If this is an array, return the number of items in it (else 0)
-    int getChildren(); ///< Get the number of children
+    CScriptVar *getArrayIndex(int64_t idx); ///< The the value at an array index
+    void setArrayIndex(int64_t idx, CScriptVar *value); ///< Set the value at an array index
+    int64_t getArrayLength(); ///< If this is an array, return the number of items in it (else 0)
+    int64_t getChildren(); ///< Get the number of children
 
-    int getInt();
+    int64_t getInt();
     bool getBool() { return getInt() != 0; }
     double getDouble();
     const tstring &getString();
     tstring getParsableString(); ///< get Data as a parsable javascript string
-    void setInt(int num);
+    void setInt(int64_t num);
     void setDouble(double val);
     void setString(const tstring &str);
     void setUndefined();
@@ -249,7 +249,7 @@ public:
     bool isNull() { return (flags & SCRIPTVAR_NULL) != 0; }
     bool isBasic() { return firstChild == 0; } ///< Is this *not* an array/object/etc
 
-    CScriptVar *mathsOp(CScriptVar *b, int op); ///< do a maths op with another script variable
+    CScriptVar *mathsOp(CScriptVar *b, int64_t op); ///< do a maths op with another script variable
     void copyValue(CScriptVar *val); ///< copy the value from the value given
     CScriptVar *deepCopy(); ///< deep copy this node and return the result
 
@@ -264,14 +264,14 @@ public:
     /// For memory management/garbage collection
     CScriptVar *ref(); ///< Add reference to this variable
     void unref(); ///< Remove a reference, and delete this variable if required
-    int getRefs(); ///< Get the number of references to this script variable
+    int64_t getRefs(); ///< Get the number of references to this script variable
 protected:
-    int refs; ///< The number of references held to this - used for garbage collection
+    int64_t refs; ///< The number of references held to this - used for garbage collection
 
     tstring data; ///< The contents of this variable if it is a string
-    long intData; ///< The contents of this variable if it is an int
+    int64_t intData; ///< The contents of this variable if it is an int64_t
     double doubleData; ///< The contents of this variable if it is a double
-    int flags; ///< the flags determine the type of the variable - int/double/string/etc
+    int64_t flags; ///< the flags determine the type of the variable - int64_t/double/string/etc
     JSCallback jsCallback; ///< Callback for native functions
     void *jsCallbackUserData; ///< user data passed as second argument to native functions
 

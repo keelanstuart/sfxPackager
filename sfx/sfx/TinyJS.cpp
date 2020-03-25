@@ -269,7 +269,7 @@ bool isIDString(const TCHAR *s)
 
 void replace(tstring &str, TCHAR textFrom, const TCHAR *textTo)
 {
-	int sLen = _tcslen(textTo);
+	size_t sLen = _tcslen(textTo);
 	size_t p = str.find(textFrom);
 
 	while (p != string::npos)
@@ -313,7 +313,7 @@ tstring getJSString(const tstring &str)
 
 			default:
 			{
-				int nCh = ((int)nStr[i]) &0xFF;
+				uint8_t nCh = ((int64_t)nStr[i]) & 0xFF;
 				if ((nCh < 32) || (nCh > 127))
 				{
 					TCHAR buffer[5];
@@ -375,7 +375,7 @@ CScriptLex::CScriptLex(const tstring &input)
 	reset();
 }
 
-CScriptLex::CScriptLex(CScriptLex *owner, int startChar, int endChar)
+CScriptLex::CScriptLex(CScriptLex *owner, int64_t startChar, int64_t endChar)
 {
 	data = owner->data;
 	dataOwned = false;
@@ -405,7 +405,7 @@ void CScriptLex::reset()
 	getNextToken();
 }
 
-void CScriptLex::match(int expected_tk)
+void CScriptLex::match(int64_t expected_tk)
 {
 	if (tk != expected_tk)
 	{
@@ -418,7 +418,7 @@ void CScriptLex::match(int expected_tk)
 	getNextToken();
 }
 
-tstring CScriptLex::getTokenStr(int token)
+tstring CScriptLex::getTokenStr(int64_t token)
 {
 	if ((token > 32) && (token < 128))
 	{
@@ -811,9 +811,9 @@ void CScriptLex::getNextToken()
 	tokenEnd = dataPos - 3;
 }
 
-tstring CScriptLex::getSubString(int lastPosition)
+tstring CScriptLex::getSubString(int64_t lastPosition)
 {
-	int lastCharIdx = tokenLastEnd + 1;
+	int64_t lastCharIdx = tokenLastEnd + 1;
 
 	if (lastCharIdx < dataEnd)
 	{
@@ -833,9 +833,9 @@ tstring CScriptLex::getSubString(int lastPosition)
 }
 
 
-CScriptLex *CScriptLex::getSubLex(int lastPosition)
+CScriptLex *CScriptLex::getSubLex(int64_t lastPosition)
 {
-	int lastCharIdx = tokenLastEnd + 1;
+	int64_t lastCharIdx = tokenLastEnd + 1;
 
 	if (lastCharIdx < dataEnd)
 		return new CScriptLex(this, lastPosition, lastCharIdx);
@@ -843,14 +843,14 @@ CScriptLex *CScriptLex::getSubLex(int lastPosition)
 		return new CScriptLex(this, lastPosition, dataEnd);
 }
 
-tstring CScriptLex::getPosition(int pos)
+tstring CScriptLex::getPosition(int64_t pos)
 {
 	if (pos < 0)
 		pos = tokenLastEnd;
 
-	int line = 1, col = 1;
+	int64_t line = 1, col = 1;
 
-	for (int i=0; i < pos; i++)
+	for (int64_t i=0; i < pos; i++)
 	{
 		TCHAR ch;
 		if (i < dataEnd)
@@ -868,7 +868,7 @@ tstring CScriptLex::getPosition(int pos)
 	}
 
 	TCHAR buf[256];
-	_stprintf_s(buf, 256, _T("(line: %d, col: %d)"), line, col);
+	_stprintf_s(buf, 256, _T("(line: %" PRId64 ", col: %" PRId64 ")"), line, col);
 
 	return buf;
 }
@@ -926,15 +926,15 @@ void CScriptVarLink::replaceWith(CScriptVarLink *newVar)
 		replaceWith(new CScriptVar());
 }
 
-int CScriptVarLink::getIntName()
+int64_t CScriptVarLink::getIntName()
 {
 	return _ttoi(name.c_str());
 }
 
-void CScriptVarLink::setIntName(int n)
+void CScriptVarLink::setIntName(int64_t n)
 {
 	TCHAR sIdx[64];
-	_stprintf_s(sIdx, sizeof(sIdx), _T("%d"), n);
+	_stprintf_s(sIdx, sizeof(sIdx), _T("%" PRId64), n);
 	name = sIdx;
 }
 
@@ -964,7 +964,7 @@ CScriptVar::CScriptVar(const tstring &str)
 }
 
 
-CScriptVar::CScriptVar(const tstring &varData, int varFlags)
+CScriptVar::CScriptVar(const tstring &varData, int64_t varFlags)
 {
 	refs = 0;
 
@@ -999,7 +999,7 @@ CScriptVar::CScriptVar(double val)
 	setDouble(val);
 }
 
-CScriptVar::CScriptVar(int val)
+CScriptVar::CScriptVar(int64_t val)
 {
 	refs = 0;
 
@@ -1061,7 +1061,7 @@ CScriptVarLink *CScriptVar::findChild(const tstring &childName)
 	return 0;
 }
 
-CScriptVarLink *CScriptVar::findChildOrCreate(const tstring &childName, int varFlags)
+CScriptVarLink *CScriptVar::findChildOrCreate(const tstring &childName, int64_t varFlags)
 {
 	CScriptVarLink *l = findChild(childName);
 	if (l)
@@ -1177,10 +1177,10 @@ void CScriptVar::removeAllChildren()
 	lastChild = 0;
 }
 
-CScriptVar *CScriptVar::getArrayIndex(int idx)
+CScriptVar *CScriptVar::getArrayIndex(int64_t idx)
 {
 	TCHAR sIdx[64];
-	_stprintf_s(sIdx, sizeof(sIdx), _T("%d"), idx);
+	_stprintf_s(sIdx, sizeof(sIdx), _T("%" PRId64), idx);
 
 	CScriptVarLink *link = findChild(sIdx);
 	if (link)
@@ -1189,10 +1189,10 @@ CScriptVar *CScriptVar::getArrayIndex(int idx)
 		return new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_NULL); // undefined
 }
 
-void CScriptVar::setArrayIndex(int idx, CScriptVar *value)
+void CScriptVar::setArrayIndex(int64_t idx, CScriptVar *value)
 {
 	TCHAR sIdx[64];
-	_stprintf_s(sIdx, sizeof(sIdx), _T("%d"), idx);
+	_stprintf_s(sIdx, sizeof(sIdx), _T("%" PRId64), idx);
 	CScriptVarLink *link = findChild(sIdx);
 	
 	if (link)
@@ -1209,9 +1209,9 @@ void CScriptVar::setArrayIndex(int idx, CScriptVar *value)
 	}
 }
 
-int CScriptVar::getArrayLength()
+int64_t CScriptVar::getArrayLength()
 {
-	int highest = -1;
+	int64_t highest = -1;
 	if (!isArray())
 		return 0;
 
@@ -1220,7 +1220,7 @@ int CScriptVar::getArrayLength()
 	{
 		if (isNumber(link->name))
 		{
-			int val = _ttoi(link->name.c_str());
+			int64_t val = _ttoi(link->name.c_str());
 			if (val > highest)
 				highest = val;
 		}
@@ -1231,9 +1231,9 @@ int CScriptVar::getArrayLength()
 	return highest + 1;
 }
 
-int CScriptVar::getChildren()
+int64_t CScriptVar::getChildren()
 {
-	int n = 0;
+	int64_t n = 0;
 
 	CScriptVarLink *link = firstChild;
 	while (link)
@@ -1245,7 +1245,7 @@ int CScriptVar::getChildren()
 	return n;
 }
 
-int CScriptVar::getInt()
+int64_t CScriptVar::getInt()
 {
 	/* strtol understands about hex and octal */
 	if (isInt())
@@ -1258,7 +1258,7 @@ int CScriptVar::getInt()
 		return 0;
 
 	if (isDouble())
-		return (int)doubleData;
+		return (int64_t)doubleData;
 
 	return 0;
 }
@@ -1269,7 +1269,7 @@ double CScriptVar::getDouble()
 		return doubleData;
 
 	if (isInt())
-		return intData;
+		return (double)intData;
 
 	if (isNull())
 		return 0;
@@ -1313,7 +1313,7 @@ const tstring &CScriptVar::getString()
 	return data;
 }
 
-void CScriptVar::setInt(int val)
+void CScriptVar::setInt(int64_t val)
 {
 	flags = (flags & ~SCRIPTVAR_VARTYPEMASK) | SCRIPTVAR_INTEGER;
 	intData = val;
@@ -1366,7 +1366,7 @@ bool CScriptVar::equals(CScriptVar *v)
 	return res;
 }
 
-CScriptVar *CScriptVar::mathsOp(CScriptVar *b, int op)
+CScriptVar *CScriptVar::mathsOp(CScriptVar *b, int64_t op)
 {
 	CScriptVar *a = this;
 
@@ -1388,18 +1388,18 @@ CScriptVar *CScriptVar::mathsOp(CScriptVar *b, int op)
 		}
 
 		if (op == LEX_TYPEEQUAL)
-			return new CScriptVar(eql);
+			return new CScriptVar(eql ? 1ll : 0ll);
 		else
-			return new CScriptVar(!eql);
+			return new CScriptVar(!eql ? 0ll : 1ll);
 	}
 
 	// do maths...
 	if (a->isUndefined() && b->isUndefined())
 	{
 		if (op == LEX_EQUAL)
-			return new CScriptVar(true);
+			return new CScriptVar(1ll);
 		else if (op == LEX_NEQUAL)
-			return new CScriptVar(false);
+			return new CScriptVar(0ll);
 		else
 			return new CScriptVar(); // undefined
 	}
@@ -1408,8 +1408,8 @@ CScriptVar *CScriptVar::mathsOp(CScriptVar *b, int op)
 		if (!a->isDouble() && !b->isDouble())
 		{
 			// use ints
-			int da = a->getInt();
-			int db = b->getInt();
+			int64_t da = a->getInt();
+			int64_t db = b->getInt();
 
 			switch (op)
 			{
@@ -1421,12 +1421,12 @@ CScriptVar *CScriptVar::mathsOp(CScriptVar *b, int op)
 				case _T('|'):		return new CScriptVar(da | db);
 				case _T('^'):		return new CScriptVar(da ^ db);
 				case _T('%'):		return new CScriptVar(da % db);
-				case LEX_EQUAL:		return new CScriptVar(da == db);
-				case LEX_NEQUAL:	return new CScriptVar(da != db);
-				case _T('<'):		return new CScriptVar(da < db);
-				case LEX_LEQUAL:	return new CScriptVar(da <= db);
-				case _T('>'):		return new CScriptVar(da > db);
-				case LEX_GEQUAL:	return new CScriptVar(da >= db);
+				case LEX_EQUAL:		return new CScriptVar((da == db) ? 1ll : 0ll);
+				case LEX_NEQUAL:	return new CScriptVar((da != db) ? 1ll : 0ll);
+				case _T('<'):		return new CScriptVar((da < db) ? 1ll : 0ll);
+				case LEX_LEQUAL:	return new CScriptVar((da <= db) ? 1ll : 0ll);
+				case _T('>'):		return new CScriptVar((da > db) ? 1ll : 0ll);
+				case LEX_GEQUAL:	return new CScriptVar((da >= db) ? 1ll : 0ll);
 				default:			throw new CScriptException(_T("Operation ") + CScriptLex::getTokenStr(op) + _T(" not supported on the Int datatype"));
 			}
 		}
@@ -1442,12 +1442,12 @@ CScriptVar *CScriptVar::mathsOp(CScriptVar *b, int op)
 				case _T('-'):		return new CScriptVar(da - db);
 				case _T('*'):		return new CScriptVar(da * db);
 				case _T('/'):		return new CScriptVar(da / db);
-				case LEX_EQUAL:		return new CScriptVar(da == db);
-				case LEX_NEQUAL:	return new CScriptVar(da != db);
-				case _T('<'):		return new CScriptVar(da < db);
-				case LEX_LEQUAL:	return new CScriptVar(da <= db);
-				case _T('>'):		return new CScriptVar(da > db);
-				case LEX_GEQUAL:	return new CScriptVar(da >= db);
+				case LEX_EQUAL:		return new CScriptVar((da == db) ? 1ll : 0ll);
+				case LEX_NEQUAL:	return new CScriptVar((da != db) ? 1ll : 0ll);
+				case _T('<'):		return new CScriptVar((da < db) ? 1ll : 0ll);
+				case LEX_LEQUAL:	return new CScriptVar((da <= db) ? 1ll : 0ll);
+				case _T('>'):		return new CScriptVar((da > db) ? 1ll : 0ll);
+				case LEX_GEQUAL:	return new CScriptVar((da >= db) ? 1ll : 0ll);
 				default:			throw new CScriptException(_T("Operation ") + CScriptLex::getTokenStr(op) + _T(" not supported on the Double datatype"));
 			}
 		}
@@ -1457,8 +1457,8 @@ CScriptVar *CScriptVar::mathsOp(CScriptVar *b, int op)
 		/* Just check pointers */
 		switch (op)
 		{
-			case LEX_EQUAL:		return new CScriptVar(a == b);
-			case LEX_NEQUAL:	return new CScriptVar(a != b);
+			case LEX_EQUAL:		return new CScriptVar((a == b) ? 1ll : 0ll);
+			case LEX_NEQUAL:	return new CScriptVar((a != b) ? 1ll : 0ll);
 			default:			throw new CScriptException(_T("Operation ") + CScriptLex::getTokenStr(op) + _T(" not supported on the Array datatype"));
 		}
 	}
@@ -1467,8 +1467,8 @@ CScriptVar *CScriptVar::mathsOp(CScriptVar *b, int op)
 		/* Just check pointers */
 		switch (op)
 		{
-			case LEX_EQUAL:		return new CScriptVar(a == b);
-			case LEX_NEQUAL:	return new CScriptVar(a != b);
+			case LEX_EQUAL:		return new CScriptVar((a == b) ? 1ll : 0ll);
+			case LEX_NEQUAL:	return new CScriptVar((a != b) ? 1ll : 0ll);
 			default:			throw new CScriptException(_T("Operation ") + CScriptLex::getTokenStr(op) + _T(" not supported on the Object datatype"));
 		}
 	}
@@ -1481,12 +1481,12 @@ CScriptVar *CScriptVar::mathsOp(CScriptVar *b, int op)
 		switch (op)
 		{
 			case _T('+'):		return new CScriptVar(da + db, SCRIPTVAR_STRING);
-			case LEX_EQUAL:		return new CScriptVar(da==db);
-			case LEX_NEQUAL:	return new CScriptVar(da!=db);
-			case _T('<'):		return new CScriptVar(da<db);
-			case LEX_LEQUAL:	return new CScriptVar(da<=db);
-			case _T('>'):		return new CScriptVar(da>db);
-			case LEX_GEQUAL:	return new CScriptVar(da>=db);
+			case LEX_EQUAL:		return new CScriptVar((da==db) ? 1ll : 0ll);
+			case LEX_NEQUAL:	return new CScriptVar((da!=db) ? 1ll : 0ll);
+			case _T('<'):		return new CScriptVar((da<db) ? 1ll : 0ll);
+			case LEX_LEQUAL:	return new CScriptVar((da<=db) ? 1ll : 0ll);
+			case _T('>'):		return new CScriptVar((da>db) ? 1ll : 0ll);
+			case LEX_GEQUAL:	return new CScriptVar((da>=db) ? 1ll : 0ll);
 			default:			throw new CScriptException(_T("Operation ") + CScriptLex::getTokenStr(op) + _T(" not supported on the string datatype"));
 		}
 	}
@@ -1671,11 +1671,11 @@ void CScriptVar::getJSON(tostringstream &destination, const tstring linePrefix)
 		tstring indentedLinePrefix = linePrefix + _T("  ");
 		destination << _T("[\n");
 
-		int len = getArrayLength();
+		int64_t len = getArrayLength();
 		if (len > 10000)
 			len = 10000; // we don't want to get stuck here!
 
-		for (int i = 0; i < len; i++)
+		for (int64_t i = 0; i < len; i++)
 		{
 			getArrayIndex(i)->getJSON(destination, indentedLinePrefix);
 
@@ -1716,7 +1716,7 @@ void CScriptVar::unref()
 	}
 }
 
-int CScriptVar::getRefs()
+int64_t CScriptVar::getRefs()
 {
 	return refs;
 }
@@ -1784,7 +1784,7 @@ void CTinyJS::execute(const tstring &code)
 		msg << _T("Error ") << e->text;
 
 #ifdef TINYJS_CALL_STACK
-		for (int i = (int)call_stack.size() - 1; i >= 0; i--)
+		for (int64_t i = (int64_t)call_stack.size() - 1; i >= 0; i--)
 			msg << _T("\n") << i << _T(": ") << call_stack.at(i);
 #endif
 		msg << _T(" at ") << l->getPosition();
@@ -1836,7 +1836,7 @@ CScriptVarLink CTinyJS::evaluateComplex(const tstring &code)
 		msg << _T("Error ") << e->text;
 
 #ifdef TINYJS_CALL_STACK
-		for (int i = (int)call_stack.size() - 1; i >= 0; i--)
+		for (int64_t i = (int64_t)call_stack.size() - 1; i >= 0; i--)
 			msg << _T("\n") << i << _T(": ") << call_stack.at(i);
 #endif
 		msg << _T(" at ") << l->getPosition();
@@ -1937,7 +1937,7 @@ CScriptVarLink *CTinyJS::parseFunctionDefinition()
 	CScriptVarLink *funcVar = new CScriptVarLink(new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_FUNCTION), funcName);
 
 	parseFunctionArguments(funcVar->var);
-	int funcBegin = l->tokenStart;
+	int64_t funcBegin = l->tokenStart;
 	bool noexecute = false;
 	block(noexecute);
 	funcVar->var->data = l->getSubString(funcBegin);
@@ -1972,21 +1972,25 @@ CScriptVarLink *CTinyJS::functionCall(bool &execute, CScriptVarLink *function, C
 		while (v)
 		{
 			CScriptVarLink *value = base(execute);
-			if (execute)
+			if (value)
 			{
-				if (value->var->isBasic())
+				if (execute)
 				{
-					// pass by value
-					functionRoot->addChild(v->name, value->var->deepCopy());
+					if (value->var->isBasic())
+					{
+						// pass by value
+						functionRoot->addChild(v->name, value->var->deepCopy());
+					}
+					else
+					{
+						// pass by reference
+						functionRoot->addChild(v->name, value->var);
+					}
 				}
-				else
-				{
-					// pass by reference
-					functionRoot->addChild(v->name, value->var);
-				}
+
+				CLEAN(value);
 			}
 
-			CLEAN(value);
 			if (l->tk != _T(')'))
 				l->match(_T(','));
 
@@ -2101,13 +2105,13 @@ CScriptVarLink *CTinyJS::factor(bool &execute)
 	if (l->tk == LEX_R_TRUE)
 	{
 		l->match(LEX_R_TRUE);
-		return new CScriptVarLink(new CScriptVar(1));
+		return new CScriptVarLink(new CScriptVar(1ll));
 	}
 
 	if (l->tk == LEX_R_FALSE)
 	{
 		l->match(LEX_R_FALSE);
-		return new CScriptVarLink(new CScriptVar(0));
+		return new CScriptVarLink(new CScriptVar(0ll));
 	}
 
 	if (l->tk == LEX_R_NULL)
@@ -2161,12 +2165,12 @@ CScriptVarLink *CTinyJS::factor(bool &execute)
 						// if we haven't found this defined yet, use the built-in 'length' properly
 						if (a->var->isArray() && (name == _T("length")))
 						{
-							int l = a->var->getArrayLength();
+							int64_t l = a->var->getArrayLength();
 							child = new CScriptVarLink(new CScriptVar(l));
 						}
 						else if (a->var->isString() && (name == _T("length")))
 						{
-							int l = a->var->getString().size();
+							int64_t l = a->var->getString().size();
 							child = new CScriptVarLink(new CScriptVar(l));
 						}
 						else
@@ -2265,14 +2269,14 @@ CScriptVarLink *CTinyJS::factor(bool &execute)
 		// JSON-style array
 		l->match(_T('['));
 
-		int idx = 0;
+		int64_t idx = 0;
 
 		while (l->tk != _T(']'))
 		{
 			if (execute)
 			{
 				TCHAR idx_str[16]; // big enough for 2^32
-				_stprintf_s(idx_str, sizeof(idx_str), _T("%d"), idx);
+				_stprintf_s(idx_str, sizeof(idx_str), _T("%" PRId64), idx);
 
 				CScriptVarLink *a = base(execute);
 				contents->addChild(idx_str, a->var);
@@ -2368,7 +2372,7 @@ CScriptVarLink *CTinyJS::unary(bool &execute)
 
 		if (execute)
 		{
-			CScriptVar zero(0);
+			CScriptVar zero(0ll);
 			CScriptVar *res = a->var->mathsOp(&zero, LEX_EQUAL);
 
 			CREATE_LINK(a, res);
@@ -2388,7 +2392,7 @@ CScriptVarLink *CTinyJS::term(bool &execute)
 	
 	while ((l->tk == _T('*')) || (l->tk == _T('/')) || (l->tk == _T('%')))
 	{
-		int op = l->tk;
+		int64_t op = l->tk;
 		
 		l->match(l->tk);
 		
@@ -2417,21 +2421,21 @@ CScriptVarLink *CTinyJS::expression(bool &execute)
 	CScriptVarLink *a = term(execute);
 	if (negate)
 	{
-		CScriptVar zero(0);
+		CScriptVar zero(0ll);
 		CScriptVar *res = zero.mathsOp(a->var, _T('-'));
 		CREATE_LINK(a, res);
 	}
 	
 	while ((l->tk == _T('+')) || (l->tk == _T('-')) || (l->tk == LEX_PLUSPLUS) || (l->tk == LEX_MINUSMINUS))
 	{
-		int op = l->tk;
+		int64_t op = l->tk;
 		l->match(l->tk);
 		
 		if ((op == LEX_PLUSPLUS) || (op == LEX_MINUSMINUS))
 		{
 			if (execute)
 			{
-				CScriptVar one(1);
+				CScriptVar one((int64_t)1);
 				CScriptVar *res = a->var->mathsOp(&one, (op == LEX_PLUSPLUS) ? _T('+') : _T('-'));
 				
 				CScriptVarLink *oldValue = new CScriptVarLink(a->var);
@@ -2466,11 +2470,11 @@ CScriptVarLink *CTinyJS::shift(bool &execute)
 	CScriptVarLink *a = expression(execute);
 	if ((l->tk == LEX_LSHIFT) || (l->tk == LEX_RSHIFT) || (l->tk == LEX_RSHIFTUNSIGNED))
 	{
-		int op = l->tk;
+		int64_t op = l->tk;
 		l->match(op);
 
 		CScriptVarLink *b = base(execute);
-		int shift = execute ? b->var->getInt() : 0;
+		int64_t shift = execute ? b->var->getInt() : 0;
 
 		CLEAN(b);
 
@@ -2483,7 +2487,7 @@ CScriptVarLink *CTinyJS::shift(bool &execute)
 				a->var->setInt(a->var->getInt() >> shift);
 
 			if (op == LEX_RSHIFTUNSIGNED)
-				a->var->setInt(((unsigned int)a->var->getInt()) >> shift);
+				a->var->setInt(((uint64_t)a->var->getInt()) >> shift);
 		}
 	}
 
@@ -2500,7 +2504,7 @@ CScriptVarLink *CTinyJS::condition(bool &execute)
 		(l->tk == LEX_LEQUAL) || (l->tk == LEX_GEQUAL) ||
 		(l->tk == _T('<')) || (l->tk == _T('>')))
 	{
-		int op = l->tk;
+		int64_t op = l->tk;
 
 		l->match(l->tk);
 
@@ -2526,7 +2530,7 @@ CScriptVarLink *CTinyJS::logic(bool &execute)
 	while ((l->tk == _T('&')) || (l->tk == _T('|')) || (l->tk == _T('^')) || (l->tk == LEX_ANDAND) || (l->tk == LEX_OROR))
 	{
 		bool noexecute = false;
-		int op = l->tk;
+		int64_t op = l->tk;
 
 		l->match(l->tk);
 
@@ -2554,8 +2558,8 @@ CScriptVarLink *CTinyJS::logic(bool &execute)
 		{
 			if (boolean)
 			{
-				CScriptVar *newa = new CScriptVar(a->var->getBool());
-				CScriptVar *newb = new CScriptVar(b->var->getBool());
+				CScriptVar *newa = new CScriptVar(a->var->getBool() ? 1ll : 0ll);
+				CScriptVar *newb = new CScriptVar(b->var->getBool() ? 1ll : 0ll);
 
 				CREATE_LINK(a, newa);
 				CREATE_LINK(b, newb);
@@ -2631,7 +2635,7 @@ CScriptVarLink *CTinyJS::base(bool &execute)
 			}
 		}
 		
-		int op = l->tk;
+		int64_t op = l->tk;
 		l->match(l->tk);
 		
 		CScriptVarLink *rhs = base(execute);
@@ -2677,7 +2681,7 @@ void CTinyJS::block(bool &execute)
 	else
 	{
 		// fast skip of blocks
-		int brackets = 1;
+		int64_t brackets = 1;
 
 		while (l->tk && brackets)
 		{
@@ -2788,7 +2792,7 @@ void CTinyJS::statement(bool &execute)
 		l->match(LEX_R_WHILE);
 		l->match(_T('('));
 
-		int whileCondStart = l->tokenStart;
+		int64_t whileCondStart = l->tokenStart;
 		bool noexecute = false;
 		CScriptVarLink *cond = base(execute);
 		bool loopCond = execute && cond->var->getBool();
@@ -2797,13 +2801,13 @@ void CTinyJS::statement(bool &execute)
 
 		l->match(_T(')'));
 
-		int whileBodyStart = l->tokenStart;
+		int64_t whileBodyStart = l->tokenStart;
 		statement(loopCond ? execute : noexecute);
 
 		CScriptLex *whileBody = l->getSubLex(whileBodyStart);
 		CScriptLex *oldLex = l;
 
-		int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
+		int64_t loopCount = TINYJS_LOOP_MAX_ITERATIONS;
 		while (loopCond && (loopCount-- > 0))
 		{
 			whileCond->reset();
@@ -2841,7 +2845,7 @@ void CTinyJS::statement(bool &execute)
 
 		statement(execute); // initialisation
 
-		int forCondStart = l->tokenStart;
+		int64_t forCondStart = l->tokenStart;
 		bool noexecute = false;
 
 		CScriptVarLink *cond = base(execute); // condition
@@ -2853,7 +2857,7 @@ void CTinyJS::statement(bool &execute)
 
 		l->match(_T(';'));
 
-		int forIterStart = l->tokenStart;
+		int64_t forIterStart = l->tokenStart;
 
 		CLEAN(base(noexecute)); // iterator
 
@@ -2861,7 +2865,7 @@ void CTinyJS::statement(bool &execute)
 
 		l->match(_T(')'));
 
-		int forBodyStart = l->tokenStart;
+		int64_t forBodyStart = l->tokenStart;
 		statement(loopCond ? execute : noexecute);
 		CScriptLex *forBody = l->getSubLex(forBodyStart);
 		CScriptLex *oldLex = l;
@@ -2873,7 +2877,7 @@ void CTinyJS::statement(bool &execute)
 			CLEAN(base(execute));
 		}
 
-		int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
+		int64_t loopCount = TINYJS_LOOP_MAX_ITERATIONS;
 
 		while (execute && loopCond && (loopCount-- > 0))
 		{
@@ -3007,7 +3011,7 @@ bool CTinyJS::setVariable(const tstring &path, const tstring &varData)
 	{
 		if (var->isInt())
 		{
-			var->setInt((int)_tcstol(varData.c_str(), 0, 0));
+			var->setInt((int64_t)_tcstol(varData.c_str(), 0, 0));
 		}
 		else if (var->isDouble())
 		{
@@ -3027,7 +3031,7 @@ bool CTinyJS::setVariable(const tstring &path, const tstring &varData)
 /// Finds a child, looking recursively up the scopes
 CScriptVarLink *CTinyJS::findInScopes(const tstring &childName)
 {
-	for (int s = scopes.size() - 1; s >= 0; s--)
+	for (int64_t s = scopes.size() - 1; s >= 0; s--)
 	{
 		CScriptVarLink *v = scopes[s]->findChild(childName);
 

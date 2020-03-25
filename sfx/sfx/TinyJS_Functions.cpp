@@ -61,9 +61,9 @@ void scMathRand(CScriptVar *c, void *)
 
 void scMathRandInt(CScriptVar *c, void *)
 {
-	int min = c->getParameter(_T("min"))->getInt();
-	int max = c->getParameter(_T("max"))->getInt();
-	int val = min + (int)(rand() % (1 + max - min));
+	int64_t min = c->getParameter(_T("min"))->getInt();
+	int64_t max = c->getParameter(_T("max"))->getInt();
+	int64_t val = min + (int)(rand() % (1 + max - min));
 
 	c->getReturnVar()->setInt(val);
 }
@@ -71,7 +71,7 @@ void scMathRandInt(CScriptVar *c, void *)
 void scCharToInt(CScriptVar *c, void *)
 {
 	tstring str = c->getParameter(_T("ch"))->getString();;
-	int val = 0;
+	int64_t val = 0;
 
 	if (str.length() > 0)
 		val = (int)str.c_str()[0];
@@ -85,7 +85,7 @@ void scStringIndexOf(CScriptVar *c, void *)
 	tstring search = c->getParameter(_T("search"))->getString();
 	size_t p = str.find(search);
 
-	int val = (p == tstring::npos) ? -1 : p;
+	int64_t val = (p == tstring::npos) ? -1 : p;
 
 	c->getReturnVar()->setInt(val);
 }
@@ -188,7 +188,7 @@ void scStringIncludes(CScriptVar *c, void *)
 void scIntegerParseInt(CScriptVar *c, void *)
 {
 	tstring str = c->getParameter(_T("str"))->getString();
-	int val = _tcstol(str.c_str(), 0, 0);
+	int64_t val = _tcstol(str.c_str(), 0, 0);
 	c->getReturnVar()->setInt(val);
 }
 
@@ -196,7 +196,7 @@ void scIntegerValueOf(CScriptVar *c, void *)
 {
 	tstring str = c->getParameter(_T("str"))->getString();
 
-	int val = 0;
+	int64_t val = 0;
 	if (str.length() == 1)
 		val = str[0];
 
@@ -244,7 +244,7 @@ void scArrayContains(CScriptVar *c, void *data)
 		v = v->nextSibling;
 	}
 
-	c->getReturnVar()->setInt(contains);
+	c->getReturnVar()->setInt(contains ? 1 : 0);
 }
 
 void scArrayRemove(CScriptVar *c, void *data)

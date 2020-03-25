@@ -1,5 +1,5 @@
 /*
-	Copyright ©2016. Authored by Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
+	Copyright © 2013-2020, Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
 	Permission to use, copy, modify, and distribute this software is hereby granted, without fee and without a signed licensing agreement,
 	provided that the above copyright notice appears in all copies, modifications, and distributions.
 	Furthermore, AUTHOR assumes no responsibility for any damages caused either directly or indirectly by the use of this software, nor vouches for
@@ -228,12 +228,14 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 				{
 					CMFCPropertyGridProperty *pTitleProp = new CMFCPropertyGridProperty(_T("Caption"), pd->m_Caption, _T("Specifies the text that will be displayed in the window's title bar"));
 					CMFCPropertyGridProperty *pDescriptionProp = new CMFCPropertyGridProperty(_T("Description"), pd->m_Description, _T("Specifies the text that will be displayed in the window's main area to tell the end-user what the package is. May contain HTML in-line or reference a filename that contains HTML content"));
+					CMFCPropertyGridProperty *pLicenseMsgProp = new CMFCPropertyGridProperty(_T("License Message"), pd->m_LicenseMessage, _T("OPTIONAL: Specifies the text that will be displayed on the license dialog when the Javascript GetLicenseKey function is called. May contain HTML in-line or reference a filename that contains HTML content. If the JS function is never called, this goes unused."));
 					CMFCPropertyGridProperty *pVersionProp = new CMFCPropertyGridProperty(_T("Version ID"), pd->m_VersionID, _T("Specifies the version number that will be displayed by the installer. This is EITHER a string literal or the path to an .EXE, from which a version number will be extracted"));
 					CMFCPropertyGridFileProperty *pIconProp = new CMFCPropertyGridFileProperty(_T("Icon"), TRUE, pd->m_IconFile, _T("ico"), 0, szIcoFilter, _T("Specifies the ICO-format window icon"));
 					CMFCPropertyGridFileProperty *pImageProp = new CMFCPropertyGridFileProperty(_T("Image"), TRUE, pd->m_ImageFile, _T("bmp"), 0, szBmpFilter, _T("Specifies a BMP-format image that will be displayed on the window"));
 
 					pAppearanceGroup->AddSubItem(pTitleProp);
 					pAppearanceGroup->AddSubItem(pDescriptionProp);
+					pAppearanceGroup->AddSubItem(pLicenseMsgProp);
 					pAppearanceGroup->AddSubItem(pVersionProp);
 					pAppearanceGroup->AddSubItem(pIconProp);
 					pAppearanceGroup->AddSubItem(pImageProp);

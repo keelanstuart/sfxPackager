@@ -1,5 +1,5 @@
 /*
-	Copyright ©2016. Authored by Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
+	Copyright © 2013-2020, Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
 	Permission to use, copy, modify, and distribute this software is hereby granted, without fee and without a signed licensing agreement,
 	provided that the above copyright notice appears in all copies, modifications, and distributions.
 	Furthermore, AUTHOR assumes no responsibility for any damages caused either directly or indirectly by the use of this software, nor vouches for
@@ -412,35 +412,71 @@ public:
 				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_CAPTION"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)caption), (caption.GetLength() + 1) * sizeof(TCHAR));
 				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_DEFAULTPATH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_DefaultPath), (m_pDoc->m_DefaultPath.GetLength() + 1) * sizeof(TCHAR));
 
-				char *shtml;
-				bool created_shtml = false;
-				if (PathFileExists(m_pDoc->m_Description))
 				{
-					HANDLE hhtmlfile = CreateFile(m_pDoc->m_Description, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-					if (hhtmlfile)
+					char *shtml;
+					bool created_shtml = false;
+					if (PathFileExists(m_pDoc->m_Description))
 					{
-						DWORD fsz = GetFileSize(hhtmlfile, NULL);
-						shtml = (char *)malloc(fsz);
-						if (shtml)
+						HANDLE hhtmlfile = CreateFile(m_pDoc->m_Description, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+						if (hhtmlfile)
 						{
-							created_shtml = true;
-							DWORD rb;
-							ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
-						}
+							DWORD fsz = GetFileSize(hhtmlfile, NULL);
+							shtml = (char *)malloc(fsz);
+							if (shtml)
+							{
+								created_shtml = true;
+								DWORD rb;
+								ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
+							}
 
-						CloseHandle(hhtmlfile);
+							CloseHandle(hhtmlfile);
+						}
+					}
+					else
+					{
+						LOCAL_TCS2MBCS((LPCTSTR)m_pDoc->m_Description, shtml);
+					}
+
+					bresult = UpdateResource(hbur, RT_HTML, _T("welcome"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, DWORD(strlen(shtml) * sizeof(char)));
+
+					if (created_shtml)
+					{
+						free(shtml);
 					}
 				}
-				else
-				{
-					LOCAL_TCS2MBCS((LPCTSTR)m_pDoc->m_Description, shtml);
-				}
 
-				bresult = UpdateResource(hbur, RT_HTML, _T("welcome"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, DWORD(strlen(shtml) * sizeof(char)));
-
-				if (created_shtml)
+				if (!m_pDoc->m_LicenseMessage.IsEmpty())
 				{
-					free(shtml);
+					char *shtml;
+					bool created_shtml = false;
+					if (PathFileExists(m_pDoc->m_LicenseMessage))
+					{
+						HANDLE hhtmlfile = CreateFile(m_pDoc->m_LicenseMessage, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+						if (hhtmlfile)
+						{
+							DWORD fsz = GetFileSize(hhtmlfile, NULL);
+							shtml = (char *)malloc(fsz);
+							if (shtml)
+							{
+								created_shtml = true;
+								DWORD rb;
+								ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
+							}
+
+							CloseHandle(hhtmlfile);
+						}
+					}
+					else
+					{
+						LOCAL_TCS2MBCS((LPCTSTR)m_pDoc->m_LicenseMessage, shtml);
+					}
+
+					bresult = UpdateResource(hbur, RT_HTML, _T("license"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, DWORD(strlen(shtml) * sizeof(char)));
+
+					if (created_shtml)
+					{
+						free(shtml);
+					}
 				}
 
 				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INIT"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
@@ -602,6 +638,7 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 	m_Caption = _T("SFX Installer");
 	m_VersionID = _T("");
 	m_Description = _T("Provide a description for the files being installed");
+	m_LicenseMessage = _T("");
 	m_IconFile = _T("");
 	m_ImageFile = _T("");
 	m_bExploreOnComplete = false;
@@ -1690,6 +1727,8 @@ void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 				m_Caption = value.c_str();
 			else if (!_tcsicmp(name.c_str(), _T("description")))
 				m_Description = value.c_str();
+			else if (!_tcsicmp(name.c_str(), _T("licensemsg")))
+				m_LicenseMessage = value.c_str();
 			else if (!_tcsicmp(name.c_str(), _T("icon")))
 				m_IconFile = value.c_str();
 			else if (!_tcsicmp(name.c_str(), _T("image")))
@@ -1890,6 +1929,9 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 
 		EscapeString(m_Description, tmp);
 		s += _T("\n\t\t<description value=\""); s += tmp.c_str(); s += _T("\"/>");
+
+		EscapeString(m_LicenseMessage, tmp);
+		s += _T("\n\t\t<licensemsg value=\""); s += tmp.c_str(); s += _T("\"/>");
 
 		s += _T("\n\t\t<icon value=\""); s += m_IconFile; s += _T("\"/>");
 

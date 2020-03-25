@@ -1,5 +1,5 @@
 /*
-	Copyright ©2016. Authored by Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
+	Copyright © 2013-2020, Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
 	Permission to use, copy, modify, and distribute this software is hereby granted, without fee and without a signed licensing agreement,
 	provided that the above copyright notice appears in all copies, modifications, and distributions.
 	Furthermore, AUTHOR assumes no responsibility for any damages caused either directly or indirectly by the use of this software, nor vouches for
@@ -16,8 +16,11 @@
 #include "sfx.h"
 #include "ProgressDlg.h"
 #include "afxdialogex.h"
+#include "LicenseEntryDlg.h"
 #include <vector>
+#include <istream>
 #include "../sfxPackager/GenParser.h"
+#include "HttpDownload.h"
 
 #include "../../Archiver/Include/Archiver.h"
 
@@ -121,8 +124,7 @@ BOOL CProgressDlg::OnInitDialog()
 	m_Status.SetReadOnly(TRUE);
 	m_Status.EnableWindow(TRUE);
 
-	m_Thread = CreateThread(NULL, 0, InstallThreadProc, this, 0, NULL);
-
+	m_Thread = AfxBeginThread((AFX_THREADPROC)InstallThreadProc, (LPVOID)this);
 
 	SetWindowText(theApp.m_Caption);
 
@@ -339,7 +341,7 @@ void CProgressDlg::Echo(const TCHAR *msg)
 void scSetGlobalInt(CScriptVar *c, void *userdata)
 {
 	tstring name = c->getParameter(_T("name"))->getString();
-	int val = c->getParameter(_T("val"))->getInt();
+	int64_t val = c->getParameter(_T("val"))->getInt();
 
 	CProgressDlg *_this = (CProgressDlg *)userdata;
 
@@ -542,18 +544,18 @@ void scCreateShortcut(CScriptVar *c, void *userdata)
 	ReplaceEnvironmentVariables(desc, _desc);
 	ReplaceRegistryKeys(_desc, desc);
 
-	int showmode = c->getParameter(_T("showmode"))->getInt();
+	int64_t showmode = c->getParameter(_T("showmode"))->getInt();
 
 	tstring icon = c->getParameter(_T("icon"))->getString(), _icon;
 	ReplaceEnvironmentVariables(icon, _icon);
 	ReplaceRegistryKeys(_icon, icon);
 
-	int iconidx = c->getParameter(_T("iconidx"))->getInt();
+	int64_t iconidx = c->getParameter(_T("iconidx"))->getInt();
 
 	if (!theApp.m_TestOnlyMode)
 	{
 		CreateShortcut(targ.c_str(), args.c_str(), file.c_str(), desc.c_str(),
-					   showmode, rundir.c_str(), icon.c_str(), iconidx);
+					   (int)showmode, rundir.c_str(), icon.c_str(), (int)iconidx);
 	}
 }
 
@@ -682,6 +684,20 @@ void scSpawnProcess(CScriptVar *c, void *userdata)
 
 	bool block = c->getParameter(_T("block"))->getBool();
 
+	tstring arg;
+	arg.reserve((cmd.length() + params.length()) * 2);
+
+	if (!params.empty())
+		arg += _T("\"");
+
+	arg += cmd;
+
+	if (!params.empty())
+	{
+		arg += _T("\" ");
+		arg += params;
+	}
+
 	STARTUPINFO si = { 0 };
 	si.cb = sizeof(si);
 	PROCESS_INFORMATION pi;
@@ -689,9 +705,27 @@ void scSpawnProcess(CScriptVar *c, void *userdata)
 	BOOL created = true;
 	if (!theApp.m_TestOnlyMode)
 	{
-		created = CreateProcess(cmd.c_str(), (TCHAR *)(params.c_str()), NULL, NULL, FALSE, NULL, NULL, rundir.c_str(), &si, &pi);
-		if (created && block)
-			WaitForSingleObject(pi.hProcess, INFINITE);
+		created = CreateProcess(nullptr, (TCHAR *)(arg.c_str()), NULL, NULL, FALSE, NULL, NULL, rundir.empty() ? NULL : rundir.c_str(), &si, &pi);
+		if (created)
+		{
+			if (block)
+				WaitForSingleObject(pi.hProcess, INFINITE);
+		}
+		else
+		{
+			LPVOID lpMsgBuf;
+			DWORD dw = GetLastError();
+			FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+						  NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
+
+			// Display the error
+			CProgressDlg *_this = (CProgressDlg *)userdata;
+			_this->Echo(_T("SpawnProcess Failed:\n\t"));
+			_this->Echo((const TCHAR *)lpMsgBuf);
+
+			// Free resources created by the system
+			LocalFree(lpMsgBuf);
+		}
 	}
 
 	CScriptVar *ret = c->getReturnVar();
@@ -767,6 +801,93 @@ void scAbortInstall(CScriptVar* c, void* userdata)
 }
 
 
+void scGetLicenseKey(CScriptVar *c, void *userdata)
+{
+	CScriptVar *pdv = c->getParameter(_T("desc"));
+	tstring desc = pdv ? pdv->getString() : _T("");
+
+	tstring key;
+	CLicenseKeyEntryDlg dlg(desc.c_str());
+
+	INT_PTR dlg_ret = dlg.DoModal();
+	if (dlg_ret == IDOK)
+	{
+		key = dlg.GetKey();
+	}
+	else if (dlg_ret == IDCANCEL)
+	{
+		exit(-1);
+	}
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setString(key);
+}
+
+
+void scDownloadFile(CScriptVar *c, void *userdata)
+{
+	CScriptVar *purl = c->getParameter(_T("url"));
+	CScriptVar *pfile = c->getParameter(_T("file"));
+
+	BOOL result = FALSE;
+
+	if (purl && pfile)
+	{
+		CHttpDownloader dl;
+		result = dl.DownloadHttpFile(purl->getString().c_str(), pfile->getString().c_str(), _T("."));
+	}
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(result ? 1 : 0);
+}
+
+
+void scTextFileOpen(CScriptVar *c, void *userdata)
+{
+	CScriptVar *pfile = c->getParameter(_T("filename"));
+
+	FILE *f = nullptr;
+	if (pfile)
+		f = _tfopen(pfile->getString().c_str(), _T("r"));
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt((int64_t)f);
+}
+
+
+void scTextFileClose(CScriptVar *c, void *userdata)
+{
+	CScriptVar *phandle = c->getParameter(_T("handle"));
+
+	if (phandle)
+	{
+		FILE *f = (FILE *)phandle->getInt();
+		fclose(f);
+	}
+}
+
+
+void scTextFileReadLn(CScriptVar *c, void *userdata)
+{
+	CScriptVar *phandle = c->getParameter(_T("handle"));
+
+	tstring s;
+
+	if (phandle)
+	{
+		FILE *f = (FILE *)phandle->getInt();
+		TCHAR _s[4096];
+		_fgetts(_s, 2096, f);
+		s = _s;
+	}
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setString(s);
+}
 
 
 // ******************************************************************************
@@ -809,10 +930,12 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function CreateDirectoryTree(path)"), scCreateDirectoryTree, (void *)this);
 	theApp.m_js.addNative(_T("function CreateShortcut(file, target, args, rundir, desc, showmode, icon, iconidx)"), scCreateShortcut, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
+	theApp.m_js.addNative(_T("function DownloadFile(url, file)"), scDownloadFile, (void *)this);
 	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
 	theApp.m_js.addNative(_T("function FileExists(path)"), scFileExists, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function GetExeVersion(file)"), scGetExeVersion, (void*)this);
+	theApp.m_js.addNative(_T("function GetLicenseKey(desc)"), scGetLicenseKey, (void *)this);
 	theApp.m_js.addNative(_T("function IsDirectory(path)"), scIsDirectory, (void *)this);
 	theApp.m_js.addNative(_T("function IsDirectoryEmpty(path)"), scIsDirectoryEmpty, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
@@ -823,6 +946,9 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function SetGlobalInt(name, val)"), scSetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function SetRegistryKeyValue(root, key, name, val)"), scSetRegistryKeyValue, (void *)this);
 	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, rundir, block)"), scSpawnProcess, (void *)this);
+	theApp.m_js.addNative(_T("function TextFileOpen(filename)"), scTextFileOpen, (void *)this);
+	theApp.m_js.addNative(_T("function TextFileClose(handle)"), scTextFileClose, (void *)this);
+	theApp.m_js.addNative(_T("function TextFileReadLn(handle)"), scTextFileReadLn, (void *)this);
 
 	theApp.m_InstallPath.Replace(_T("\\"), _T("/"));
 
@@ -978,12 +1104,13 @@ DWORD CProgressDlg::RunInstall()
 	if (pcancel)
 		pcancel->EnableWindow(FALSE);
 
-	m_Thread = NULL;
+	m_Thread = nullptr;
+	AfxEndThread(0);
 
 	return ret;
 }
 
-DWORD CProgressDlg::InstallThreadProc(LPVOID param)
+UINT CProgressDlg::InstallThreadProc(LPVOID param)
 {
 	CProgressDlg *_this = (CProgressDlg *)param;
 

@@ -56,6 +56,7 @@ void CHtmlCtrl::OnDestroy()
 		//m_pBrowserApp->Release();
 		m_pBrowserApp = NULL;
 	}
+
 	CWnd::OnDestroy(); // bypass CView doc/frame stuff
 }
 
