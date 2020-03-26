@@ -1010,8 +1010,8 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function GetExeVersion(file)"), scGetExeVersion, (void*)this);
 	theApp.m_js.addNative(_T("function GetLicenseKey()"), scGetLicenseKey, (void *)this);
-	theApp.m_js.addNative(_T("function GetLicenseOrg()"), scGetLicenseKey, (void *)this);
-	theApp.m_js.addNative(_T("function GetLicenseUser()"), scGetLicenseKey, (void *)this);
+	theApp.m_js.addNative(_T("function GetLicenseOrg()"), scGetLicenseOrg, (void *)this);
+	theApp.m_js.addNative(_T("function GetLicenseUser()"), scGetLicenseUser, (void *)this);
 	theApp.m_js.addNative(_T("function IsDirectory(path)"), scIsDirectory, (void *)this);
 	theApp.m_js.addNative(_T("function IsDirectoryEmpty(path)"), scIsDirectoryEmpty, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
