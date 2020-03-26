@@ -93,10 +93,10 @@ void scStringIndexOf(CScriptVar *c, void *)
 void scStringSubstring(CScriptVar *c, void *)
 {
 	tstring str = c->getParameter(_T("this"))->getString();
-	int lo = c->getParameter(_T("lo"))->getInt();
-	int hi = c->getParameter(_T("hi"))->getInt();
+	int64_t lo = c->getParameter(_T("lo"))->getInt();
+	int64_t hi = c->getParameter(_T("hi"))->getInt();
 
-	int l = hi - lo;
+	int64_t l = hi - lo;
 	if ((l > 0) && (lo >= 0) && (lo + l <= (int)str.length()))
 		c->getReturnVar()->setString(str.substr(lo, l));
 	else
@@ -107,7 +107,7 @@ void scStringCharAt(CScriptVar *c, void *)
 {
 	tstring str = c->getParameter(_T("this"))->getString();
 
-	int p = c->getParameter(_T("pos"))->getInt();
+	int64_t p = c->getParameter(_T("pos"))->getInt();
 
 	if (p >= 0 && p < (int)str.length())
 		c->getReturnVar()->setString(str.substr(p, 1));
@@ -118,7 +118,7 @@ void scStringCharAt(CScriptVar *c, void *)
 void scStringCharCodeAt(CScriptVar *c, void *)
 {
 	tstring str = c->getParameter(_T("this"))->getString();
-	int p = c->getParameter(_T("pos"))->getInt();
+	int64_t p = c->getParameter(_T("pos"))->getInt();
 
 	if (p >= 0 && p < (int)str.length())
 		c->getReturnVar()->setInt(str.at(p));
@@ -133,7 +133,7 @@ void scStringSplit(CScriptVar *c, void *)
 
 	CScriptVar *result = c->getReturnVar();
 	result->setArray();
-	int length = 0;
+	int64_t length = 0;
 
 	size_t pos = str.find(sep);
 	while (pos != tstring::npos)
@@ -152,7 +152,7 @@ void scStringFromCharCode(CScriptVar *c, void *)
 {
 	TCHAR str[2];
 
-	str[0] = c->getParameter(_T("char"))->getInt();
+	str[0] = (TCHAR)(c->getParameter(_T("char"))->getInt());
 	str[1] = 0;
 
 	c->getReturnVar()->setString(str);
@@ -250,7 +250,7 @@ void scArrayContains(CScriptVar *c, void *data)
 void scArrayRemove(CScriptVar *c, void *data)
 {
 	CScriptVar *obj = c->getParameter(_T("obj"));
-	vector<int> removedIndices;
+	vector<int64_t> removedIndices;
 
 	CScriptVarLink *v;
 
@@ -270,8 +270,8 @@ void scArrayRemove(CScriptVar *c, void *data)
 	v = c->getParameter(_T("this"))->firstChild;
 	while (v)
 	{
-		int n = v->getIntName();
-		int newn = n;
+		int64_t n = v->getIntName();
+		int64_t newn = n;
 
 		for (size_t i = 0; i < removedIndices.size(); i++)
 		{
@@ -295,8 +295,8 @@ void scArrayJoin(CScriptVar *c, void *data)
 
 	tostringstream sstr;
 
-	int l = arr->getArrayLength();
-	for (int i = 0; i < l; i++)
+	int64_t l = arr->getArrayLength();
+	for (int64_t i = 0; i < l; i++)
 	{
 		if (i > 0)
 			sstr << sep;

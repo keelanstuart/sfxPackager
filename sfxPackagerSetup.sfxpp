@@ -2,7 +2,8 @@
 	<settings>
 		<output value="sfxPackagerSetup.exe"/>
 		<caption value="sfxPackager Setup"/>
-		<description value="&lt;p&gt;&lt;b&gt;sfxPackager&lt;/b&gt; is a light-weight, self-extracting install creation utility for Windows that falls somewhere between PackageForTheWeb and NSIS, functionality-wise. By combining a user-friendly, drag-and-drop GUI with an integrated JavaScript interpreter, you can quickly create attractive, fully-featured installers.&lt;/p&gt;&lt;p&gt;Follow this open source project on &lt;a href=&quot;https://sourceforge.net/projects/sfxpackager&quot;&gt;Sourceforge&lt;/a&gt; or &lt;a href=&quot;https://github.com/keelanstuart/sfxPackager&quot;&gt;github&lt;/a&gt;  and post a comment if you use and like this software.&lt;/p&gt;Thanks!&lt;br&gt;&lt;br&gt;Copyright (c) 2013-2020, Keelan Stuart"/>
+		<description value="&lt;p&gt;&lt;b&gt;sfxPackager&lt;/b&gt; is a light-weight, self-extracting install creation utility for Windows that falls somewhere between PackageForTheWeb and NSIS, functionality-wise. By combining a user-friendly, drag-and-drop GUI with an integrated JavaScript interpreter, you can quickly create attractive, fully-featured installers.&lt;/p&gt;&lt;p&gt;Follow this open source project on &lt;a href=&quot;https://sourceforge.net/projects/sfxpackager&quot;&gt;Sourceforge&lt;/a&gt; or &lt;a href=&quot;https://github.com/keelanstuart/sfxPackager&quot;&gt;github&lt;/a&gt;  and post a comment if you use and like this software.&lt;/p&gt;Thanks!&lt;br&gt;&lt;br&gt;Copyright (c) 2013-2020, Keelan Stuart&lt;br&gt;&lt;br&gt;&lt;p style=&quot;font-size:12px;color:#A0A0A0&quot;&gt;&lt;i&gt;When installing to your root drive's Program Files folder, you may need to run as Administrator&lt;/i&gt;&lt;/p&gt;"/>
+		<licensemsg value=""/>
 		<icon value="D:\proj\sfxPackager\sfx\sfxPackager\res\sfxPackager.ico"/>
 		<image value="D:\proj\sfxPackagerSetup.bmp"/>
 		<launchcmd value=""/>

@@ -19,6 +19,8 @@
 #include "LicenseEntryDlg.h"
 #include <vector>
 #include <istream>
+#include <chrono>
+#include <ctime>
 #include "../sfxPackager/GenParser.h"
 #include "HttpDownload.h"
 
@@ -27,6 +29,8 @@
 extern bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst);
 extern bool ReplaceRegistryKeys(const tstring &src, tstring &dst);
 extern bool FLZACreateDirectories(const TCHAR *dir);
+
+static CLicenseKeyEntryDlg licensedlg(_T(""));
 
 // CProgressDlg dialog
 
@@ -801,27 +805,44 @@ void scAbortInstall(CScriptVar* c, void* userdata)
 }
 
 
-void scGetLicenseKey(CScriptVar *c, void *userdata)
+void scShowLicenseDlg(CScriptVar *c, void *userdata)
 {
-	CScriptVar *pdv = c->getParameter(_T("desc"));
-	tstring desc = pdv ? pdv->getString() : _T("");
+	INT_PTR dlg_ret = licensedlg.DoModal();
 
-	tstring key;
-	CLicenseKeyEntryDlg dlg(desc.c_str());
-
-	INT_PTR dlg_ret = dlg.DoModal();
-	if (dlg_ret == IDOK)
-	{
-		key = dlg.GetKey();
-	}
-	else if (dlg_ret == IDCANCEL)
+	if (dlg_ret == IDCANCEL)
 	{
 		exit(-1);
 	}
+}
+
+
+void scGetLicenseKey(CScriptVar *c, void *userdata)
+{
+	tstring key = licensedlg.GetKey();
 
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
 		ret->setString(key);
+}
+
+
+void scGetLicenseUser(CScriptVar *c, void *userdata)
+{
+	tstring user = licensedlg.GetUser();
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setString(user);
+}
+
+
+void scGetLicenseOrg(CScriptVar *c, void *userdata)
+{
+	tstring org = licensedlg.GetOrg();
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setString(org);
 }
 
 
@@ -835,7 +856,7 @@ void scDownloadFile(CScriptVar *c, void *userdata)
 	if (purl && pfile)
 	{
 		CHttpDownloader dl;
-		result = dl.DownloadHttpFile(purl->getString().c_str(), pfile->getString().c_str(), _T("."));
+		result = dl.DownloadHttpFile(purl->getString().c_str(), pfile->getString().c_str(), _T(""));
 	}
 
 	CScriptVar *ret = c->getReturnVar();
@@ -847,10 +868,11 @@ void scDownloadFile(CScriptVar *c, void *userdata)
 void scTextFileOpen(CScriptVar *c, void *userdata)
 {
 	CScriptVar *pfile = c->getParameter(_T("filename"));
+	CScriptVar *pmode = c->getParameter(_T("mode"));
 
 	FILE *f = nullptr;
 	if (pfile)
-		f = _tfopen(pfile->getString().c_str(), _T("r"));
+		f = _tfopen(pfile->getString().c_str(), pmode ? pmode->getString().c_str() : _T("r"));
 
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
@@ -865,7 +887,8 @@ void scTextFileClose(CScriptVar *c, void *userdata)
 	if (phandle)
 	{
 		FILE *f = (FILE *)phandle->getInt();
-		fclose(f);
+		if (f)
+			fclose(f);
 	}
 }
 
@@ -879,14 +902,64 @@ void scTextFileReadLn(CScriptVar *c, void *userdata)
 	if (phandle)
 	{
 		FILE *f = (FILE *)phandle->getInt();
-		TCHAR _s[4096];
-		_fgetts(_s, 2096, f);
-		s = _s;
+		if (f)
+		{
+			TCHAR _s[4096];
+			_fgetts(_s, 4096, f);
+			s = _s;
+		}
 	}
 
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
 		ret->setString(s);
+}
+
+
+void scTextFileWrite(CScriptVar *c, void *userdata)
+{
+	CScriptVar *phandle = c->getParameter(_T("handle"));
+	CScriptVar *ptext = c->getParameter(_T("text"));
+
+	if (phandle && ptext)
+	{
+		FILE *f = (FILE *)phandle->getInt();
+		if (f)
+			_fputts(ptext->getString().c_str(), f);
+	}
+}
+
+
+void scTextFileReachedEOF(CScriptVar *c, void *userdata)
+{
+	CScriptVar *phandle = c->getParameter(_T("handle"));
+
+	int64_t b = 1;
+	if (phandle)
+	{
+		FILE *f = (FILE *)phandle->getInt();
+		if (f)
+			b = feof(f);
+	}
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(b);
+}
+
+
+void scGetCurrentDateStr(CScriptVar *c, void *userdata)
+{
+	auto now = std::chrono::system_clock::now();
+	std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+	struct tm *parts = std::localtime(&now_c);
+
+	TCHAR dates[MAX_PATH];
+	_stprintf(dates, _T("%04d/%02d/%02d"), 1900 + parts->tm_year, 1 + parts->tm_mon, parts->tm_mday);
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setString(tstring(dates));
 }
 
 
@@ -933,9 +1006,12 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function DownloadFile(url, file)"), scDownloadFile, (void *)this);
 	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
 	theApp.m_js.addNative(_T("function FileExists(path)"), scFileExists, (void *)this);
+	theApp.m_js.addNative(_T("function GetCurrentDateString()"), scGetCurrentDateStr, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function GetExeVersion(file)"), scGetExeVersion, (void*)this);
-	theApp.m_js.addNative(_T("function GetLicenseKey(desc)"), scGetLicenseKey, (void *)this);
+	theApp.m_js.addNative(_T("function GetLicenseKey()"), scGetLicenseKey, (void *)this);
+	theApp.m_js.addNative(_T("function GetLicenseOrg()"), scGetLicenseKey, (void *)this);
+	theApp.m_js.addNative(_T("function GetLicenseUser()"), scGetLicenseKey, (void *)this);
 	theApp.m_js.addNative(_T("function IsDirectory(path)"), scIsDirectory, (void *)this);
 	theApp.m_js.addNative(_T("function IsDirectoryEmpty(path)"), scIsDirectoryEmpty, (void *)this);
 	theApp.m_js.addNative(_T("function MessageBox(title, msg)"), scMessageBox, (void *)this);
@@ -945,10 +1021,13 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function SetGlobalEnvironmentVariable(varname, val)"), scSetGlobalEnvironmentVariable, (void *)this);
 	theApp.m_js.addNative(_T("function SetGlobalInt(name, val)"), scSetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function SetRegistryKeyValue(root, key, name, val)"), scSetRegistryKeyValue, (void *)this);
+	theApp.m_js.addNative(_T("function ShowLicenseDlg()"), scShowLicenseDlg, (void *)this);
 	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, rundir, block)"), scSpawnProcess, (void *)this);
 	theApp.m_js.addNative(_T("function TextFileOpen(filename)"), scTextFileOpen, (void *)this);
 	theApp.m_js.addNative(_T("function TextFileClose(handle)"), scTextFileClose, (void *)this);
 	theApp.m_js.addNative(_T("function TextFileReadLn(handle)"), scTextFileReadLn, (void *)this);
+	theApp.m_js.addNative(_T("function TextFileWrite(handle, text)"), scTextFileWrite, (void *)this);
+	theApp.m_js.addNative(_T("function TextFileReachedEOF(handle)"), scTextFileReachedEOF, (void *)this);
 
 	theApp.m_InstallPath.Replace(_T("\\"), _T("/"));
 

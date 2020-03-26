@@ -28,16 +28,23 @@ public:
 	enum { IDD = IDD_LICENSEKEY_DIALOG };
 
 	const TCHAR *GetKey();
+	const TCHAR *GetUser();
+	const TCHAR *GetOrg();
 
 protected:
 	virtual void DoDataExchange(CDataExchange *pDX);    // DDX/DDV support
 
 	HICON m_hIcon;
 	CHtmlCtrl m_CtlDesc;
+
 	CEdit m_CtlKey;
+	CEdit m_CtlUser;
+	CEdit m_CtlOrg;
 
 	CString m_Desc;
 	CString m_Key;
+	CString m_User;
+	CString m_Org;
 
 
 	DECLARE_MESSAGE_MAP()

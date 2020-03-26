@@ -26,6 +26,9 @@ CLicenseKeyEntryDlg::CLicenseKeyEntryDlg(const TCHAR *description, CWnd *pParent
 	m_hIcon = AfxGetApp()->LoadIcon(_T("ICON"));
 
 	m_Key = _T("");
+	m_User = _T("");
+	m_Org = _T("");
+
 	m_Desc = description;
 }
 
@@ -48,11 +51,25 @@ const TCHAR *CLicenseKeyEntryDlg::GetKey()
 	return m_Key;
 }
 
+
+const TCHAR *CLicenseKeyEntryDlg::GetUser()
+{
+	return m_User;
+}
+
+
+const TCHAR *CLicenseKeyEntryDlg::GetOrg()
+{
+	return m_Org;
+}
+
 // CLicenseKeyEntryDlg message handlers
 
 
 void CLicenseKeyEntryDlg::OnOK()
 {
+	m_CtlUser.GetWindowText(m_User);
+	m_CtlOrg.GetWindowText(m_Org);
 	m_CtlKey.GetWindowText(m_Key);
 	if (!m_Key.IsEmpty())
 		CDialog::OnOK();
@@ -77,8 +94,19 @@ BOOL CLicenseKeyEntryDlg::OnInitDialog()
 		m_CtlDesc.LoadFromResource(_T("license"));
 	}
 
+	if (m_CtlUser.SubclassDlgItem(IDC_EDIT_USERNAME, this))
+	{
+		m_CtlUser.SetWindowText(m_User);
+	}
+
+	if (m_CtlOrg.SubclassDlgItem(IDC_EDIT_ORGANIZATION, this))
+	{
+		m_CtlOrg.SetWindowText(m_Org);
+	}
+
 	if (m_CtlKey.SubclassDlgItem(IDC_EDIT_KEY, this))
 	{
+		m_CtlKey.SetWindowText(_T(""));
 		m_CtlKey.SetFocus();
 	}
 
