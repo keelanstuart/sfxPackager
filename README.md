@@ -6,7 +6,7 @@ Copyright (C) 2013-2019 Keelan Stuart (keelanstuart@gmail.com)
 View the User's Guide to see how it works! (https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub?start=false&loop=false&delayms=30000)
 
 --------------------------
-A full users manual is unavailable at this time (though it may be forthcoming soon), but for simple operation,
+The user's guide can be of great help in getting started, but for simple operation, simply
 drag your files from Windows explorer onto the file list in your sfxpp project. The files will show up there and, 
 if you included a folder, you will be prompted as to whether you desire a live file system or a fixed one... 
 meaning, do you want the directory to be re-examined when your project is built and any new files included?
@@ -15,8 +15,8 @@ not be automatically included? I took this idea, notionally, from the venerable 
 PackageForTheWeb from InstallShield.
 
 More complicated operations can be done with the integrated JavaScript-ish capability. You can write scripts
-that run during initialization, per file, and at successful completion. If you want to see what functions are available,
-you'll currently have to look in the code.
+that run during initialization, per file, and at successful completion. A brief overview of the functions availableis
+in the guide.
 
 I'll be happy to answer any questions.
 
