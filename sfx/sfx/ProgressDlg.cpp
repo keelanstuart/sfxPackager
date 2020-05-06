@@ -1023,7 +1023,7 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function SetRegistryKeyValue(root, key, name, val)"), scSetRegistryKeyValue, (void *)this);
 	theApp.m_js.addNative(_T("function ShowLicenseDlg()"), scShowLicenseDlg, (void *)this);
 	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, rundir, block)"), scSpawnProcess, (void *)this);
-	theApp.m_js.addNative(_T("function TextFileOpen(filename)"), scTextFileOpen, (void *)this);
+	theApp.m_js.addNative(_T("function TextFileOpen(filename, mode)"), scTextFileOpen, (void *)this);
 	theApp.m_js.addNative(_T("function TextFileClose(handle)"), scTextFileClose, (void *)this);
 	theApp.m_js.addNative(_T("function TextFileReadLn(handle)"), scTextFileReadLn, (void *)this);
 	theApp.m_js.addNative(_T("function TextFileWrite(handle, text)"), scTextFileWrite, (void *)this);
