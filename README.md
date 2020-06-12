@@ -15,7 +15,7 @@ not be automatically included? I took this idea, notionally, from the venerable 
 PackageForTheWeb from InstallShield.
 
 More complicated operations can be done with the integrated JavaScript-ish capability. You can write scripts
-that run during initialization, per file, and at successful completion. A brief overview of the functions availableis
+that run during initialization, per file, and at successful completion. A brief overview of the functions available is
 in the guide.
 
 I'll be happy to answer any questions.
