@@ -1,15 +1,28 @@
 # sfxPackager
-A light-weight, self-extracting install creation utility for Windows
+**A light-weight, self-extracting install creation utility for Windows**
 
-Copyright (C) 2013-2019 Keelan Stuart (keelanstuart@gmail.com)
+_Copyright (C) 2013-2020 Keelan Stuart (keelanstuart@gmail.com)_
 
-View the User's Guide to see how it works! (https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub?start=false&loop=false&delayms=30000)
+### Features
+* Light-weight, self-extracting install creator
+* Project-based; create your install project once, then re-build when your files have changed without any modifications
+* Easy drag'n'drop user experience
+* Integrated JavaScript system, featuring built-in code editor, with extensive installer-related API to help get the job done
+* Recognizes and replaces environment variables and registry keys in paths
+* Custom HTML content displayable in your welcome (and license) dialog - either in-line or from a file you specify
+* Embed URLs as the file source to pull content from the web, rather than storing it statically in your package
+* Disk spanning, allowing installs to be partitioned into discretely-size chunks for easy distribution with multiple media sources
+* Tools to facilitate License validation
+* Unicode used throughout
+* 64-bit; very large archives are no problem
+
+View the [user's guide](https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub?start=false&loop=false&delayms=30000) to get started!
 
 --------------------------
-The user's guide can be of great help in getting started, but for simple operation, simply
-drag your files from Windows explorer onto the file list in your sfxpp project. The files will show up there and, 
-if you included a folder, you will be prompted as to whether you desire a live file system or a fixed one... 
-meaning, do you want the directory to be re-examined when your project is built and any new files included?
+The user's guide can be of great help in deeper understanding of install creation, but for simple operation, just
+drag your files from Windows explorer onto the file list in your sfxpp project. The files will show up there. 
+If you included a folder, you will be prompted as to whether you desire a live file system or a fixed one... 
+meaning: do you want the directory to be re-examined when your project is built and any new files included?
 Conversely, do you want the currently existing files only, meaning that if you add files in the future they will 
 not be automatically included? I took this idea, notionally, from the venerable (and discontinued)
 PackageForTheWeb from InstallShield.
