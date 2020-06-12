@@ -65,101 +65,130 @@ size_t CFastLZArchiver::GetFileCount(IArchiver::INFO_MODE mode)
 // Adds a file to the archive
 CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp, uint64_t *sz_comp, const TCHAR *scriptsnippet)
 {
-	CFastLZArchiver::ADD_RESULT ret = AR_OK;
+	CFastLZArchiver::ADD_RESULT ret = AR_UNKNOWN_ERROR;
 
-	HANDLE hin = CreateFile(src_filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-	if (hin != INVALID_HANDLE_VALUE)
+	SFileTableEntry fte;
+
+	TCHAR dst_path[MAX_PATH];
+	_tcscpy_s(dst_path, MAX_PATH, dst_filename);
+
+	// for download references (filenames that contain the "http[s]:\\" marker, we don't care about disk spanning, etc...
+	// there's no actual file, so just add it to the file table and mark it as a doanloadable
+	const TCHAR *pss = src_filename;
+	if (!_tcsnicmp(pss, _T("http"), 4))
 	{
-		TCHAR dst_path[MAX_PATH];
-		_tcscpy_s(dst_path, MAX_PATH, dst_filename);
+		pss += 4;
+		if (!_tcsnicmp(pss, _T("s"), 1))
+			pss++;
+
+		if (!_tcsnicmp(pss, _T("://"), 3))
+		{
+			fte.m_Flags |= SFileTableEntry::FTEFLAG_DOWNLOAD;
+		}
+	}
+
+	if (!(fte.m_Flags & SFileTableEntry::FTEFLAG_DOWNLOAD))
 		PathRemoveFileSpec(dst_path);
 
-		TCHAR *fn = PathFindFileName(dst_filename);
+	const TCHAR *fn = (fte.m_Flags & SFileTableEntry::FTEFLAG_DOWNLOAD) ? src_filename : PathFindFileName(dst_filename);
 
-		SFileTableEntry fte;
+	fte.m_Filename = fn;
+	fte.m_Path = dst_path;
 
-		fte.m_Filename = fn;
-		fte.m_Path = dst_path;
+	fte.m_ScriptSnippet = scriptsnippet;
 
-		// store the size of the uncompressed file
-		LARGE_INTEGER fsz;
-		GetFileSizeEx(hin, &fsz);
-		fte.m_UncompressedSize = fsz.QuadPart;
-		if (sz_uncomp)
-			*sz_uncomp = fte.m_UncompressedSize;
-
-		// store the file time
-		GetFileTime(hin, &(fte.m_FTCreated), NULL, &(fte.m_FTModified));
-
-		SFileBlock b;
-
-		fte.m_Offset = m_pah->GetOffset();
-
-		fte.m_ScriptSnippet = scriptsnippet;
-
-		// read uncompressed blocks of data from the file
-		while (b.ReadUncompressedData(hin))
+	if (fte.m_Flags & SFileTableEntry::FTEFLAG_DOWNLOAD)
+	{
+		ret = AR_OK_UNCOMPRESSED;
+	}
+	else
+	{
+		HANDLE hin = CreateFile(src_filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+		if (hin != INVALID_HANDLE_VALUE)
 		{
-			fte.m_BlockCount++;
+			// store the size of the uncompressed file
+			LARGE_INTEGER fsz;
+			GetFileSizeEx(hin, &fsz);
+			fte.m_UncompressedSize = fsz.QuadPart;
+			if (sz_uncomp)
+				*sz_uncomp = fte.m_UncompressedSize;
 
-			// compress and write the data to the archive
-			if (b.CompressData())
+			// store the file time
+			GetFileTime(hin, &(fte.m_FTCreated), NULL, &(fte.m_FTModified));
+
+			SFileBlock b;
+
+			fte.m_Offset = m_pah->GetOffset();
+
+			// read uncompressed blocks of data from the file
+			while (b.ReadUncompressedData(hin))
 			{
-				// update the compressed size of the file
-				fte.m_CompressedSize += b.m_Header.m_SizeC;
+				fte.m_BlockCount++;
+
+				// compress and write the data to the archive
+				if (b.CompressData())
+				{
+					// update the compressed size of the file
+					fte.m_CompressedSize += b.m_Header.m_SizeC;
+				}
+				else
+				{
+					fte.m_CompressedSize += b.m_Header.m_SizeU;
+				}
+
+				b.WriteCompressedData(m_pah->GetHandle());
+
+				// spanning logic
+				if ((m_MaxSize != UINT64_MAX) && ((m_pah->GetLength() + (uint64_t)ComputeFileTableSize()) >= m_MaxSize))
+				{
+					// if we're spanning, then we need to add this entry to the file table now and do some cleanup
+					m_FileTable.push_back(fte);
+
+					// reset the block count and compressed size (because this should technically be a new data stream)
+					fte.m_BlockCount = 0;
+					fte.m_CompressedSize = 0;
+
+					// have the stream handle spanning behind the scenes
+					m_pah->Span();
+
+					DWORD bw;
+					uint32_t magic = IArchiver::MAGIC;
+					WriteFile(m_pah->GetHandle(), &magic, sizeof(uint32_t), &bw, NULL);
+
+					uint32_t comp_magic = CFastLZArchiver::MAGIC_FASTLZ;
+					WriteFile(m_pah->GetHandle(), &comp_magic, sizeof(uint32_t), &bw, NULL);
+
+					uint64_t flags = 0;
+					WriteFile(m_pah->GetHandle(), &flags, sizeof(uint64_t), &bw, NULL);
+
+					// after the span, we should expect that offset will be different
+					m_InitialOffset = m_pah->GetOffset();
+
+					fte.m_Offset = m_pah->GetOffset();
+
+					// mark it as spanned so that the next archive can append to, rather than create, the file
+					fte.m_Flags |= SFileTableEntry::FTEFLAG_SPANNED;
+				}
 			}
+
+			if (fte.m_CompressedSize >= fte.m_UncompressedSize)
+				ret = AR_OK_UNCOMPRESSED;
 			else
-			{
-				fte.m_CompressedSize += b.m_Header.m_SizeU;
-			}
+				ret = AR_OK;
 
-			b.WriteCompressedData(m_pah->GetHandle());
+			if (sz_comp)
+				*sz_comp = (fte.m_CompressedSize != (uint64_t)-1) ? fte.m_CompressedSize : fte.m_UncompressedSize;
 
-			// spanning logic
-			if ((m_MaxSize != UINT64_MAX) && ((m_pah->GetLength() + (uint64_t)ComputeFileTableSize()) >= m_MaxSize))
-			{
-				// if we're spanning, then we need to add this entry to the file table now and do some cleanup
-				m_FileTable.push_back( fte );
-
-				// reset the block count and compressed size (because this should technically be a new data stream)
-				fte.m_BlockCount = 0;
-				fte.m_CompressedSize = 0;
-
-				// have the stream handle spanning behind the scenes
-				m_pah->Span();
-
-				DWORD bw;
-				uint32_t magic = IArchiver::MAGIC;
-				WriteFile(m_pah->GetHandle(), &magic, sizeof(uint32_t), &bw, NULL);
-
-				uint32_t comp_magic = CFastLZArchiver::MAGIC_FASTLZ;
-				WriteFile(m_pah->GetHandle(), &comp_magic, sizeof(uint32_t), &bw, NULL);
-
-				uint64_t flags = 0;
-				WriteFile(m_pah->GetHandle(), &flags, sizeof(uint64_t), &bw, NULL);
-
-				// after the span, we should expect that offset will be different
-				m_InitialOffset = m_pah->GetOffset();
-
-				fte.m_Offset = m_pah->GetOffset();
-
-				// mark it as spanned so that the next archive can append to, rather than create, the file
-				fte.m_Flags |= SFileTableEntry::FTEFLAG_SPANNED;
-			}
+			CloseHandle(hin);
 		}
+	}
 
-		if (fte.m_CompressedSize == fte.m_UncompressedSize)
-			ret = AR_OK_UNCOMPRESSED;
-
-		if (sz_comp)
-			*sz_comp = (fte.m_CompressedSize != (uint64_t)-1) ? fte.m_CompressedSize : fte.m_UncompressedSize;
-
+	if (ret <= AR_OK_UNCOMPRESSED)
+	{
 		// add the file to the file table
 		m_FileTable.push_back( fte );
 
 		m_OverallFileCount++;
-
-		CloseHandle(hin);
 	}
 
 	return ret;
@@ -711,23 +740,39 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 
 	SFileTableEntry &fte = m_FileTable.at(file_idx);
 
-	// if we're not where we're supposed to be for the file indicated, then we need to move the file pointer
-	if ((m_CachedFilePosition != m_pah->GetOffset()) || (m_CachedFilePosition != fte.m_Offset))
-	{
-		LARGE_INTEGER p;
-		p.QuadPart = fte.m_Offset;
-		SetFilePointerEx(m_pah->GetHandle(), p, NULL, FILE_BEGIN);
-	}
-
 	TCHAR path[MAX_PATH];
 
 	tstring _cvtpath, cvtpath;
+	tstring _cvtfile, cvtfile;
+
+	if (!(fte.m_Flags & SFileTableEntry::FTEFLAG_DOWNLOAD))
+	{
+		// if we're not where we're supposed to be for the file indicated, then we need to move the file pointer
+		if ((m_CachedFilePosition != m_pah->GetOffset()) || (m_CachedFilePosition != fte.m_Offset))
+		{
+			LARGE_INTEGER p;
+			p.QuadPart = fte.m_Offset;
+			SetFilePointerEx(m_pah->GetHandle(), p, NULL, FILE_BEGIN);
+		}
+
+		ReplaceEnvironmentVariables(fte.m_Filename, _cvtfile);
+		ReplaceRegistryKeys(_cvtfile, cvtfile);
+	}
+	else
+	{
+		cvtfile = fte.m_Filename;
+	}
+
 	ReplaceEnvironmentVariables(fte.m_Path, _cvtpath);
 	ReplaceRegistryKeys(_cvtpath, cvtpath);
 
-	tstring _cvtfile, cvtfile;
-	ReplaceEnvironmentVariables(fte.m_Filename, _cvtfile);
-	ReplaceRegistryKeys(_cvtfile, cvtfile);
+	if (fte.m_Flags & SFileTableEntry::FTEFLAG_DOWNLOAD)
+	{
+		if (output_filename)
+			*output_filename = cvtpath;
+
+		return IExtractor::ER_MUSTDOWNLOAD;
+	}
 
 	if (!override_filename)
 	{
@@ -753,6 +798,9 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 		_tcscat_s(path, MAX_PATH, override_filename);
 	}
 
+	if (output_filename)
+		*output_filename = path;
+
 	bool append = false;
 	// if we're spanned and the file index we want is 0, then we need to append to the file rather than creating a new one
 	if ((fte.m_Flags & SFileTableEntry::FTEFLAG_SPANNED) && (file_idx == 0))
@@ -764,9 +812,6 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 
 	if ((hf != INVALID_HANDLE_VALUE) || test_only)
 	{
-		if (output_filename)
-			*output_filename = path;
-
 		if (append && !test_only)
 			SetFilePointer(hf, 0, NULL, FILE_END);
 

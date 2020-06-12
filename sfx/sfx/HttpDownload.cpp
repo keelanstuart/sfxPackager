@@ -108,10 +108,16 @@ extern bool FLZACreateDirectories(const TCHAR *dir);
 
 BOOL CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFile, const TCHAR *szDestDir, float *ppct, BOOL *pabortque, UINT expected_size)
 {
+	if (!szUrl)
+		return false;
+
 	if (sCommFailures > 10)
 		return false;
 
 	BOOL retval = false;
+
+	tstring url = szUrl;
+	std::replace(url.begin(), url.end(), _T('\\'), _T('/'));
 
     FLZACreateDirectories(szDestDir);
 
@@ -133,11 +139,11 @@ BOOL CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
 		PathAppend(filepath, szDestFile);
 	}
 
-	if (!PathIsURL(szUrl))
+	if (!PathIsURL(url.c_str()))
 	{
-		if (PathFileExists(szUrl))
+		if (PathFileExists(url.c_str()))
 		{
-			return CopyFile(szUrl, filepath, false);
+			return CopyFile(url.c_str(), filepath, false);
 		}
 	}
 
@@ -152,11 +158,11 @@ BOOL CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
 
         DWORD flags = INTERNET_FLAG_RESYNCHRONIZE | INTERNET_FLAG_NO_COOKIES | INTERNET_FLAG_NO_UI;
         
-        if (_tcsnicmp(szUrl, _T("https"), 5) == 0)
+        if (_tcsnicmp(url.c_str(), _T("https"), 5) == 0)
             flags |= INTERNET_FLAG_IGNORE_CERT_DATE_INVALID | INTERNET_FLAG_IGNORE_CERT_CN_INVALID | INTERNET_FLAG_SECURE;
 
         // Open the url specified
-        m_hUrl = InternetOpenUrl(m_hInet, szUrl, NULL, 0, flags, (DWORD_PTR)this);
+        m_hUrl = InternetOpenUrl(m_hInet, url.c_str(), NULL, 0, flags, (DWORD_PTR)this);
 
 		// if we didn't get the hurl back immediately (which we won't, because it's an async op)
 		// then wait until the semaphore clears
@@ -219,13 +225,14 @@ BOOL CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
                             hfile = 0;
                     }
 
-                    DWORD amount_to_download = chunked ? BUFFER_SIZE : _ttoi(buf_query);
+                    uint64_t amount_to_download = chunked ? BUFFER_SIZE : _ttoi64(buf_query);
 
                     if (amount_to_download && (errcode < 400))
                     {
                         empty_file = false;
 
-                        DWORD amount_downloaded = 0;
+                        uint64_t amount_downloaded = 0;
+						uint64_t amount_remaining = amount_to_download;
                         INTERNET_BUFFERS inbuf[2];
 
                         int bufidx;
@@ -269,16 +276,17 @@ BOOL CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
                             {
                                 void *data_start = inbuf[bufidx].lpvBuffer;
 
-                                DWORD data_size = inbuf[bufidx].dwBufferLength;
+                                uint64_t data_size = std::min<uint64_t>(amount_remaining, uint64_t(inbuf[bufidx].dwBufferLength));
 
                                 // and if we have a valid file handle, write data
                                 if (hfile)
                                 {
                                     DWORD bwritten;
-                                    WriteFile(hfile, data_start, data_size, &bwritten, NULL);
+                                    WriteFile(hfile, data_start, (DWORD)data_size, &bwritten, NULL);
                                 }
 
-                                amount_downloaded += inbuf[bufidx].dwBufferLength;
+                                amount_downloaded += data_size;
+								amount_remaining -= data_size;
 
                                 if (ppct)
                                     *ppct = chunked ? 0 : (float)amount_downloaded / (float)amount_to_download;
@@ -365,9 +373,9 @@ BOOL CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
 		{
 			CURLcode curlret;
 
-			TCHAR *canonUrl = (TCHAR *)_alloca(((_tcslen(szUrl) * 3) + 1) * sizeof(TCHAR));;
-			DWORD cch = (UINT)_tcslen(szUrl) * 3;
-			HRESULT hr = UrlCanonicalize(szUrl, canonUrl, &cch, URL_ESCAPE_UNSAFE);
+			TCHAR *canonUrl = (TCHAR *)_alloca(((_tcslen(url.c_str()) * 3) + 1) * sizeof(TCHAR));;
+			DWORD cch = (UINT)_tcslen(url.c_str()) * 3;
+			HRESULT hr = UrlCanonicalize(url.c_str(), canonUrl, &cch, URL_ESCAPE_UNSAFE);
 			canonUrl[cch] = '\0';
 
 			int len = WideCharToMultiByte(CP_UTF8, 0, canonUrl, -1, NULL, 0, NULL, NULL);

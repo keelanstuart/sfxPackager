@@ -872,7 +872,7 @@ void scTextFileOpen(CScriptVar *c, void *userdata)
 
 	FILE *f = nullptr;
 	if (pfile)
-		f = _tfopen(pfile->getString().c_str(), pmode ? pmode->getString().c_str() : _T("r"));
+		f = _tfopen(pfile->getString().c_str(), pmode ? pmode->getString().c_str() : _T("r, ccs=UTF-8"));
 
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
@@ -905,8 +905,15 @@ void scTextFileReadLn(CScriptVar *c, void *userdata)
 		if (f)
 		{
 			TCHAR _s[4096];
-			_fgetts(_s, 4096, f);
-			s = _s;
+			if (_fgetts(_s, 4096, f))
+			{
+				size_t n = _tcslen(_s);
+
+				if ((n > 0) && (n <= 4096))
+					_s[n - 1] = _T('\0');
+
+				s = _s;
+			}
 		}
 	}
 
@@ -963,6 +970,29 @@ void scGetCurrentDateStr(CScriptVar *c, void *userdata)
 }
 
 
+void scGetFileNameFromPath(CScriptVar *c, void *userdata)
+{
+	CScriptVar *pfilename = c->getParameter(_T("filepath"));
+
+	tstring n;
+	if (pfilename)
+	{
+		tstring _n = pfilename->getString();
+		size_t o = _n.find_last_of(_T("\\/"));
+		tstring::const_iterator it = _n.cbegin();
+		if (o <= _n.length())
+		{
+			it += (o + 1);
+			while (it != _n.cend()) { n += *it; it++; }
+		}
+	}
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setString(n);
+}
+
+
 // ******************************************************************************
 // ******************************************************************************
 
@@ -1009,6 +1039,7 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function GetCurrentDateString()"), scGetCurrentDateStr, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function GetExeVersion(file)"), scGetExeVersion, (void*)this);
+	theApp.m_js.addNative(_T("function GetFileNameFromPath(filepath)"), scGetFileNameFromPath, (void*)this);
 	theApp.m_js.addNative(_T("function GetLicenseKey()"), scGetLicenseKey, (void *)this);
 	theApp.m_js.addNative(_T("function GetLicenseOrg()"), scGetLicenseOrg, (void *)this);
 	theApp.m_js.addNative(_T("function GetLicenseUser()"), scGetLicenseUser, (void *)this);
@@ -1037,7 +1068,7 @@ DWORD CProgressDlg::RunInstall()
 
 		iscr += _T("var BASEPATH = \"");
 		iscr += (LPCTSTR)(theApp.m_InstallPath);
-		iscr += _T("\";  // the base install path\n\n");
+		iscr += _T("\";  /* the base install path */\n\n");
 
 		iscr += theApp.m_Script[CSfxApp::EScriptType::INIT];
 
@@ -1090,41 +1121,88 @@ DWORD CProgressDlg::RunInstall()
 
 				IExtractor::EXTRACT_RESULT er = pie->ExtractFile(i, &ffull, nullptr, theApp.m_TestOnlyMode);
 
-				for (tstring::iterator rit = ffull.begin(), last_rit = ffull.end(); rit != last_rit; rit++)
-				{
-					if (*rit == _T('\\'))
-						*rit = _T('/');
-				}
-
-				for (tstring::iterator rit = fpath.begin(), last_rit = fpath.end(); rit != last_rit; rit++)
-				{
-					if (*rit == _T('\\'))
-						*rit = _T('/');
-				}
 
 				switch (er)
 				{
+					case IExtractor::ER_MUSTDOWNLOAD:
+					{
+						TCHAR dir[MAX_PATH], *_dir = dir;
+						_tcscpy_s(dir, ffull.c_str());
+						while (_dir && *(_dir++)) { if (*_dir == _T('/')) *_dir = _T('\\'); }
+
+						msg.Format(_T("Downloading \"%s\" from (%s)... "), ffull.c_str(), fname.c_str());
+						m_Status.SetSel(-1, 0, FALSE);
+						m_Status.ReplaceSel(msg);
+
+						if (!theApp.m_TestOnlyMode)
+						{
+							PathRemoveFileSpec(dir);
+							FLZACreateDirectories(dir);
+
+							CHttpDownloader dl;
+							if (!dl.DownloadHttpFile(fname.c_str(), ffull.c_str(), _T("")))
+							{
+								msg.Format(_T("[download failed]\r\n"));
+								m_Status.SetSel(-1, 0, FALSE);
+								m_Status.ReplaceSel(msg);
+								break;
+							}
+						}
+
+						HANDLE dlfh = CreateFile(ffull.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, NULL);
+						if (dlfh == INVALID_HANDLE_VALUE)
+						{
+							msg.Format(_T("[file error]\r\n"));
+							m_Status.SetSel(-1, 0, FALSE);
+							m_Status.ReplaceSel(msg);
+							break;
+						}
+
+						GetFileSizeEx(dlfh, (PLARGE_INTEGER)&usize);
+						CloseHandle(dlfh);
+
+						std::replace(ffull.begin(), ffull.end(), _T('\\'), _T('/'));
+
+						fname = PathFindFileName(ffull.c_str());
+						fpath = ffull;
+						size_t sp = fpath.find_last_of(_T('/'));
+						if (sp < fpath.length())
+						{
+							tstring::const_iterator pit = fpath.cbegin() + sp;
+							fpath.erase(pit, fpath.cend());
+						}
+						else
+							fpath = _T(".");
+
+						msg.Format(_T("\r\n"));
+						m_Status.SetSel(-1, 0, FALSE);
+						m_Status.ReplaceSel(msg);
+					}
+
 					case IExtractor::ER_OK:
 					{
+						std::replace(ffull.begin(), ffull.end(), _T('\\'), _T('/'));
+						std::replace(fpath.begin(), fpath.end(), _T('\\'), _T('/'));
+
 						if (!theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty())
 						{
 							tstring pfscr;
 
 							pfscr += _T("var BASEPATH = \"");
 							pfscr += (LPCTSTR)(theApp.m_InstallPath);
-							pfscr += _T("\";  // the base install path\n\n");
+							pfscr += _T("\";  /* the base install path */\n\n");
 
 							pfscr += _T("var FILENAME = \"");
 							pfscr += fname.c_str();
-							pfscr += _T("\";  // the name of the file that was just extracted\n");
+							pfscr += _T("\";  /* the name of the file that was just extracted */\n");
 
 							pfscr += _T("var PATH = \"");
 							pfscr += fpath.c_str();
-							pfscr += _T("\";  // the output path of that file\n");
+							pfscr += _T("\";  /* the output path of that file */\n");
 
 							pfscr += _T("var FILEPATH = \"");
 							pfscr += ffull.c_str();
-							pfscr += _T("\";  // the full filename (path + name)\n\n");
+							pfscr += _T("\";  /* the full filename (path + name) */\n\n");
 
 							pfscr += theApp.m_Script[CSfxApp::EScriptType::PERFILE];
 
@@ -1161,7 +1239,7 @@ DWORD CProgressDlg::RunInstall()
 
 		fscr += _T("var BASEPATH = \"");
 		fscr += (LPCTSTR)(theApp.m_InstallPath);
-		fscr += _T("\";  // the base install path\n\n");
+		fscr += _T("\";  /* the base install path */\n\n");
 
 		fscr += theApp.m_Script[CSfxApp::EScriptType::FINISH];
 

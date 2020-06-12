@@ -143,6 +143,8 @@ public:
 
 		ER_DONE,
 
+		ER_MUSTDOWNLOAD,
+
 		ER_UNKNOWN_ERROR
 	};
 

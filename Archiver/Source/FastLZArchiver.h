@@ -24,7 +24,8 @@ struct sFileTableEntry
 {
 	enum
 	{
-		FTEFLAG_SPANNED = 0x0000000000000001,		// a spanned file will be partially in multiple files
+		FTEFLAG_SPANNED		= 0x0000000000000001,		// a spanned file will be partially in multiple files
+		FTEFLAG_DOWNLOAD	= 0x0000000000000002,		// an empty file that is just a download reference
 	};
 
 	uint64_t m_Flags;

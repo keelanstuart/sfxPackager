@@ -227,6 +227,10 @@ public:
 	{
 		bool ret = false;
 
+		TCHAR docpath[MAX_PATH];
+		_tcscpy_s(docpath, m_pDoc->GetPathName());
+		PathRemoveFileSpec(docpath);
+
 		HRSRC hsfxres = FindResource(NULL, MAKEINTRESOURCE(IDR_EXE_SFX), _T("EXE"));
 		if (hsfxres)
 		{
@@ -297,9 +301,6 @@ public:
 
 					if (PathIsRelative(m_pDoc->m_IconFile))
 					{
-						TCHAR docpath[MAX_PATH];
-						_tcscpy_s(docpath, MAX_PATH, m_pDoc->GetPathName());
-						PathRemoveFileSpec(docpath);
 						PathCombine(iconpath, docpath, m_pDoc->m_IconFile);
 					}
 					else
@@ -363,14 +364,11 @@ public:
 
 					if (PathIsRelative(m_pDoc->m_ImageFile))
 					{
-						TCHAR docpath[MAX_PATH];
-						_tcscpy(docpath, m_pDoc->GetPathName());
-						PathRemoveFileSpec(docpath);
 						PathCombine(imgpath, docpath, m_pDoc->m_ImageFile);
 					}
 					else
 					{
-						_tcscpy(imgpath, m_pDoc->m_ImageFile);
+						_tcscpy_s(imgpath, m_pDoc->m_ImageFile);
 					}
 
 					if (PathFileExists(imgpath))
@@ -415,18 +413,31 @@ public:
 				{
 					char *shtml;
 					bool created_shtml = false;
-					if (PathFileExists(m_pDoc->m_Description))
+
+					TCHAR welcomepath[MAX_PATH];
+
+					if (PathIsRelative(m_pDoc->m_Description))
 					{
-						HANDLE hhtmlfile = CreateFile(m_pDoc->m_Description, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+						PathCombine(welcomepath, docpath, m_pDoc->m_Description);
+					}
+					else
+					{
+						_tcscpy_s(welcomepath, m_pDoc->m_Description);
+					}
+
+					if (PathFileExists(welcomepath))
+					{
+						HANDLE hhtmlfile = CreateFile(welcomepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 						if (hhtmlfile)
 						{
 							DWORD fsz = GetFileSize(hhtmlfile, NULL);
-							shtml = (char *)malloc(fsz);
+							shtml = (char *)malloc(fsz + 1);
 							if (shtml)
 							{
 								created_shtml = true;
 								DWORD rb;
 								ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
+								shtml[fsz] = 0;
 							}
 
 							CloseHandle(hhtmlfile);
@@ -449,18 +460,31 @@ public:
 				{
 					char *shtml;
 					bool created_shtml = false;
-					if (PathFileExists(m_pDoc->m_LicenseMessage))
+
+					TCHAR licensepath[MAX_PATH];
+
+					if (PathIsRelative(m_pDoc->m_LicenseMessage))
 					{
-						HANDLE hhtmlfile = CreateFile(m_pDoc->m_LicenseMessage, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+						PathCombine(licensepath, docpath, m_pDoc->m_LicenseMessage);
+					}
+					else
+					{
+						_tcscpy_s(licensepath, m_pDoc->m_LicenseMessage);
+					}
+
+					if (PathFileExists(licensepath))
+					{
+						HANDLE hhtmlfile = CreateFile(licensepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 						if (hhtmlfile)
 						{
 							DWORD fsz = GetFileSize(hhtmlfile, NULL);
-							shtml = (char *)malloc(fsz);
+							shtml = (char *)malloc(fsz + 1);
 							if (shtml)
 							{
 								created_shtml = true;
 								DWORD rb;
 								ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
+								shtml[fsz] = 0;
 							}
 
 							CloseHandle(hhtmlfile);
@@ -836,19 +860,48 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 	if (!srcspec)
 		return false;
 
+	CString msg;
+
 	CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
+
+	const TCHAR *pss = srcspec;
+	if (!_tcsnicmp(pss, _T("http"), 4))
+	{
+		pss += 4;
+		if (!_tcsnicmp(pss, _T("s"), 1))
+			pss++;
+
+		if (!_tcsnicmp(pss, _T("://"), 3))
+		{
+			TCHAR local_dstpath[MAX_PATH], *dp = local_dstpath;
+			_tcscpy_s(local_dstpath, dstpath);
+			if (_tcslen(local_dstpath) > 0)
+				PathAddBackslash(local_dstpath);
+			_tcscat(local_dstpath, dstfilename);
+
+			while (dp && *(dp++)) { if (*dp == _T('/')) *dp = _T('\\'); }
+
+			parc->AddFile(srcspec, local_dstpath, nullptr, nullptr, scriptsnippet);
+
+			msg.Format(_T("    Adding download reference to \"%s\" from (%s) ...\r\n"), local_dstpath, srcspec);
+			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+
+			return true;
+		}
+	}
+
+	TCHAR docpath[MAX_PATH];
+	_tcscpy_s(docpath, GetPathName());
+	PathRemoveFileSpec(docpath);
 
 	TCHAR fullfilename[MAX_PATH];
 	if (PathIsRelative(srcspec))
 	{
-		TCHAR docpath[MAX_PATH];
-		_tcscpy(docpath, GetPathName());
-		PathRemoveFileSpec(docpath);
 		PathCombine(fullfilename, docpath, srcspec);
 	}
 	else
 	{
-		_tcscpy(fullfilename, srcspec);
+		_tcscpy_s(fullfilename, srcspec);
 	}
 
 	TCHAR *filespec = PathFindFileName(srcspec);
@@ -877,8 +930,6 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 	{
 		ret = true;
 
-		CString msg;
-
 		do
 		{
 			wr = WaitForSingleObject(m_hCancelEvent, 0);
@@ -901,7 +952,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 						_tcscat(filename, filespec);
 
 						TCHAR local_dstpath[MAX_PATH];
-						_tcscpy(local_dstpath, dstpath);
+						_tcscpy_s(local_dstpath, dstpath);
 						if (_tcslen(local_dstpath) > 0)
 							PathAddBackslash(local_dstpath);
 						_tcscat(local_dstpath, fd.cFileName);
@@ -923,7 +974,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 							dstpath++;
 
 						TCHAR dst[MAX_PATH];
-						_tcscpy(dst, dstpath ? dstpath : _T(""));
+						_tcscpy_s(dst, dstpath ? dstpath : _T(""));
 
 						if (dst[0] != _T('\0'))
 							PathAddBackslash(dst);
@@ -932,7 +983,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 
 						if (PathFileExists(fullfilename))
 						{
-							msg.Format(_T("    Adding \"%s\" from \"%s\"...\r\n"), dst, fullfilename);
+							msg.Format(_T("    Adding \"%s\" from \"%s\" ...\r\n"), dst, fullfilename);
 							pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 							parc->AddFile(fullfilename, dst, &uncomp, &comp, scriptsnippet);
@@ -986,13 +1037,14 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 
 	CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
 
+	TCHAR docpath[MAX_PATH];
+	_tcscpy_s(docpath, GetPathName());
+	PathRemoveFileSpec(docpath);
+
 	TCHAR fullfilename[MAX_PATH];
 
 	if (PathIsRelative(filename))
 	{
-		TCHAR docpath[MAX_PATH];
-		_tcscpy(docpath, GetPathName());
-		PathRemoveFileSpec(docpath);
 		PathCombine(fullfilename, docpath, filename);
 	}
 	else
@@ -1051,7 +1103,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 		_tcscat(fullfilename, extcpy);
 	}
 
-	msg.Format(_T("Beginning build of \"%s\" (%s)...\r\n"), m_Caption, fullfilename);
+	msg.Format(_T("Beginning build of \"%s\" (%s) ...\r\n"), m_Caption, fullfilename);
 	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 	TStringArray created_archives;
@@ -1099,7 +1151,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 			{
 				// TODO: add include / exclude lists
 				TCHAR srcpath[MAX_PATH];
-				_tcscpy(srcpath, it->second.srcpath.c_str());
+				_tcscpy_s(srcpath, it->second.srcpath.c_str());
 				PathAddBackslash(srcpath);
 				_tcscat(srcpath, it->second.name.c_str());
 
@@ -1134,10 +1186,15 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	}
 	else
 	{
-		msg.Format(_T("Added %d files, spanning %d archive(s). Compression ratio: %1.02f :: 1.\r\n"), parc->GetFileCount(IArchiver::IM_WHOLE), spanct, (double)m_UncompressedSize.QuadPart / (double)sz_totalcomp);
+		msg.Format(_T("Done.\r\n\r\nAdded %d files, spanning %d archive(s).\r\n"), parc->GetFileCount(IArchiver::IM_WHOLE), spanct);
 		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
-		msg.Format(_T("Done. (completed in: %02d:%02d:%02d)\r\n"), hours, minutes, seconds);
+		double comp_pct = 0.0;
+		if (sz_totalcomp > 0)
+		{
+			comp_pct = 100.0 * std::max<double>(0.0, (((double)m_UncompressedSize.QuadPart / (double)sz_totalcomp) - 1.0));
+		}
+		msg.Format(_T("Compression: %1.02f%%\r\nCompleted in: %02d:%02d:%02d\r\n\r\n\r\n"), comp_pct, hours, minutes, seconds);
 	}
 
 	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
@@ -1163,12 +1220,13 @@ bool CSfxPackagerDoc::CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcsp
 
 	CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
 
+	TCHAR docpath[MAX_PATH];
+	_tcscpy_s(docpath, GetPathName());
+	PathRemoveFileSpec(docpath);
+
 	TCHAR fullfilename[MAX_PATH];
 	if (PathIsRelative(srcspec))
 	{
-		TCHAR docpath[MAX_PATH];
-		_tcscpy(docpath, GetPathName());
-		PathRemoveFileSpec(docpath);
 		PathCombine(fullfilename, docpath, srcspec);
 	}
 	else
@@ -1224,7 +1282,7 @@ bool CSfxPackagerDoc::CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcsp
 						_tcscat(filename, filespec);
 
 						TCHAR local_dstpath[MAX_PATH];
-						_tcscpy(local_dstpath, dstpath);
+						_tcscpy_s(local_dstpath, dstpath);
 						if (_tcslen(local_dstpath) > 0)
 							PathAddBackslash(local_dstpath);
 						_tcscat(local_dstpath, fd.cFileName);
@@ -1238,7 +1296,7 @@ bool CSfxPackagerDoc::CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcsp
 						dstpath++;
 
 					TCHAR dst[MAX_PATH];
-					_tcscpy(dst, dstpath ? dstpath : _T(""));
+					_tcscpy_s(dst, dstpath ? dstpath : _T(""));
 
 					CreateDirectories(dst);
 
@@ -1293,13 +1351,13 @@ bool CSfxPackagerDoc::CreateTarGzipPackage(const TCHAR *filename, CSfxPackagerVi
 	if (PathIsRelative(filename))
 	{
 		TCHAR docpath[MAX_PATH];
-		_tcscpy(docpath, GetPathName());
+		_tcscpy_s(docpath, GetPathName());
 		PathRemoveFileSpec(docpath);
 		PathCombine(fullfilename, docpath, filename);
 	}
 	else
 	{
-		_tcscpy(fullfilename, filename);
+		_tcscpy_s(fullfilename, filename);
 	}
 
 	TCHAR filename_sans_ext[MAX_PATH];

@@ -94,8 +94,6 @@
     <None Include="res\Toolbar256.bmp">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="..\Bin\sfx64%24%28ShortConfiguration%29.exe" />
-    <None Include="..\Bin\sfx64.exe" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sfxPackager.h">
