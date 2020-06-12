@@ -1,32 +1,0 @@
-<sfxpackager>
-	<settings>
-		<output value="sfxPackagerSetup.exe"/>
-		<caption value="sfxPackager Setup"/>
-		<description value="&lt;p&gt;&lt;b&gt;sfxPackager&lt;/b&gt; is a light-weight, self-extracting install creation utility for Windows that falls somewhere between PackageForTheWeb and NSIS, functionality-wise. By combining a user-friendly, drag-and-drop GUI with an integrated JavaScript interpreter, you can quickly create attractive, fully-featured installers.&lt;/p&gt;&lt;p&gt;Follow this open source project on &lt;a href=&quot;https://sourceforge.net/projects/sfxpackager&quot;&gt;Sourceforge&lt;/a&gt; or &lt;a href=&quot;https://github.com/keelanstuart/sfxPackager&quot;&gt;github&lt;/a&gt;  and post a comment if you use and like this software.&lt;/p&gt;Thanks!&lt;br&gt;&lt;br&gt;Copyright (c) 2013-2020, Keelan Stuart&lt;br&gt;&lt;br&gt;&lt;p style=&quot;font-size:12px;color:#A0A0A0&quot;&gt;&lt;i&gt;When installing to your root drive's Program Files folder, you may need to run as Administrator&lt;/i&gt;&lt;/p&gt;"/>
-		<licensemsg value=""/>
-		<icon value="D:\proj\sfxPackager\sfx\sfxPackager\res\sfxPackager.ico"/>
-		<image value="D:\proj\sfxPackagerSetup.bmp"/>
-		<launchcmd value=""/>
-		<explore value="true"/>
-		<defaultpath value="%ProgramFiles%\sfxPackager"/>
-		<versionid value="D:\proj\sfxPackager\sfx\bin\sfxPackager64.exe"/>
-		<requireadmin value="false"/>
-		<requirereboot value="false"/>
-		<allowdestchg value="true"/>
-		<appendbuilddate value="false"/>
-		<appendversion value="true"/>
-		<maxsize value="-1"/>
-	</settings>
-
-	<scripts>
-		<script type="init">CreateDirectoryTree(&quot;%APPDATA%/Microsoft/Windows/Start Menu/Programs/sfxPackager&quot;);Echo(&quot;Created Start Menu folder...\n&quot;);</script>
-		<script type="perfile">function CreateStartMenuEntry(){	CreateShortcut(&quot;%APPDATA%/Microsoft/Windows/Start Menu/Programs/sfxPackager/sfxPackager.lnk&quot;, FILEPATH, &quot;&quot;, BASEPATH, &quot;sfxPackager (64-bit) install creation utility&quot;, 1, FILEPATH, 0);	Echo(&quot;Created Start Menu shortcut...\n&quot;);}</script>
-		<script type="finish">CreateShortcut(&quot;%APPDATA%/Microsoft/Windows/Start Menu/Programs/sfxPackager/sfxPackager User Guide.lnk&quot;, &quot;https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub?start=false&amp;loop=false&amp;delayms=30000&quot;, &quot;&quot;, BASEPATH, &quot;sfxPackager User Guide&quot;, 1, &quot;&quot;, 0);Echo(&quot;Created shortcut to online user guide...\n&quot;);</script>
-	</scripts>
-
-	<files>
-		<file name="README.txt" src="D:\proj\sfxPackager\README.md" dst="\" exclude="" snippet="" />
-		<file name="LICENSE.txt" src="D:\proj\sfxPackager\LICENSE" dst="\" exclude="" snippet="" />
-		<file name="sfxPackager64.exe" src="D:\proj\sfxPackager\sfx\bin\sfxPackager64.exe" dst="\" exclude="" snippet="CreateStartMenuEntry();" />
-	</files>
-</sfxpackager>
