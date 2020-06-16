@@ -121,6 +121,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="..\Bin\sfx.exe" />
     <None Include="ReadMe.txt" />
     <None Include="res\classview.bmp" />
     <None Include="res\classview_hc.bmp" />

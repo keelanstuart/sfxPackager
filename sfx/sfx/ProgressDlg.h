@@ -38,6 +38,7 @@ protected:
 
 	CProgressCtrl m_Progress;
 	CEdit m_Status;
+	CFont m_Font;
 
 	HICON m_hIcon;
 	HANDLE m_mutexInstallStart;

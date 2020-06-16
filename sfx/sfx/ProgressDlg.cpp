@@ -118,6 +118,13 @@ BOOL CProgressDlg::OnInitDialog()
 
 	if (m_Status.SubclassDlgItem(IDC_STATUS, this))
 	{
+#if 0
+		int nFontSize = 8;
+		int nHeight = -((GetDC()->GetDeviceCaps(LOGPIXELSY) * nFontSize) / 72);
+		m_Font.CreateFont(nHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_CHARACTER_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH | FF_DONTCARE, _T("Arial"));
+		m_Status.SetFont(&m_Font);
+#endif
+
 		m_Status.GetWindowRect(r);
 		r.left += wd;
 		ScreenToClient(r);
@@ -1095,7 +1102,7 @@ DWORD CProgressDlg::RunInstall()
 		{
 			size_t maxi = pie->GetFileCount();
 
-			msg.Format(_T("Extracting %d files to %s...\r\n"), int(maxi), (LPCTSTR)(theApp.m_InstallPath));
+			msg.Format(_T("Installing %d files to %s  ...\r\n"), int(maxi), (LPCTSTR)(theApp.m_InstallPath));
 			m_Status.SetSel(-1, 0, TRUE);
 			m_Status.ReplaceSel(msg);
 
@@ -1121,16 +1128,28 @@ DWORD CProgressDlg::RunInstall()
 
 				IExtractor::EXTRACT_RESULT er = pie->ExtractFile(i, &ffull, nullptr, theApp.m_TestOnlyMode);
 
+				TCHAR relfull[MAX_PATH];
+				PathRelativePathTo(relfull, theApp.m_InstallPath, FILE_ATTRIBUTE_DIRECTORY, ffull.c_str(), 0);
+
+				if (er == IExtractor::ER_OK)
+				{
+					msg.Format(_T("    %s "), relfull);
+					m_Status.SetSel(-1, 0, FALSE);
+					m_Status.ReplaceSel(msg);
+				}
 
 				switch (er)
 				{
 					case IExtractor::ER_MUSTDOWNLOAD:
 					{
+						_tcscat_s(relfull, PathFindFileName(ffull.c_str()));
+
 						TCHAR dir[MAX_PATH], *_dir = dir;
 						_tcscpy_s(dir, ffull.c_str());
 						while (_dir && *(_dir++)) { if (*_dir == _T('/')) *_dir = _T('\\'); }
 
-						msg.Format(_T("Downloading \"%s\" from (%s)... "), ffull.c_str(), fname.c_str());
+						const TCHAR *dlfn = PathFindFileName(ffull.c_str());
+						msg.Format(_T("    Downloading %s from %s ... "), relfull, fname.c_str());
 						m_Status.SetSel(-1, 0, FALSE);
 						m_Status.ReplaceSel(msg);
 
@@ -1143,8 +1162,6 @@ DWORD CProgressDlg::RunInstall()
 							if (!dl.DownloadHttpFile(fname.c_str(), ffull.c_str(), _T("")))
 							{
 								msg.Format(_T("[download failed]\r\n"));
-								m_Status.SetSel(-1, 0, FALSE);
-								m_Status.ReplaceSel(msg);
 								break;
 							}
 						}
@@ -1153,12 +1170,12 @@ DWORD CProgressDlg::RunInstall()
 						if (dlfh == INVALID_HANDLE_VALUE)
 						{
 							msg.Format(_T("[file error]\r\n"));
-							m_Status.SetSel(-1, 0, FALSE);
-							m_Status.ReplaceSel(msg);
 							break;
 						}
 
-						GetFileSizeEx(dlfh, (PLARGE_INTEGER)&usize);
+						LARGE_INTEGER fsz;
+						GetFileSizeEx(dlfh, &fsz);
+						usize = fsz.QuadPart;
 						CloseHandle(dlfh);
 
 						std::replace(ffull.begin(), ffull.end(), _T('\\'), _T('/'));
@@ -1172,11 +1189,9 @@ DWORD CProgressDlg::RunInstall()
 							fpath.erase(pit, fpath.cend());
 						}
 						else
-							fpath = _T(".");
+							fpath = _T("./");
 
-						msg.Format(_T("\r\n"));
-						m_Status.SetSel(-1, 0, FALSE);
-						m_Status.ReplaceSel(msg);
+						er = IExtractor::ER_OK;
 					}
 
 					case IExtractor::ER_OK:
@@ -1184,47 +1199,48 @@ DWORD CProgressDlg::RunInstall()
 						std::replace(ffull.begin(), ffull.end(), _T('\\'), _T('/'));
 						std::replace(fpath.begin(), fpath.end(), _T('\\'), _T('/'));
 
-						if (!theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty())
-						{
-							tstring pfscr;
+						msg.Format(_T("(%" PRId64 "KB) [ok]\r\n"), std::max<uint64_t>(1, usize / 1024));
 
-							pfscr += _T("var BASEPATH = \"");
-							pfscr += (LPCTSTR)(theApp.m_InstallPath);
-							pfscr += _T("\";  /* the base install path */\n\n");
-
-							pfscr += _T("var FILENAME = \"");
-							pfscr += fname.c_str();
-							pfscr += _T("\";  /* the name of the file that was just extracted */\n");
-
-							pfscr += _T("var PATH = \"");
-							pfscr += fpath.c_str();
-							pfscr += _T("\";  /* the output path of that file */\n");
-
-							pfscr += _T("var FILEPATH = \"");
-							pfscr += ffull.c_str();
-							pfscr += _T("\";  /* the full filename (path + name) */\n\n");
-
-							pfscr += theApp.m_Script[CSfxApp::EScriptType::PERFILE];
-
-							pfscr += _T("\n\n");
-							pfscr += snippet;
-
-							if (!IsScriptEmpty(pfscr))
-								theApp.m_js.execute(pfscr);
-						}
-
-						msg.Format(_T("    %s (%" PRId64 "KB) [ok]\r\n"), ffull.c_str(), usize / 1024);
 						break;
 					}
 
 					default:
-						msg.Format(_T("    %s [failed]\r\n"), ffull.c_str());
+						msg.Format(_T("    %s [failed]\r\n"), relfull);
 						extract_ok = false;
 						break;
 				}
 
 				m_Status.SetSel(-1, 0, FALSE);
 				m_Status.ReplaceSel(msg);
+
+				if ((er == IExtractor::ER_OK) && !theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty())
+				{
+					tstring pfscr;
+
+					pfscr += _T("var BASEPATH = \"");
+					pfscr += (LPCTSTR)(theApp.m_InstallPath);
+					pfscr += _T("\";  /* the base install path */\n\n");
+
+					pfscr += _T("var FILENAME = \"");
+					pfscr += fname.c_str();
+					pfscr += _T("\";  /* the name of the file that was just extracted */\n");
+
+					pfscr += _T("var PATH = \"");
+					pfscr += fpath.c_str();
+					pfscr += _T("\";  /* the output path of that file */\n");
+
+					pfscr += _T("var FILEPATH = \"");
+					pfscr += ffull.c_str();
+					pfscr += _T("\";  /* the full filename (path + name) */\n\n");
+
+					pfscr += theApp.m_Script[CSfxApp::EScriptType::PERFILE];
+
+					pfscr += _T("\n\n");
+					pfscr += snippet;
+
+					if (!IsScriptEmpty(pfscr))
+						theApp.m_js.execute(pfscr);
+				}
 			}
 
 			IExtractor::DestroyExtractor(&pie);

@@ -9,38 +9,34 @@ All other copyrighted material contained herein is noted and rights attributed t
 
 #pragma once
 
-#define DOWNLOADER_USES_WININET
+#include <windows.h>
+#include <string>
+#include <algorithm>
+#include <tchar.h>
 
-#if defined(DOWNLOADER_USES_WININET)
+typedef std::basic_string<TCHAR> tstring;
+
+
 #include <wininet.h>
-#else
-#include <curl/curl.h>
-#include <curl/easy.h>
-#endif
 
 class CHttpDownloader
 {
 public:
-	CHttpDownloader();
+	CHttpDownloader(bool async = false);
 	~CHttpDownloader();
 
-#define DL_KNOWN_SIZE_UNAVAILABLE	-1
-#define DL_UNKNOWN_SIZE				-2
-	BOOL DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFile, const TCHAR *szDestDir, float *ppct = NULL, BOOL *pabortque = NULL, UINT expected_size = DL_UNKNOWN_SIZE);
+	typedef void (__cdecl DOWNLOAD_STATUS_CALLBACK)(uint64_t bytes_received, uint64_t bytes_expected);
+
+	bool DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFile, const TCHAR *szDestDir, HANDLE hEvtAbort = INVALID_HANDLE_VALUE, DOWNLOAD_STATUS_CALLBACK *usercb = nullptr);
 
 private:
-#if defined(DOWNLOADER_USES_WININET)
-	static void CALLBACK DownloadStatusCallback(HINTERNET hinet, DWORD_PTR context, DWORD inetstat, LPVOID statinfo, DWORD statinfolen);
-#endif
+	static void CALLBACK wininetStatusCallback(HINTERNET hinet, DWORD_PTR context, DWORD inetstat, LPVOID statinfo, DWORD statinfolen);
 
 protected:
-#if defined(DOWNLOADER_USES_WININET)
 	HINTERNET m_hInet;
 	HINTERNET m_hUrl;
-	HANDLE m_SemReqComplete;
-#else
-	CURL *m_pCURL;
-#endif
+	bool m_bTxStarted;
+	bool m_bAsync;
+	HANDLE m_UrlReady, m_InetReady, m_RxChunk;
 
-	static UINT sCommFailures;
 };
