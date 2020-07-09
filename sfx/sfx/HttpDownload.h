@@ -22,7 +22,17 @@ typedef std::basic_string<TCHAR> tstring;
 class CHttpDownloader
 {
 public:
-	CHttpDownloader(bool async = false);
+
+	enum
+	{
+		EDLFLAG_ASYNC_DOWNLOAD = 0,
+		EDLFLAG_ASYNC_WRITE
+	};
+
+#define DLFLAG_ASYNC_DOWNLOAD	(1 << EDLFLAG_ASYNC_DOWNLOAD)
+#define DLFLAG_ASYNC_WRITE		(1 << EDLFLAG_ASYNC_WRITE)
+
+	CHttpDownloader(int dlflags = 0);
 	~CHttpDownloader();
 
 	typedef void (__cdecl DOWNLOAD_STATUS_CALLBACK)(uint64_t bytes_received, uint64_t bytes_expected);
@@ -36,7 +46,7 @@ protected:
 	HINTERNET m_hInet;
 	HINTERNET m_hUrl;
 	bool m_bTxStarted;
-	bool m_bAsync;
+	int m_DLFlags;
 	HANDLE m_UrlReady, m_InetReady, m_RxChunk;
 
 };

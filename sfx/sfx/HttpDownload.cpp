@@ -34,7 +34,7 @@ All other copyrighted material contained herein is noted and rights attributed t
 
 
 
-CHttpDownloader::CHttpDownloader(bool async) : m_bAsync(async)
+CHttpDownloader::CHttpDownloader(int dlflags) : m_DLFlags(dlflags)
 {
 	m_hInet = NULL;
 	m_hUrl = NULL;
@@ -43,7 +43,7 @@ CHttpDownloader::CHttpDownloader(bool async) : m_bAsync(async)
 	m_RxChunk = CreateEvent(nullptr, true, true, nullptr);		// received a chunk
 
 	// Create our internet handle
-	m_hInet = InternetOpen(_T("FILE_DOWNLOAD"), INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, m_bAsync ? INTERNET_FLAG_ASYNC : 0);
+	m_hInet = InternetOpen(_T("FILE_DOWNLOAD"), INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, (m_DLFlags & DLFLAG_ASYNC_DOWNLOAD) ? INTERNET_FLAG_ASYNC : 0);
 
 	InternetSetStatusCallback(m_hInet, (INTERNET_STATUS_CALLBACK)wininetStatusCallback);
 }
@@ -179,7 +179,7 @@ bool CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
 						
 					// If a destination file was specified, then create the file handle
                     if (szDestFile)
-                        hfile = CreateFile(filepath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | (m_bAsync ? FILE_FLAG_OVERLAPPED : 0), NULL);
+                        hfile = CreateFile(filepath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
 
 					if (hfile != INVALID_HANDLE_VALUE)
 					{
@@ -228,7 +228,7 @@ bool CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
 							if (WaitForMultipleObjects(_countof(events), events, TRUE, (last_bufidx >= 0) ? 1000 : 0) == WAIT_TIMEOUT)
 								continue;
 
-							if (m_bAsync)
+							if (m_DLFlags & DLFLAG_ASYNC_WRITE)
 							{
 								// see how much was written to our file last time
 								DWORD last_amount_written = 0;
@@ -259,7 +259,7 @@ bool CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
 								ResetEvent(m_RxChunk);
 
 								// Read data from the internet into our current buffer
-								if (!InternetReadFileEx(m_hUrl, &inbuf[bufidx], m_bAsync ? IRF_ASYNC : IRF_SYNC, (DWORD_PTR)this))
+								if (!InternetReadFileEx(m_hUrl, &inbuf[bufidx], (m_DLFlags & DLFLAG_ASYNC_DOWNLOAD) ? IRF_ASYNC : IRF_SYNC, (DWORD_PTR)this))
 								{
 									inet_err = GetLastError();
 
@@ -283,12 +283,11 @@ bool CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
 								tmp.QuadPart = amount_written;
 								ovr.OffsetHigh = tmp.HighPart;
 								ovr.Offset = tmp.LowPart;
-
 								ovr.hEvent = data_written_event;
 
 								// and write whatever data we have
 								DWORD bw = 0;
-								if (!WriteFile(hfile, buffer[last_bufidx], amount_to_write, m_bAsync ? nullptr : &bw, m_bAsync ? &ovr : nullptr))
+								if (!WriteFile(hfile, buffer[last_bufidx], amount_to_write, (m_DLFlags & DLFLAG_ASYNC_WRITE) ? nullptr : &bw, (m_DLFlags & DLFLAG_ASYNC_WRITE) ? &ovr : nullptr))
 								{
 									file_err = GetLastError();
 
@@ -296,7 +295,7 @@ bool CHttpDownloader::DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFi
 									if (file_err != ERROR_IO_PENDING)
 										break;
 								}
-								else if (!m_bAsync)
+								else
 								{
 									amount_written += bw;
 								}

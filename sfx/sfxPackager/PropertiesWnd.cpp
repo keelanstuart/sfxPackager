@@ -202,11 +202,13 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 			CMFCPropertyGridProperty *pAppendVersionProp = new CMFCPropertyGridProperty(_T("Append Version"), (_variant_t)((bool)pd->m_bAppendVersion), _T("If set, appends the version to the output file name, immediately before the extension (maj.min.rel.bld format)."));
 			CMFCPropertyGridProperty *pAppendBuildDateProp = new CMFCPropertyGridProperty(_T("Append Current Date"), (_variant_t)((bool)pd->m_bAppendBuildDate), _T("If set, appends the current date to the output file name, immediately before the extension (YYYYMMDD format)."));
 			CMFCPropertyGridProperty *pMaxSizeProp = new CMFCPropertyGridProperty(_T("Maximum Size (MB)"), pd->m_MaxSize, _T("The maximum size (in MB) constraint for generated sfx archives, beyond which, files will be split (-1 is no constraint)."));
+			CMFCPropertyGridProperty *pExternalArchiveProp = new CMFCPropertyGridProperty(_T("External Archive"), (_variant_t)((bool)pd->m_bExternalArchive), _T("If set, the archived file data will be stored in an external file, not the exe itself; use this if your archive exceeds 4GB."));
 
 			pSettingsGroup->AddSubItem(pSfxNameProp);
 			pSettingsGroup->AddSubItem(pAppendVersionProp);
 			pSettingsGroup->AddSubItem(pAppendBuildDateProp);
 			pSettingsGroup->AddSubItem(pMaxSizeProp);
+			pSettingsGroup->AddSubItem(pExternalArchiveProp);
 
 			m_wndPropList.AddProperty(pSettingsGroup);
 

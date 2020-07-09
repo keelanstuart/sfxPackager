@@ -151,6 +151,27 @@
     <ClInclude Include="CScriptEditView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="wtfcolorbar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="wtfcolorbutton.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="wtfcolormenubutton.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="wtfcolorpopupmenu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="wtfpropertygridctrl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="wtfpropertygridtooltipctrl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="wtfvslistbox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sfxPackager.cpp">
@@ -196,6 +217,27 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CScriptEditView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wtfcolorbar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wtfcolorbutton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wtfcolormenubutton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wtfcolorpopupmenu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wtfpropertygridctrl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wtfpropertygridtooltipctrl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wtfvslistbox.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

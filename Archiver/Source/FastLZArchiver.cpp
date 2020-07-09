@@ -540,6 +540,8 @@ size_t CFastLZExtractor::GetFileCount()
 
 bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst)
 {
+	bool ret = true;
+
 	dst.clear();
 
 	tstring::const_iterator it = src.cbegin(), next_it = std::find(src.cbegin(), src.cend(), _T('%'));
@@ -563,9 +565,17 @@ bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst)
 			if (!env.empty())
 			{
 				DWORD sz = GetEnvironmentVariable(env.c_str(), nullptr, 0);
-				TCHAR *val = (TCHAR *)_alloca(sizeof(TCHAR) * (sz + 1));
-				GetEnvironmentVariable(env.c_str(), val, sz + 1);
-				dst += val;
+				// 0 length means it's bad... just put a blank back
+				if (!sz)
+				{
+					ret = false;
+				}
+				else
+				{
+					TCHAR *val = (TCHAR *)_alloca(sizeof(TCHAR) * (sz + 1));
+					GetEnvironmentVariable(env.c_str(), val, sz + 1);
+					dst += val;
+				}
 			}
 			else
 			{
@@ -581,7 +591,7 @@ bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst)
 	}
 	while (it != src.cend());
 
-	return true;
+	return ret;
 }
 
 bool ReplaceRegistryKeys(const tstring &src, tstring &dst)
@@ -677,7 +687,8 @@ bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *
 	if (filename)
 	{
 		tstring tmp, _tmp;
-		ReplaceEnvironmentVariables(fte.m_Filename, _tmp);
+		if (!ReplaceEnvironmentVariables(fte.m_Filename, _tmp))
+			return false;
 		ReplaceRegistryKeys(_tmp, tmp);
 		*filename = tmp;
 	}
@@ -685,7 +696,8 @@ bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *
 	if (filepath)
 	{
 		tstring tmp, _tmp;
-		ReplaceEnvironmentVariables(fte.m_Path, _tmp);
+		if (!ReplaceEnvironmentVariables(fte.m_Path, _tmp))
+			return false;
 		ReplaceRegistryKeys(_tmp, tmp);
 		*filepath = tmp;
 	}
@@ -710,7 +722,13 @@ bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *
 
 bool FLZACreateDirectories(const TCHAR *dir)
 {
-	if (!dir || !*dir || PathIsRoot(dir) || PathFileExists(dir))
+	if (!dir || !*dir)
+		return false;
+
+	if (PathFileExists(dir))
+		return true;
+
+	if (PathIsRoot(dir))
 		return false;
 
 	bool ret = true;
@@ -779,16 +797,24 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 		if (PathIsRelative(cvtpath.c_str()))
 		{
 			_tcscpy_s(path, MAX_PATH, m_BasePath);
-			PathAddBackslash(path);
 
-			_tcscat_s(path, MAX_PATH, cvtpath.c_str());
+			if (!cvtpath.empty())
+			{
+				PathAddBackslash(path);
+
+				_tcscat_s(path, MAX_PATH, cvtpath.c_str());
+			}
+
 			PathRemoveBackslash(path);
 		}
 		else
+		{
 			_tcscpy_s(path, MAX_PATH, cvtpath.c_str());
+		}
 
 		if (!test_only)
-			FLZACreateDirectories(path);
+			if (!FLZACreateDirectories(path))
+				return IExtractor::ER_UNKNOWN_ERROR;
 
 		PathAddBackslash(path);
 		_tcscat_s(path, MAX_PATH, cvtfile.c_str());

@@ -23,6 +23,7 @@
 #include <ctime>
 #include "../sfxPackager/GenParser.h"
 #include "HttpDownload.h"
+#include "../sfxFlags.h"
 
 #include "../../Archiver/Include/Archiver.h"
 
@@ -30,7 +31,7 @@ extern bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst);
 extern bool ReplaceRegistryKeys(const tstring &src, tstring &dst);
 extern bool FLZACreateDirectories(const TCHAR *dir);
 
-static CLicenseKeyEntryDlg licensedlg(_T(""));
+static CLicenseKeyEntryDlg *licensedlg;
 
 // CProgressDlg dialog
 
@@ -39,6 +40,8 @@ IMPLEMENT_DYNAMIC(CProgressDlg, CDialogEx)
 CProgressDlg::CProgressDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CProgressDlg::IDD, pParent)
 {
+	licensedlg = new CLicenseKeyEntryDlg(_T(""));
+
 	m_hIcon = AfxGetApp()->LoadIcon(_T("ICON"));
 
 	m_CancelEvent = CreateEvent(NULL, true, false, NULL);
@@ -51,6 +54,11 @@ CProgressDlg::~CProgressDlg()
 {
 	CloseHandle(m_mutexInstallStart);
 	CloseHandle(m_CancelEvent);
+	if (licensedlg)
+	{
+		delete licensedlg;
+		licensedlg = nullptr;
+	}
 }
 
 void CProgressDlg::DoDataExchange(CDataExchange* pDX)
@@ -198,6 +206,9 @@ void CProgressDlg::OnCancel()
 		return;
 	}
 
+	if (MessageBox(_T("Do you really want to cancel this installation?"), _T("Confirm Cancel"), MB_YESNO) == IDNO)
+		return;
+
 	// raise the event
 	SetEvent(m_CancelEvent);
 
@@ -246,19 +257,32 @@ void CProgressDlg::OnCancel()
 
 void CProgressDlg::OnOK()
 {
+	CWnd *pok = GetDlgItem(IDOK);
+	if (pok)
+	{
+		CString t;
+		pok->GetWindowText(t);
+		if (!t.Compare(_T("Close")))
+			ExitProcess(0);
+	}
+
 	CDialogEx::OnOK();
 }
 
-class CSfxHandle : public IArchiveHandle
+class CUnpackArchiveHandle : public IArchiveHandle
 {
+protected:
+	HANDLE m_hFile;
+
 public:
-	CSfxHandle(HANDLE hf)
+	CUnpackArchiveHandle(HANDLE hf)
 	{
 		m_hFile = hf;
 	}
 
-	~CSfxHandle()
+	virtual ~CUnpackArchiveHandle()
 	{
+
 	}
 
 	virtual HANDLE GetHandle()
@@ -286,8 +310,69 @@ public:
 		return p.QuadPart;
 	}
 
+};
+
+class CSfxHandle : public CUnpackArchiveHandle
+{
+public:
+	CSfxHandle(HANDLE hf) : CUnpackArchiveHandle(hf)
+	{
+		m_hFile = hf;
+	}
+
+	virtual ~CSfxHandle() { }
+
+	virtual void Release()
+	{
+		delete this;
+	}
+
+};
+
+class CExtArcHandle : public CUnpackArchiveHandle
+{
+
 protected:
-	HANDLE m_hFile;
+	UINT m_spanIdx;
+	TCHAR m_BaseFilename[MAX_PATH];
+	TCHAR m_CurrentFilename[MAX_PATH];
+
+public:
+	CExtArcHandle(HANDLE hf, const TCHAR *base_filename) : CUnpackArchiveHandle(hf)
+	{
+		m_spanIdx = 0;
+		_tcscpy_s(m_BaseFilename, base_filename);
+		_tcscpy_s(m_CurrentFilename, base_filename);
+	}
+
+	~CExtArcHandle() { }
+
+	virtual void Release()
+	{
+		delete this;
+	}
+
+	virtual bool Span()
+	{
+		m_spanIdx++;
+
+		TCHAR local_filename[MAX_PATH];
+		_tcscpy_s(local_filename, MAX_PATH, m_BaseFilename);
+
+		TCHAR *plext = PathFindExtension(local_filename);
+		if (plext)
+			*plext = _T('\0');
+
+		_stprintf_s(m_CurrentFilename, MAX_PATH, _T("%s_part%d.data"), local_filename, m_spanIdx + 1);
+
+		// Finalize archive
+		CloseHandle(m_hFile);
+		m_hFile = INVALID_HANDLE_VALUE;
+
+		m_hFile = CreateFile(m_CurrentFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+		return (m_hFile != INVALID_HANDLE_VALUE);
+	}
+
 };
 
 HRESULT CreateShortcut(const TCHAR *targetFile, const TCHAR *targetArgs, const TCHAR *linkFile, const TCHAR *description,
@@ -571,6 +656,28 @@ void scCreateShortcut(CScriptVar *c, void *userdata)
 }
 
 
+void scGetGlobalEnvironmentVariable(CScriptVar *c, void *userdata)
+{
+	CScriptVar *ret = c->getReturnVar();
+	if (!ret)
+		return;
+
+	tstring var = c->getParameter(_T("varname"))->getString(), _var;
+	ReplaceEnvironmentVariables(var, _var);
+	ReplaceRegistryKeys(_var, var);
+
+	tstring rs;
+	DWORD sz = GetEnvironmentVariable(var.c_str(), nullptr, 0);
+	if (sz > 0)
+	{
+		rs.resize(sz, _T('#'));
+		GetEnvironmentVariable(var.c_str(), (TCHAR *)(rs.data()), sz);
+	}
+
+	ret->setString(rs);
+}
+
+
 void scSetGlobalEnvironmentVariable(CScriptVar *c, void *userdata)
 {
 	tstring var = c->getParameter(_T("varname"))->getString(), _var;
@@ -635,6 +742,71 @@ void scRegistryKeyValueExists(CScriptVar *c, void *userdata)
 		}
 
 		cKey.Close();
+	}
+}
+
+
+void scGetRegistryKeyValue(CScriptVar *c, void *userdata)
+{
+	CScriptVar *ret = c->getReturnVar();
+	if (!ret)
+		return;
+
+	tstring root = c->getParameter(_T("root"))->getString();
+	std::transform(root.begin(), root.end(), root.begin(), toupper);
+	HKEY hr = HKEY_LOCAL_MACHINE;
+	if (root == _T("HKEY_CURRENT_USER"))
+		hr = HKEY_CURRENT_USER;
+	else if (root == _T("HKEY_CURRENT_CONFIG"))
+		hr = HKEY_CURRENT_CONFIG;
+	else if (root != _T("HKEY_LOCAL_MACHINE"))
+		return;
+
+	tstring key = c->getParameter(_T("key"))->getString(), _key;
+	ReplaceEnvironmentVariables(key, _key);
+	ReplaceRegistryKeys(_key, key);
+	for (tstring::iterator it = key.begin(), last_it = key.end(); it != last_it; it++)
+	{
+		if (*it == _T('/'))
+			*it = _T('\\');
+	}
+
+	tstring valname = c->getParameter(_T("name"))->getString(), _valname;
+	ReplaceEnvironmentVariables(valname, _valname);
+	ReplaceRegistryKeys(_valname, valname);
+
+	if (!theApp.m_TestOnlyMode)
+	{
+		HKEY hkey;
+		if (RegOpenKeyEx(hr, key.c_str(), 0, KEY_READ, &hkey) == ERROR_SUCCESS)
+		{
+			DWORD cb;
+			DWORD type;
+			BYTE val[(MAX_PATH + 1) * 2 * sizeof(TCHAR)];
+			if (RegGetValue(hkey, nullptr, valname.c_str(), RRF_RT_DWORD | RRF_RT_QWORD | RRF_RT_REG_SZ, &type, val, &cb) == ERROR_SUCCESS)
+			{
+				switch (type)
+				{
+					case REG_SZ:
+						ret->setString((const TCHAR *)val);
+						break;
+
+					case REG_DWORD:
+						ret->setInt((int64_t)(DWORD((*(const DWORD *)val))));
+						break;
+
+					case REG_QWORD:
+						ret->setInt((int64_t)(QWORD((*(const QWORD *)val))));
+						break;
+
+					default:
+						break;
+				}
+
+			}
+
+			RegCloseKey(hkey);
+		}
 	}
 }
 
@@ -814,7 +986,10 @@ void scAbortInstall(CScriptVar* c, void* userdata)
 
 void scShowLicenseDlg(CScriptVar *c, void *userdata)
 {
-	INT_PTR dlg_ret = licensedlg.DoModal();
+	if (!licensedlg)
+		return;
+
+	INT_PTR dlg_ret = licensedlg->DoModal();
 
 	if (dlg_ret == IDCANCEL)
 	{
@@ -825,7 +1000,9 @@ void scShowLicenseDlg(CScriptVar *c, void *userdata)
 
 void scGetLicenseKey(CScriptVar *c, void *userdata)
 {
-	tstring key = licensedlg.GetKey();
+	tstring key;
+	if (licensedlg)
+		key = licensedlg->GetKey();
 
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
@@ -835,7 +1012,9 @@ void scGetLicenseKey(CScriptVar *c, void *userdata)
 
 void scGetLicenseUser(CScriptVar *c, void *userdata)
 {
-	tstring user = licensedlg.GetUser();
+	tstring user;
+	if (licensedlg)
+		user = licensedlg->GetUser();
 
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
@@ -845,7 +1024,9 @@ void scGetLicenseUser(CScriptVar *c, void *userdata)
 
 void scGetLicenseOrg(CScriptVar *c, void *userdata)
 {
-	tstring org = licensedlg.GetOrg();
+	tstring org;
+	if (licensedlg)
+		org = licensedlg->GetOrg();
 
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
@@ -1026,9 +1207,22 @@ DWORD CProgressDlg::RunInstall()
 
 	DWORD ret = 0;
 
-	TCHAR exepath[MAX_PATH];
-	_tcscpy_s(exepath, MAX_PATH, theApp.m_pszHelpFilePath);
-	PathRenameExtension(exepath, _T(".exe"));
+	TCHAR arcpath[MAX_PATH];
+	_tcscpy_s(arcpath, MAX_PATH, theApp.m_pszHelpFilePath);
+	// if this install uses an external archive file (i.e., not one built into the exe), then use that--
+	// same base filename, but with a .data extension
+	PathRenameExtension(arcpath, ((theApp.m_Flags & SFX_FLAG_EXTERNALARCHIVE) ? _T(".data") : _T(".exe")));
+
+	if ((theApp.m_Flags & SFX_FLAG_EXTERNALARCHIVE) && !PathFileExists(arcpath))
+	{
+		CString m;
+		m.Format(_T("The installation could not continue because the file \"%s\" could not be found. Click OK to exit."), arcpath);
+		MessageBox(m, _T("Archive Data Missing"), MB_OK);
+		m_Thread = nullptr;
+		PostQuitMessage(-1);
+		AfxEndThread(-1);
+		return 0;
+	}
 
 	CString msg;
 
@@ -1044,8 +1238,10 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
 	theApp.m_js.addNative(_T("function FileExists(path)"), scFileExists, (void *)this);
 	theApp.m_js.addNative(_T("function GetCurrentDateString()"), scGetCurrentDateStr, (void *)this);
+	theApp.m_js.addNative(_T("function GetGlobalEnvironmentVariable(varname)"), scGetGlobalEnvironmentVariable, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function GetExeVersion(file)"), scGetExeVersion, (void*)this);
+	theApp.m_js.addNative(_T("function GetRegistryKeyValue(root, key, name)"), scGetRegistryKeyValue, (void *)this);
 	theApp.m_js.addNative(_T("function GetFileNameFromPath(filepath)"), scGetFileNameFromPath, (void*)this);
 	theApp.m_js.addNative(_T("function GetLicenseKey()"), scGetLicenseKey, (void *)this);
 	theApp.m_js.addNative(_T("function GetLicenseOrg()"), scGetLicenseOrg, (void *)this);
@@ -1086,19 +1282,30 @@ DWORD CProgressDlg::RunInstall()
 	bool cancelled = false;
 	bool extract_ok = true;
 
-	HANDLE hfile = CreateFile(exepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	HANDLE hfile = CreateFile(arcpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 	if (hfile != INVALID_HANDLE_VALUE)
 	{
-		LARGE_INTEGER arcofs;
+		LARGE_INTEGER arcofs = {0};
 		DWORD br;
-		SetFilePointer(hfile, -(LONG)(sizeof(LONGLONG)), NULL, FILE_END);
-		ReadFile(hfile, &(arcofs.QuadPart), sizeof(LONGLONG), &br, NULL);
+
+		CUnpackArchiveHandle *pah = nullptr;
+
+		if (!(theApp.m_Flags & SFX_FLAG_EXTERNALARCHIVE))
+		{
+			SetFilePointer(hfile, -(LONG)(sizeof(LONGLONG)), NULL, FILE_END);
+			ReadFile(hfile, &(arcofs.QuadPart), sizeof(LONGLONG), &br, NULL);
+
+			pah = new CSfxHandle(hfile);
+		}
+		else
+		{
+			pah = new CExtArcHandle(hfile, arcpath);
+		}
 
 		SetFilePointerEx(hfile, arcofs, NULL, FILE_BEGIN);
 
-		CSfxHandle sfxh(hfile);
 		IExtractor *pie = NULL;
-		if (IExtractor::CreateExtractor(&pie, &sfxh) == IExtractor::CR_OK)
+		if (pah && (IExtractor::CreateExtractor(&pie, pah) == IExtractor::CR_OK))
 		{
 			size_t maxi = pie->GetFileCount();
 
@@ -1122,14 +1329,18 @@ DWORD CProgressDlg::RunInstall()
 				tstring fname, fpath, snippet, ffull;
 				uint64_t usize;
 				FILETIME created_time, modified_time;
-				pie->GetFileInfo(i, &fname, &fpath, NULL, &usize, &created_time, &modified_time, &snippet);
+				if (!pie->GetFileInfo(i, &fname, &fpath, NULL, &usize, &created_time, &modified_time, &snippet))
+					continue;
 
 				m_Progress.SetPos((int)i + 1);
 
 				IExtractor::EXTRACT_RESULT er = pie->ExtractFile(i, &ffull, nullptr, theApp.m_TestOnlyMode);
 
 				TCHAR relfull[MAX_PATH];
-				PathRelativePathTo(relfull, theApp.m_InstallPath, FILE_ATTRIBUTE_DIRECTORY, ffull.c_str(), 0);
+				if (!PathRelativePathTo(relfull, theApp.m_InstallPath, FILE_ATTRIBUTE_DIRECTORY, ffull.c_str(), 0))
+					_tcscpy_s(relfull, MAX_PATH, ffull.c_str());
+				if (!_tcslen(relfull))
+					_tcscpy_s(relfull, MAX_PATH, fname.c_str());
 
 				if (er == IExtractor::ER_OK)
 				{
@@ -1213,7 +1424,7 @@ DWORD CProgressDlg::RunInstall()
 				m_Status.SetSel(-1, 0, FALSE);
 				m_Status.ReplaceSel(msg);
 
-				if ((er == IExtractor::ER_OK) && !theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty())
+				if ((er == IExtractor::ER_OK) && (theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty() || snippet.empty()))
 				{
 					tstring pfscr;
 
@@ -1244,6 +1455,9 @@ DWORD CProgressDlg::RunInstall()
 			}
 
 			IExtractor::DestroyExtractor(&pie);
+
+			if (pah)
+				pah->Release();
 		}
 
 		CloseHandle(hfile);
@@ -1267,15 +1481,33 @@ DWORD CProgressDlg::RunInstall()
 	m_Status.SetSel(-1, 0, FALSE);
 	m_Status.ReplaceSel(msg);
 
-	if (!extract_ok)
-		MessageBox(_T("One or more files in your archive could not be properly extracted.\r\nThis may be due to your user or directory permissions or disk space."), _T("Extraction Failure"), MB_OK);
-
 	CWnd *pok = GetDlgItem(IDOK);
-	if (pok)
-		pok->EnableWindow(TRUE);
 	CWnd *pcancel = GetDlgItem(IDCANCEL);
+
+	if (!extract_ok)
+	{
+		MessageBox(_T("One or more files in your archive could not be properly extracted.\r\nThis may be due to your user or directory permissions or disk space."), _T("Extraction Failure"), MB_OK);
+		m_Thread = nullptr;
+	}
+
+	if (pok)
+	{
+		if (!extract_ok)
+			pok->SetWindowText(_T("Close"));
+
+		pok->EnableWindow(!cancelled);
+	}
+
 	if (pcancel)
-		pcancel->EnableWindow(FALSE);
+	{
+		if (!extract_ok)
+			pcancel->ShowWindow(SW_HIDE);
+	
+		pcancel->EnableWindow(cancelled);
+
+		if (cancelled)
+			pok->SetWindowText(_T("<< Back"));
+	}
 
 	m_Thread = nullptr;
 	AfxEndThread(0);

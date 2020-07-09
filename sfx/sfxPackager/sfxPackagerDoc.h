@@ -95,7 +95,6 @@ protected:
 
 	TFileDataMap m_FileData;
 	UINT m_Key;
-	LARGE_INTEGER m_UncompressedSize;
 
 	bool InitializeArchive(CSfxPackagerView *pview, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *basename, UINT span = 0);
 	bool AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *excludespec, const TCHAR *scriptsnippet, const TCHAR *dstpath, const TCHAR *dstfilename = NULL, uint64_t *sz_uncomp = NULL, uint64_t *sz_comp = NULL, UINT recursion = 0);
@@ -119,8 +118,10 @@ public:
 	bool m_bRequireAdmin;
 	bool m_bRequireReboot;
 	bool m_bAllowDestChg;
+	bool m_bExternalArchive;
 	CString m_LaunchCmd;
 	long m_MaxSize;
+	LARGE_INTEGER m_UncompressedSize;
 
 	CString m_Script[EScriptType::NUMTYPES];
 

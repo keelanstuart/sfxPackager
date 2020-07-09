@@ -164,11 +164,20 @@ void CSfxDlg::OnBnClickedOk()
 {
 	CWnd *pe = GetDlgItem(IDC_EDIT_INSTALLPATH);
 	if (pe)
-		pe->GetWindowText(theApp.m_InstallPath);
+	{
+		TCHAR path[MAX_PATH * 2];
+		pe->GetWindowText(path, MAX_PATH * 2);
+		TCHAR expath[MAX_PATH * 4];
+		ExpandEnvironmentStrings(path, expath, MAX_PATH * 4);
+
+		theApp.m_InstallPath = expath;
+	}
 
 	if (!PathFileExists(theApp.m_InstallPath))
 	{
-		switch (::MessageBox(GetSafeHwnd(), _T("The specified directory does not exist.  Would you like to create it before proceeding?"), _T("Path Not Found - Create?"), MB_OKCANCEL | MB_ICONHAND))
+		CString s;
+		s.Format(_T("The specified directory\r\n\"%s\"\r\ndoes not exist.\r\n\r\nWould you like to create it before proceeding?"), theApp.m_InstallPath);
+		switch (::MessageBox(GetSafeHwnd(), s, _T("Path Not Found - Create?"), MB_OKCANCEL | MB_ICONHAND))
 		{
 			case IDOK:
 				CreateDirectories(theApp.m_InstallPath);
@@ -185,7 +194,7 @@ void CSfxDlg::OnBnClickedOk()
 	if ((LONGLONG)freespace.QuadPart < theApp.m_SpaceRequired.QuadPart)
 	{
 		CString s;
-		s.Format(_T("The location you have selected does not have enough free space to decompress the entire package (%" PRId64 "KB required)."), theApp.m_SpaceRequired.QuadPart >> 10);
+		s.Format(_T("The location you have selected\r\n\"%s\"\r\ndoes not have enough free space to decompress the entire package (%" PRId64 "KB required)."), theApp.m_InstallPath, theApp.m_SpaceRequired.QuadPart >> 10);
 		::MessageBox(GetSafeHwnd(), s, _T("Not Enough Space!"), MB_OK | MB_ICONERROR);
 		return;
 	}

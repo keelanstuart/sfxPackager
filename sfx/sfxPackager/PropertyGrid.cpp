@@ -86,6 +86,10 @@ void CPropertyGrid::OnPropertyChanged(CMFCPropertyGridProperty* pProp) const
 	{
 		pd->m_bRequireReboot = pProp->GetValue().boolVal ? true : false;
 	}
+	else if (!_tcsicmp(pProp->GetName(), _T("External Archive")))
+	{
+		pd->m_bExternalArchive = pProp->GetValue().boolVal ? true : false;
+	}
 	else if (!_tcsicmp(pProp->GetName(), _T("Allow Destination Change")))
 	{
 		pd->m_bAllowDestChg = pProp->GetValue().boolVal ? true : false;

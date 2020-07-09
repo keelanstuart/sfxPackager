@@ -90,6 +90,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;Version.lib</AdditionalDependencies>
+      <SwapRunFromCD>true</SwapRunFromCD>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -110,6 +111,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>None</DebugInformationFormat>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -119,6 +121,7 @@
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
       <AdditionalLibraryDirectories>$(SolutionDir)Lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;Version.lib</AdditionalDependencies>
+      <SwapRunFromCD>true</SwapRunFromCD>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>

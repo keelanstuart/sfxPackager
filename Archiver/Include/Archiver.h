@@ -41,6 +41,9 @@ public:
 
 	// Returns the offset position for the handle from the beginning
 	virtual uint64_t GetOffset() = NULL;
+
+	// Releases any resources allocated by the archive handle
+	virtual void Release() = NULL;
 };
 
 class IArchiver

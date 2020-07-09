@@ -1,0 +1,6 @@
+[submodule "sfx/sfxPackager/third-party/PowerProps"]
+	path = sfx/sfxPackager/third-party/PowerProps
+	url = https://github.com/keelanstuart/PowerProps
+[submodule "sfx/sfxPackager/third-party/GenIO"]
+	path = sfx/sfxPackager/third-party/GenIO
+	url = https://github.com/keelanstuart/GenIO

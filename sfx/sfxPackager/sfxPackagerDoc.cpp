@@ -99,33 +99,481 @@ bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release,
 	return ret;
 }
 
-class CSfxHandle : public IArchiveHandle
+#pragma pack(push, 1)
+typedef struct
 {
-public:
-	CSfxHandle(const TCHAR *base_filename, CSfxPackagerDoc *pdoc)
+	WORD Reserved1;       // reserved, must be 0
+	WORD ResourceType;    // type is 1 for icons
+	WORD ImageCount;      // number of icons in structure (1)
+} GROUPICON;
+
+typedef struct
+{
+	BYTE Width;           // icon width
+	BYTE Height;          // icon height
+	BYTE Colors;          // colors (0 means more than 8 bits per pixel)
+	BYTE Reserved2;       // reserved, must be 0
+	WORD Planes;          // color planes
+	WORD BitsPerPixel;    // bit depth
+	DWORD ImageSize;      // size of structure
+	WORD ResourceID;      // resource ID
+} ICONDATA_RES;
+
+typedef struct
+{
+	BYTE Width;           // icon width
+	BYTE Height;          // icon height
+	BYTE Colors;          // colors (0 means more than 8 bits per pixel)
+	BYTE Reserved2;       // reserved, must be 0
+	WORD Planes;          // color planes
+	WORD BitsPerPixel;    // bit depth
+	DWORD ImageSize;      // size of structure
+	DWORD ImageOffset;      // resource ID
+} ICONDATA_FILE;
+#pragma pack(pop)
+
+bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hFile, size_t spanIdx)
+{
+	bool ret = false;
+
+	TCHAR docpath[MAX_PATH];
+	_tcscpy_s(docpath, pDoc->GetPathName());
+	PathRemoveFileSpec(docpath);
+
+	HRSRC hsfxres = FindResource(NULL, MAKEINTRESOURCE(IDR_EXE_SFX), _T("EXE"));
+	if (hsfxres)
 	{
-		m_pDoc = pdoc;
-
-		m_spanIdx = 0;
-
-		_tcscpy_s(m_BaseFilename, MAX_PATH, base_filename);
-		_tcscpy_s(m_CurrentFilename, MAX_PATH, base_filename);
-
-		m_hFile = INVALID_HANDLE_VALUE;
-		if (!SetupSfxExecutable(m_BaseFilename))
+		HGLOBAL hsfxload = LoadResource(NULL, hsfxres);
+		if (hsfxload)
 		{
-			CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
-			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, _T("SFX setup failed; your output exe may be locked or the directory set to read-only.\r\n"));
+			BYTE *pbuf = (BYTE *)LockResource(hsfxload);
+			if (pbuf)
+			{
+				DWORD sfxsize = SizeofResource(NULL, hsfxres);
+
+				TCHAR dir[MAX_PATH];
+				_tcscpy_s(dir, MAX_PATH, filename);
+				PathRemoveFileSpec(dir);
+				CreateDirectories(dir);
+
+				hFile = CreateFile(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+				if (hFile != INVALID_HANDLE_VALUE)
+				{
+					DWORD cw;
+					WriteFile(hFile, pbuf, sfxsize, &cw, NULL);
+
+					CloseHandle(hFile);
+
+					ret = (sfxsize == cw);
+				}
+
+				FreeResource(hsfxload);
+			}
 		}
-		ASSERT(m_hFile != INVALID_HANDLE_VALUE);
 	}
 
-	~CSfxHandle()
+	HMODULE hmod = LoadLibraryEx(filename, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_IMAGE_RESOURCE | LOAD_LIBRARY_AS_DATAFILE);
+	EnumResourceTypes(hmod, (ENUMRESTYPEPROC)CSfxPackagerDoc::EnumTypesFunc, (LONG_PTR)pDoc);
+
+	if (hmod)
+	{
+		HRSRC hrinf = FindResource(hmod, _T("VERSION_INFO"), RT_VERSION);
+		HGLOBAL hginf = LoadResource(hmod, hrinf);
+		BYTE *peinf = (BYTE *)LockResource(hginf);
+
+		UnlockResource(hginf);
+
+		HRSRC hii = FindResource(hmod, _T("ICON"), RT_GROUP_ICON);
+		HGLOBAL hgi = LoadResource(hmod, hii);
+		BYTE *pei = (BYTE *)LockResource(hgi); // existing icon
+
+		GROUPICON *pei_hdr = (GROUPICON *)pei;
+		ICONDATA_RES *pei_icon = (ICONDATA_RES *)(pei + sizeof(GROUPICON));
+
+		std::vector<ICONDATA_RES> oid; // original icons data
+		oid.reserve(pei_hdr->ImageCount);
+		for (WORD k = 0; k < pei_hdr->ImageCount; k++)
+			oid.push_back(pei_icon[k]);
+
+		UnlockResource(hgi);
+
+		FreeLibrary(hmod);
+
+		HANDLE hbur = BeginUpdateResource(filename, FALSE);
+		BOOL bresult = FALSE;
+
+		if (hbur)
+		{
+			if (!pDoc->m_IconFile.IsEmpty())
+			{
+				TCHAR iconpath[MAX_PATH];
+
+				if (PathIsRelative(pDoc->m_IconFile))
+				{
+					PathCombine(iconpath, docpath, pDoc->m_IconFile);
+				}
+				else
+				{
+					_tcscpy_s(iconpath, MAX_PATH, pDoc->m_IconFile);
+				}
+
+				if (PathFileExists(iconpath))
+				{
+					HANDLE hicobin = CreateFile(iconpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+					if (hicobin)
+					{
+						DWORD fsz = GetFileSize(hicobin, NULL);
+						BYTE *pbin = (BYTE *)malloc(fsz);
+						if (pbin)
+						{
+							DWORD rb;
+							if (ReadFile(hicobin, pbin, fsz, &rb, NULL))
+							{
+								WORD last_id = oid.back().ResourceID;
+
+								GROUPICON *hdr = (GROUPICON *)pbin;
+
+								BYTE *pbin_r = (BYTE *)malloc(sizeof(GROUPICON) + (sizeof(ICONDATA_RES) * hdr->ImageCount));
+								if (pbin_r)
+								{
+									memcpy(pbin_r, pbin, sizeof(GROUPICON));
+
+									WORD hdrsz = sizeof(GROUPICON) + (sizeof(ICONDATA_RES) * hdr->ImageCount);
+
+									ICONDATA_FILE *icon = (ICONDATA_FILE *)(pbin + sizeof(GROUPICON));
+									ICONDATA_RES *icon_r = (ICONDATA_RES *)(pbin_r + sizeof(GROUPICON));
+									for (WORD i = 0; i < hdr->ImageCount; i++)
+									{
+										memcpy(&icon_r[i], &icon[i], sizeof(ICONDATA_RES));
+										icon_r[i].ResourceID = (i < oid.size()) ? oid[i].ResourceID : ++last_id;
+									}
+
+									bresult = UpdateResource(hbur, RT_GROUP_ICON, _T("ICON"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), pbin_r, hdrsz);
+
+									for (size_t i = 0, maxi = hdr->ImageCount; i < maxi; i++)
+									{
+										bresult = UpdateResource(hbur, RT_ICON, MAKEINTRESOURCE(icon_r[i].ResourceID), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), &pbin[icon[i].ImageOffset], icon_r[i].ImageSize);
+									}
+
+									free(pbin_r);
+								}
+							}
+
+							free(pbin);
+						}
+
+						CloseHandle(hicobin);
+					}
+				}
+			}
+
+			if (!pDoc->m_ImageFile.IsEmpty())
+			{
+				TCHAR imgpath[MAX_PATH];
+
+				if (PathIsRelative(pDoc->m_ImageFile))
+				{
+					PathCombine(imgpath, docpath, pDoc->m_ImageFile);
+				}
+				else
+				{
+					_tcscpy_s(imgpath, pDoc->m_ImageFile);
+				}
+
+				if (PathFileExists(imgpath))
+				{
+					HANDLE himgbin = CreateFile(imgpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+					if (himgbin)
+					{
+						DWORD fsz = GetFileSize(himgbin, NULL);
+						BYTE *pbin = (BYTE *)malloc(fsz);
+						BITMAPINFOHEADER *pbmphdr = (BITMAPINFOHEADER *)(pbin + sizeof(BITMAPFILEHEADER));
+						if (pbin)
+						{
+							DWORD rb;
+							ReadFile(himgbin, pbin, fsz, &rb, NULL);
+
+							if (pbmphdr->biBitCount <= 24)
+							{
+								bresult = UpdateResource(hbur, RT_BITMAP, _T("PACKAGE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), pbin + sizeof(BITMAPFILEHEADER), fsz - sizeof(BITMAPFILEHEADER));
+							}
+							else
+							{
+								CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
+								pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, _T("WARNING: Image file may not be more than 24bpp!\r\n"));
+							}
+
+							free(pbin);
+						}
+
+						CloseHandle(himgbin);
+					}
+				}
+			}
+
+			CString spanstr;
+			spanstr.Format(_T(" (part %d)"), spanIdx + 1);
+			CString caption;
+			caption.Format(_T("%s%s"), pDoc->m_Caption, spanIdx ? spanstr : _T(""));
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_CAPTION"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)caption), (caption.GetLength() + 1) * sizeof(TCHAR));
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_DEFAULTPATH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)pDoc->m_DefaultPath), (pDoc->m_DefaultPath.GetLength() + 1) * sizeof(TCHAR));
+
+			{
+				char *shtml;
+				bool created_shtml = false;
+
+				TCHAR welcomepath[MAX_PATH];
+
+				if (PathIsRelative(pDoc->m_Description))
+				{
+					PathCombine(welcomepath, docpath, pDoc->m_Description);
+				}
+				else
+				{
+					_tcscpy_s(welcomepath, pDoc->m_Description);
+				}
+
+				if (PathFileExists(welcomepath))
+				{
+					HANDLE hhtmlfile = CreateFile(welcomepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+					if (hhtmlfile)
+					{
+						DWORD fsz = GetFileSize(hhtmlfile, NULL);
+						shtml = (char *)malloc(fsz + 1);
+						if (shtml)
+						{
+							created_shtml = true;
+							DWORD rb;
+							ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
+							shtml[fsz] = 0;
+						}
+
+						CloseHandle(hhtmlfile);
+					}
+				}
+				else
+				{
+					LOCAL_TCS2MBCS((LPCTSTR)pDoc->m_Description, shtml);
+				}
+
+				bresult = UpdateResource(hbur, RT_HTML, _T("welcome"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, DWORD(strlen(shtml) * sizeof(char)));
+
+				if (created_shtml)
+				{
+					free(shtml);
+				}
+			}
+
+			if (!pDoc->m_LicenseMessage.IsEmpty())
+			{
+				char *shtml;
+				bool created_shtml = false;
+
+				TCHAR licensepath[MAX_PATH];
+
+				if (PathIsRelative(pDoc->m_LicenseMessage))
+				{
+					PathCombine(licensepath, docpath, pDoc->m_LicenseMessage);
+				}
+				else
+				{
+					_tcscpy_s(licensepath, pDoc->m_LicenseMessage);
+				}
+
+				if (PathFileExists(licensepath))
+				{
+					HANDLE hhtmlfile = CreateFile(licensepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+					if (hhtmlfile)
+					{
+						DWORD fsz = GetFileSize(hhtmlfile, NULL);
+						shtml = (char *)malloc(fsz + 1);
+						if (shtml)
+						{
+							created_shtml = true;
+							DWORD rb;
+							ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
+							shtml[fsz] = 0;
+						}
+
+						CloseHandle(hhtmlfile);
+					}
+				}
+				else
+				{
+					LOCAL_TCS2MBCS((LPCTSTR)pDoc->m_LicenseMessage, shtml);
+				}
+
+				bresult = UpdateResource(hbur, RT_HTML, _T("license"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, DWORD(strlen(shtml) * sizeof(char)));
+
+				if (created_shtml)
+				{
+					free(shtml);
+				}
+			}
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INIT"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::INIT]),
+									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::INIT].GetLength() + 1) * sizeof(TCHAR));
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PERFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::PERFILE]),
+									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::PERFILE].GetLength() + 1) * sizeof(TCHAR));
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_FINISH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::FINISH]),
+									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::FINISH].GetLength() + 1) * sizeof(TCHAR));
+
+			SFixupResourceData furd;
+			ZeroMemory(&furd, sizeof(SFixupResourceData));
+			strcpy(furd.m_Ident, SFX_FIXUP_SEARCH_STRING);
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_FIXUPDATA"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), &furd, sizeof(SFixupResourceData));
+
+			bresult = EndUpdateResource(hbur, FALSE);
+		}
+	}
+
+	hFile = CreateFile(filename, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	LARGE_INTEGER p = {0}, z = {0};
+	SetFilePointerEx(hFile, z, &p, FILE_END);
+
+	return (hFile != INVALID_HANDLE_VALUE);
+}
+
+bool FixupSfxExecutable(CSfxPackagerDoc *pDoc, const TCHAR *filename, const TCHAR *launchcmd, bool span, UINT32 filecount)
+{
+	bool bresult = true;
+
+	HANDLE hf = CreateFile(filename, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
+	if (hf == INVALID_HANDLE_VALUE)
+		return false;
+
+	LARGE_INTEGER ofs;
+	DWORD cb;
+	if (!pDoc->m_bExternalArchive)
+	{
+		SetFilePointer(hf, -(int)(sizeof(LONGLONG)), NULL, FILE_END);
+		ReadFile(hf, &(ofs.QuadPart), sizeof(LONGLONG), &cb, NULL);
+	}
+	else
+	{
+		ofs.LowPart = GetFileSize(hf, (LPDWORD)&ofs.HighPart);
+	}
+
+	BYTE *pdata = (BYTE *)malloc(ofs.QuadPart);
+	if (pdata)
+	{
+		SetFilePointer(hf, 0, NULL, FILE_BEGIN);
+		ReadFile(hf, pdata, (DWORD)ofs.QuadPart, &cb, NULL);
+
+		char ss[16];
+		strcpy(ss, SFX_FIXUP_SEARCH_STRING);
+
+		// search for our identifier string in the exe file... when we find it, then replace the data ourselves instead of using the resource API
+		BYTE *p = pdata;
+		bool found = false;
+		while (p && ((uint64_t)(p - pdata) < (uint64_t)(ofs.QuadPart - sizeof(SFixupResourceData))))
+		{
+			p = (BYTE *)memchr((char *)p, ss[0], ofs.QuadPart - (p - pdata));
+
+			if (!p)
+			{
+				break;
+			}
+			else if (!strcmp((const char *)p, SFX_FIXUP_SEARCH_STRING))
+			{
+				found = true;
+				break;
+			}
+
+			p++;
+		}
+
+		if (found)
+		{
+			SetFilePointer(hf, (LONG)(p - pdata), NULL, FILE_BEGIN);
+
+			SFixupResourceData *furd = (SFixupResourceData *)p;
+			_tcscpy_s(furd->m_LaunchCmd, MAX_PATH, launchcmd);
+
+			CString vers = pDoc->m_VersionID;
+			if (PathFileExists(vers))
+			{
+				int major, minor, release, build;
+				if (GetFileVersion(vers, major, minor, release, build))
+				{
+					vers.Format(_T("Version %d.%d.%d.%d"), major, minor, release, build);
+				}
+			}
+
+			_tcscpy_s(furd->m_VersionID, MAX_PATH, vers);
+
+			UINT32 flags = 0;
+
+			if (pDoc->m_bExploreOnComplete && !span)
+				flags |= SFX_FLAG_EXPLORE;
+
+			if (span)
+				flags |= SFX_FLAG_SPAN;
+
+			if (pDoc->m_bAllowDestChg)
+				flags |= SFX_FLAG_ALLOWDESTCHG;
+
+			if (pDoc->m_bRequireAdmin)
+				flags |= SFX_FLAG_ADMINONLY;
+
+			if (pDoc->m_bRequireReboot)
+				flags |= SFX_FLAG_REBOOTNEEDED;
+
+			if (pDoc->m_bExternalArchive)
+				flags |= SFX_FLAG_EXTERNALARCHIVE;
+
+			furd->m_Flags = flags;
+			furd->m_SpaceRequired = pDoc->m_UncompressedSize;
+
+			furd->m_CompressedFileCount = filecount;
+
+			WriteFile(hf, furd, sizeof(SFixupResourceData), &cb, NULL);
+		}
+
+		free(pdata);
+	}
+
+	CloseHandle(hf);
+
+	return bresult;
+}
+
+class CPackagerArchiveHandle : public IArchiveHandle
+{
+protected:
+	IArchiver *m_pArc;
+	CSfxPackagerDoc *m_pDoc;
+
+	TCHAR m_BaseFilename[MAX_PATH];
+	TCHAR m_CurrentFilename[MAX_PATH];
+	HANDLE m_hFile;
+
+	UINT m_spanIdx;
+	LARGE_INTEGER m_spanTotalSize;
+
+public:
+	CPackagerArchiveHandle(CSfxPackagerDoc *pdoc)
+	{
+		m_pArc = nullptr;
+		m_hFile = INVALID_HANDLE_VALUE;
+		m_spanIdx = 0;
+		m_pDoc = pdoc;
+		m_spanTotalSize.QuadPart = 0;
+	}
+
+	virtual ~CPackagerArchiveHandle()
 	{
 		if (m_hFile != INVALID_HANDLE_VALUE)
 		{
 			// we finalize by storing the file table and writing the starting offset of the archive in the stream
-			size_t fc = m_pArc->GetFileCount(IArchiver::IM_SPAN);
+			size_t fc = m_pArc->GetFileCount(IArchiver::IM_WHOLE);
 
 			m_pArc->Finalize();
 
@@ -133,7 +581,7 @@ public:
 			m_hFile = INVALID_HANDLE_VALUE;
 
 			// the last file is never spanned
-			FixupSfxExecutable(m_CurrentFilename, m_pDoc->m_LaunchCmd, false, (UINT32)fc);
+			FixupSfxExecutable(m_pDoc, m_BaseFilename, m_pDoc->m_LaunchCmd, false, (UINT32)fc);
 		}
 	}
 
@@ -145,6 +593,123 @@ public:
 	virtual HANDLE GetHandle()
 	{
 		return m_hFile;
+	}
+
+	virtual uint64_t GetLength()
+	{
+		LARGE_INTEGER p;
+		GetFileSizeEx(m_hFile, &p);
+		return p.QuadPart;
+	}
+
+	virtual uint64_t GetOffset()
+	{
+		LARGE_INTEGER p, z;
+		z.QuadPart = 0;
+		SetFilePointerEx(m_hFile, z, &p, FILE_CURRENT);
+		return p.QuadPart;
+	}
+
+	virtual UINT GetSpanCount()
+	{
+		return (m_spanIdx + 1);
+	}
+
+	virtual ULONGLONG GetSpanTotalSize()
+	{
+		return m_spanTotalSize.QuadPart;
+	}
+
+};
+
+class CExtArcHandle : public CPackagerArchiveHandle
+{
+
+public:
+
+	CExtArcHandle(const TCHAR *base_filename, CSfxPackagerDoc *pdoc) : CPackagerArchiveHandle(pdoc)
+	{
+		_tcscpy_s(m_BaseFilename, MAX_PATH, base_filename);
+		_tcscpy_s(m_CurrentFilename, MAX_PATH, base_filename);
+		PathRenameExtension(m_CurrentFilename, _T(".data"));
+
+		m_hFile = INVALID_HANDLE_VALUE;
+		if (!SetupSfxExecutable(m_BaseFilename, m_pDoc, m_hFile, 0))
+		{
+			CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
+			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, _T("SFX setup failed; your output exe may be locked or the directory set to read-only.\r\n"));
+		}
+
+		ASSERT(m_hFile != INVALID_HANDLE_VALUE);
+
+		CloseHandle(m_hFile);
+
+		m_hFile = CreateFile(m_CurrentFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		ASSERT(m_hFile != INVALID_HANDLE_VALUE);
+	}
+
+	virtual ~CExtArcHandle() { }
+
+	virtual void Release()
+	{
+		delete this;
+	}
+
+	virtual bool Span()
+	{
+		m_spanIdx++;
+
+		TCHAR local_filename[MAX_PATH];
+		_tcscpy_s(local_filename, MAX_PATH, m_BaseFilename);
+
+		TCHAR *plext = PathFindExtension(local_filename);
+		if (plext)
+			*plext = _T('\0');
+
+		_stprintf_s(m_CurrentFilename, MAX_PATH, _T("%s_part%d.data"), local_filename, m_spanIdx + 1);
+
+		size_t fc = m_pArc->GetFileCount(IArchiver::IM_SPAN);
+
+		// we finalize by storing the file table and writing the starting offset of the archive in the stream
+		m_pArc->Finalize();
+
+		LARGE_INTEGER sz;
+		sz.LowPart = GetFileSize(m_hFile, (LPDWORD)&sz.HighPart);
+		m_spanTotalSize.QuadPart += sz.QuadPart;
+
+		// Finalize archive
+		CloseHandle(m_hFile);
+		m_hFile = INVALID_HANDLE_VALUE;
+
+		m_hFile = CreateFile(m_CurrentFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		return (m_hFile != INVALID_HANDLE_VALUE);
+	}
+
+};
+
+class CSfxHandle : public CPackagerArchiveHandle
+{
+
+public:
+	CSfxHandle(const TCHAR *base_filename, CSfxPackagerDoc *pdoc) : CPackagerArchiveHandle(pdoc)
+	{
+		_tcscpy_s(m_BaseFilename, MAX_PATH, base_filename);
+		_tcscpy_s(m_CurrentFilename, MAX_PATH, base_filename);
+
+		m_hFile = INVALID_HANDLE_VALUE;
+		if (!SetupSfxExecutable(m_BaseFilename, m_pDoc, m_hFile, 0))
+		{
+			CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
+			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, _T("SFX setup failed; your output exe may be locked or the directory set to read-only.\r\n"));
+		}
+		ASSERT(m_hFile != INVALID_HANDLE_VALUE);
+	}
+
+	virtual ~CSfxHandle() { }
+
+	virtual void Release()
+	{
+		delete this;
 	}
 
 	virtual bool Span()
@@ -165,481 +730,21 @@ public:
 		// we finalize by storing the file table and writing the starting offset of the archive in the stream
 		m_pArc->Finalize();
 
+		LARGE_INTEGER sz;
+		sz.LowPart = GetFileSize(m_hFile, (LPDWORD)&sz.HighPart);
+		m_spanTotalSize.QuadPart += sz.QuadPart;
+
 		// Finalize archive
 		CloseHandle(m_hFile);
 		m_hFile = INVALID_HANDLE_VALUE;
 
-		FixupSfxExecutable(m_CurrentFilename, lcmd, m_spanIdx, (UINT32)fc);
+		FixupSfxExecutable(m_pDoc, m_CurrentFilename, lcmd, m_spanIdx, (UINT32)fc);
 
 		_tcscpy_s(m_CurrentFilename, MAX_PATH, local_filename);
 
-		return SetupSfxExecutable(m_CurrentFilename);
+		return SetupSfxExecutable(m_CurrentFilename, m_pDoc, m_hFile, m_spanIdx);
 	}
 
-	virtual uint64_t GetLength()
-	{
-		LARGE_INTEGER p;
-		GetFileSizeEx(m_hFile, &p);
-		return p.QuadPart;
-	}
-
-	virtual uint64_t GetOffset()
-	{
-		LARGE_INTEGER p, z;
-		z.QuadPart = 0;
-		SetFilePointerEx(m_hFile, z, &p, FILE_CURRENT);
-		return p.QuadPart;
-	}
-
-#pragma pack(push, 1)
-	typedef struct {
-		WORD Reserved1;       // reserved, must be 0
-		WORD ResourceType;    // type is 1 for icons
-		WORD ImageCount;      // number of icons in structure (1)
-	} GROUPICON;
-
-	typedef struct
-	{
-		BYTE Width;           // icon width
-		BYTE Height;          // icon height
-		BYTE Colors;          // colors (0 means more than 8 bits per pixel)
-		BYTE Reserved2;       // reserved, must be 0
-		WORD Planes;          // color planes
-		WORD BitsPerPixel;    // bit depth
-		DWORD ImageSize;      // size of structure
-		WORD ResourceID;      // resource ID
-	} ICONDATA_RES;
-
-	typedef struct
-	{
-		BYTE Width;           // icon width
-		BYTE Height;          // icon height
-		BYTE Colors;          // colors (0 means more than 8 bits per pixel)
-		BYTE Reserved2;       // reserved, must be 0
-		WORD Planes;          // color planes
-		WORD BitsPerPixel;    // bit depth
-		DWORD ImageSize;      // size of structure
-		DWORD ImageOffset;      // resource ID
-	} ICONDATA_FILE;
-#pragma pack(pop)
-
-	bool SetupSfxExecutable(const TCHAR *filename)
-	{
-		bool ret = false;
-
-		TCHAR docpath[MAX_PATH];
-		_tcscpy_s(docpath, m_pDoc->GetPathName());
-		PathRemoveFileSpec(docpath);
-
-		HRSRC hsfxres = FindResource(NULL, MAKEINTRESOURCE(IDR_EXE_SFX), _T("EXE"));
-		if (hsfxres)
-		{
-			HGLOBAL hsfxload = LoadResource(NULL, hsfxres);
-			if (hsfxload)
-			{
-				BYTE *pbuf = (BYTE *)LockResource(hsfxload);
-				if (pbuf)
-				{
-					DWORD sfxsize = SizeofResource(NULL, hsfxres);
-
-					TCHAR dir[MAX_PATH];
-					_tcscpy_s(dir, MAX_PATH, filename);
-					PathRemoveFileSpec(dir);
-					CreateDirectories(dir);
-
-					m_hFile = CreateFile(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-					if (m_hFile)
-					{
-						DWORD cw;
-						WriteFile(m_hFile, pbuf, sfxsize, &cw, NULL);
-
-						CloseHandle(m_hFile);
-
-						ret = (sfxsize == cw);
-					}
-
-					FreeResource(hsfxload);
-				}
-			}
-		}
-
-		HMODULE hmod = LoadLibraryEx(filename, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_IMAGE_RESOURCE | LOAD_LIBRARY_AS_DATAFILE);
-		EnumResourceTypes(hmod, (ENUMRESTYPEPROC)CSfxPackagerDoc::EnumTypesFunc, (LONG_PTR)m_pDoc);
-
-		if (hmod)
-		{
-			HRSRC hrinf = FindResource(hmod, _T("VERSION_INFO"), RT_VERSION);
-			HGLOBAL hginf = LoadResource(hmod, hrinf);
-			BYTE *peinf = (BYTE *)LockResource(hginf);
-
-			UnlockResource(hginf);
-
-			HRSRC hii = FindResource(hmod, _T("ICON"), RT_GROUP_ICON);
-			HGLOBAL hgi = LoadResource(hmod, hii);
-			BYTE *pei = (BYTE *)LockResource(hgi); // existing icon
-
-			GROUPICON *pei_hdr = (GROUPICON *)pei;
-			ICONDATA_RES *pei_icon = (ICONDATA_RES *)(pei + sizeof(GROUPICON));
-
-			std::vector<ICONDATA_RES> oid; // original icons data
-			oid.reserve(pei_hdr->ImageCount);
-			for (WORD k = 0; k < pei_hdr->ImageCount; k++)
-				oid.push_back(pei_icon[k]);
-
-			UnlockResource(hgi);
-
-			FreeLibrary(hmod);
-
-			HANDLE hbur = BeginUpdateResource(filename, FALSE);
-			BOOL bresult = FALSE;
-
-			if (hbur)
-			{
-				if (!m_pDoc->m_IconFile.IsEmpty())
-				{
-					TCHAR iconpath[MAX_PATH];
-
-					if (PathIsRelative(m_pDoc->m_IconFile))
-					{
-						PathCombine(iconpath, docpath, m_pDoc->m_IconFile);
-					}
-					else
-					{
-						_tcscpy_s(iconpath, MAX_PATH, m_pDoc->m_IconFile);
-					}
-
-					if (PathFileExists(iconpath))
-					{
-						HANDLE hicobin = CreateFile(iconpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-						if (hicobin)
-						{
-							DWORD fsz = GetFileSize(hicobin, NULL);
-							BYTE *pbin = (BYTE *)malloc(fsz);
-							if (pbin)
-							{
-								DWORD rb;
-								if (ReadFile(hicobin, pbin, fsz, &rb, NULL))
-								{
-									WORD last_id = oid.back().ResourceID;
-
-									GROUPICON *hdr = (GROUPICON *)pbin;
-
-									BYTE *pbin_r = (BYTE *)malloc(sizeof(GROUPICON) + (sizeof(ICONDATA_RES) * hdr->ImageCount));
-									if (pbin_r)
-									{
-										memcpy(pbin_r, pbin, sizeof(GROUPICON));
-
-										WORD hdrsz = sizeof(GROUPICON) + (sizeof(ICONDATA_RES) * hdr->ImageCount);
-
-										ICONDATA_FILE *icon = (ICONDATA_FILE *)(pbin + sizeof(GROUPICON));
-										ICONDATA_RES *icon_r = (ICONDATA_RES *)(pbin_r + sizeof(GROUPICON));
-										for (WORD i = 0; i < hdr->ImageCount; i++)
-										{
-											memcpy(&icon_r[i], &icon[i], sizeof(ICONDATA_RES));
-											icon_r[i].ResourceID = (i < oid.size()) ? oid[i].ResourceID : ++last_id;
-										}
-
-										bresult = UpdateResource(hbur, RT_GROUP_ICON, _T("ICON"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), pbin_r, hdrsz);
-
-										for (size_t i = 0, maxi = hdr->ImageCount; i < maxi; i++)
-										{
-											bresult = UpdateResource(hbur, RT_ICON, MAKEINTRESOURCE(icon_r[i].ResourceID), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), &pbin[icon[i].ImageOffset], icon_r[i].ImageSize);
-										}
-
-										free(pbin_r);
-									}
-								}
-
-								free(pbin);
-							}
-
-							CloseHandle(hicobin);
-						}
-					}
-				}
-
-				if (!m_pDoc->m_ImageFile.IsEmpty())
-				{
-					TCHAR imgpath[MAX_PATH];
-
-					if (PathIsRelative(m_pDoc->m_ImageFile))
-					{
-						PathCombine(imgpath, docpath, m_pDoc->m_ImageFile);
-					}
-					else
-					{
-						_tcscpy_s(imgpath, m_pDoc->m_ImageFile);
-					}
-
-					if (PathFileExists(imgpath))
-					{
-						HANDLE himgbin = CreateFile(imgpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-						if (himgbin)
-						{
-							DWORD fsz = GetFileSize(himgbin, NULL);
-							BYTE *pbin = (BYTE *)malloc(fsz);
-							BITMAPINFOHEADER *pbmphdr = (BITMAPINFOHEADER *)(pbin + sizeof(BITMAPFILEHEADER));
-							if (pbin)
-							{
-								DWORD rb;
-								ReadFile(himgbin, pbin, fsz, &rb, NULL);
-
-								if (pbmphdr->biBitCount <= 24)
-								{
-									bresult = UpdateResource(hbur, RT_BITMAP, _T("PACKAGE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), pbin + sizeof(BITMAPFILEHEADER), fsz - sizeof(BITMAPFILEHEADER));
-								}
-								else
-								{
-									CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
-									pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, _T("WARNING: Image file may not be more than 24bpp!\r\n"));
-								}
-
-								free(pbin);
-							}
-
-							CloseHandle(himgbin);
-						}
-					}
-				}
-
-				CString spanstr;
-				spanstr.Format(_T(" (part %d)"), m_spanIdx + 1);
-				CString caption;
-				caption.Format(_T("%s%s"), m_pDoc->m_Caption, m_spanIdx ? spanstr : _T(""));
-
-				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_CAPTION"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)caption), (caption.GetLength() + 1) * sizeof(TCHAR));
-				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_DEFAULTPATH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)m_pDoc->m_DefaultPath), (m_pDoc->m_DefaultPath.GetLength() + 1) * sizeof(TCHAR));
-
-				{
-					char *shtml;
-					bool created_shtml = false;
-
-					TCHAR welcomepath[MAX_PATH];
-
-					if (PathIsRelative(m_pDoc->m_Description))
-					{
-						PathCombine(welcomepath, docpath, m_pDoc->m_Description);
-					}
-					else
-					{
-						_tcscpy_s(welcomepath, m_pDoc->m_Description);
-					}
-
-					if (PathFileExists(welcomepath))
-					{
-						HANDLE hhtmlfile = CreateFile(welcomepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-						if (hhtmlfile)
-						{
-							DWORD fsz = GetFileSize(hhtmlfile, NULL);
-							shtml = (char *)malloc(fsz + 1);
-							if (shtml)
-							{
-								created_shtml = true;
-								DWORD rb;
-								ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
-								shtml[fsz] = 0;
-							}
-
-							CloseHandle(hhtmlfile);
-						}
-					}
-					else
-					{
-						LOCAL_TCS2MBCS((LPCTSTR)m_pDoc->m_Description, shtml);
-					}
-
-					bresult = UpdateResource(hbur, RT_HTML, _T("welcome"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, DWORD(strlen(shtml) * sizeof(char)));
-
-					if (created_shtml)
-					{
-						free(shtml);
-					}
-				}
-
-				if (!m_pDoc->m_LicenseMessage.IsEmpty())
-				{
-					char *shtml;
-					bool created_shtml = false;
-
-					TCHAR licensepath[MAX_PATH];
-
-					if (PathIsRelative(m_pDoc->m_LicenseMessage))
-					{
-						PathCombine(licensepath, docpath, m_pDoc->m_LicenseMessage);
-					}
-					else
-					{
-						_tcscpy_s(licensepath, m_pDoc->m_LicenseMessage);
-					}
-
-					if (PathFileExists(licensepath))
-					{
-						HANDLE hhtmlfile = CreateFile(licensepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-						if (hhtmlfile)
-						{
-							DWORD fsz = GetFileSize(hhtmlfile, NULL);
-							shtml = (char *)malloc(fsz + 1);
-							if (shtml)
-							{
-								created_shtml = true;
-								DWORD rb;
-								ReadFile(hhtmlfile, shtml, fsz, &rb, NULL);
-								shtml[fsz] = 0;
-							}
-
-							CloseHandle(hhtmlfile);
-						}
-					}
-					else
-					{
-						LOCAL_TCS2MBCS((LPCTSTR)m_pDoc->m_LicenseMessage, shtml);
-					}
-
-					bresult = UpdateResource(hbur, RT_HTML, _T("license"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)shtml, DWORD(strlen(shtml) * sizeof(char)));
-
-					if (created_shtml)
-					{
-						free(shtml);
-					}
-				}
-
-				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INIT"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-					(void *)((LPCTSTR)m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::INIT]),
-					(m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::INIT].GetLength() + 1) * sizeof(TCHAR));
-
-				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PERFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-					(void *)((LPCTSTR)m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::PERFILE]),
-					(m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::PERFILE].GetLength() + 1) * sizeof(TCHAR));
-
-				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_FINISH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-					(void *)((LPCTSTR)m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::FINISH]),
-					(m_pDoc->m_Script[CSfxPackagerDoc::EScriptType::FINISH].GetLength() + 1) * sizeof(TCHAR));
-
-				SFixupResourceData furd;
-				ZeroMemory(&furd, sizeof(SFixupResourceData));
-				strcpy(furd.m_Ident, SFX_FIXUP_SEARCH_STRING);
-
-				bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_FIXUPDATA"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), &furd, sizeof(SFixupResourceData));
-
-				bresult = EndUpdateResource(hbur, FALSE);
-			}
-		}
-
-		m_hFile = CreateFile(filename, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		LARGE_INTEGER p = {0}, z = {0};
-		SetFilePointerEx(m_hFile, z, &p, FILE_END);
-
-		return (m_hFile != INVALID_HANDLE_VALUE);
-	}
-
-	bool FixupSfxExecutable(const TCHAR *filename, const TCHAR *launchcmd, bool span, UINT32 filecount)
-	{
-		bool bresult = true;
-
-		HANDLE hf = CreateFile(filename, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
-		if (hf == INVALID_HANDLE_VALUE)
-			return false;
-
-		LARGE_INTEGER ofs;
-		SetFilePointer(hf, -(int)(sizeof(LONGLONG)), NULL, FILE_END);
-
-		DWORD cb;
-		ReadFile(hf, &(ofs.QuadPart), sizeof(LONGLONG), &cb, NULL);
-
-		BYTE *pdata = (BYTE *)malloc(ofs.QuadPart);
-		if (pdata)
-		{
-			SetFilePointer(hf, 0, NULL, FILE_BEGIN);
-			ReadFile(hf, pdata, (DWORD)ofs.QuadPart, &cb, NULL);
-
-			char ss[16];
-			strcpy(ss, SFX_FIXUP_SEARCH_STRING);
-
-			// search for our identifier string in the exe file... when we find it, then replace the data ourselves instead of using the resource API
-			BYTE *p = pdata;
-			bool found = false;
-			while (p && ((uint64_t)(p - pdata) < (uint64_t)(ofs.QuadPart - sizeof(SFixupResourceData))))
-			{
-				p = (BYTE *)memchr((char *)p, ss[0], ofs.QuadPart - (p - pdata));
-
-				if (!p)
-				{
-					break;
-				}
-				else if (!strcmp((const char *)p, SFX_FIXUP_SEARCH_STRING))
-				{
-					found = true;
-					break;
-				}
-
-				p++;
-			}
-
-			if (found)
-			{
-				SetFilePointer(hf, (LONG)(p - pdata), NULL, FILE_BEGIN);
-
-				SFixupResourceData *furd = (SFixupResourceData *)p;
-				_tcscpy_s(furd->m_LaunchCmd, MAX_PATH, launchcmd);
-
-				CString vers = m_pDoc->m_VersionID;
-				if (PathFileExists(vers))
-				{
-					int major, minor, release, build;
-					if (GetFileVersion(vers, major, minor, release, build))
-					{
-						vers.Format(_T("Version %d.%d.%d.%d"), major, minor, release, build);
-					}
-				}
-
-				_tcscpy_s(furd->m_VersionID, MAX_PATH, vers);
-
-				UINT32 flags = 0;
-
-				if (m_pDoc->m_bExploreOnComplete && !span)
-					flags |= SFX_FLAG_EXPLORE;
-
-				if (span)
-					flags |= SFX_FLAG_SPAN;
-
-				if (m_pDoc->m_bAllowDestChg)
-					flags |= SFX_FLAG_ALLOWDESTCHG;
-
-				if (m_pDoc->m_bRequireAdmin)
-					flags |= SFX_FLAG_ADMINONLY;
-
-				if (m_pDoc->m_bRequireReboot)
-					flags |= SFX_FLAG_REBOOTNEEDED;
-
-				furd->m_Flags = flags;
-				furd->m_SpaceRequired = m_pDoc->m_UncompressedSize;
-
-				furd->m_CompressedFileCount = filecount;
-
-				WriteFile(hf, furd, sizeof(SFixupResourceData), &cb, NULL);
-			}
-
-			free(pdata);
-		}
-
-		CloseHandle(hf);
-
-		return bresult;
-	}
-
-	UINT GetSpanCount() { return (m_spanIdx + 1); }
-
-protected:
-	TCHAR m_BaseFilename[MAX_PATH];
-	TCHAR m_CurrentFilename[MAX_PATH];
-
-	HANDLE m_hFile;
-
-	UINT m_spanIdx;
-
-	CSfxPackagerDoc *m_pDoc;
-
-	IArchiver *m_pArc;
 };
 
 
@@ -673,6 +778,7 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 	m_bRequireReboot = false;
 	m_bAppendBuildDate = false;
 	m_bAppendVersion = false;
+	m_bExternalArchive = false;
 
 	m_hCancelEvent = CreateEvent(NULL, true, false, NULL);
 	m_hThread = NULL;
@@ -712,23 +818,6 @@ BOOL CSfxPackagerDoc::OnNewDocument()
 
 	return TRUE;
 }
-
-#pragma pack(push, 2)
-typedef struct
-{
-	WORD Reserved1;
-	WORD ResourceType;
-	WORD ImageCount;
-	BYTE Width;
-	BYTE Height;
-	BYTE Colors;
-	BYTE Reserved2;
-	WORD Planes;
-	WORD BitsPerPixel;
-	DWORD ImageSize;
-	WORD ResourceID;
-} GROUPICON;
-#pragma pack(pop)
 
 
 BOOL CSfxPackagerDoc::EnumTypesFunc(HMODULE hModule, LPTSTR lpType, LONG_PTR lParam)
@@ -1119,11 +1208,21 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 
 	DWORD wr = 0;
 	{
-		CSfxHandle pah(fullfilename, this);
+		CPackagerArchiveHandle *pah = nullptr;
 
-		ret = (IArchiver::CreateArchiver(&parc, &pah, IArchiver::CT_FASTLZ) == IArchiver::CR_OK);
+		if (!m_bExternalArchive)
+		{
+			pah = new CSfxHandle(fullfilename, this);
+		}
+		else
+		{
+			pah = new CExtArcHandle(fullfilename, this);
+		}
 
-		pah.SetArchiver(parc);
+		ret = (IArchiver::CreateArchiver(&parc, pah, IArchiver::CT_FASTLZ) == IArchiver::CR_OK);
+
+		if (pah)
+			pah->SetArchiver(parc);
 
 		parc->SetMaximumSize((m_MaxSize > 0) ? (m_MaxSize MB) : UINT64_MAX);
 
@@ -1168,7 +1267,21 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 			it++;
 		}
 
-		spanct = pah.GetSpanCount();
+		if (pah)
+		{
+			spanct = pah->GetSpanCount();
+			sz_totalcomp = pah->GetSpanTotalSize();
+		}
+
+		LARGE_INTEGER tsz = {0};
+		tsz.LowPart = GetFileSize(pah->GetHandle(), (LPDWORD)&tsz.HighPart);
+		sz_totalcomp += tsz.QuadPart;
+
+		if (pah)
+		{
+			pah->Release();
+			pah = nullptr;
+		}
 	}
 
 	time(&finish_op);
@@ -1190,11 +1303,16 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 		double comp_pct = 0.0;
-		if (sz_totalcomp > 0)
+		double uncomp_sz = (double)m_UncompressedSize.QuadPart;
+		double comp_sz = (double)sz_totalcomp;
+		if (comp_sz > 0)
 		{
-			comp_pct = 100.0 * std::max<double>(0.0, (((double)m_UncompressedSize.QuadPart / (double)sz_totalcomp) - 1.0));
+			comp_pct = 100.0 * std::max<double>(0.0, ((uncomp_sz / comp_sz) - 1.0));
 		}
-		msg.Format(_T("Compression: %1.02f%%\r\nCompleted in: %02d:%02d:%02d\r\n\r\n\r\n"), comp_pct, hours, minutes, seconds);
+		msg.Format(_T("Uncompressed Size: %1.02fMB\r\nCompressed Size: %1.02fMB\r\nCompression: %1.02f%%\r\n\r\n"), uncomp_sz / 1024.0f / 1024.0f, comp_sz / 1024.0f / 1024.0f, comp_pct);
+		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+
+		msg.Format(_T("Completed in: %02d:%02d:%02d\r\n\r\n\r\n"), hours, minutes, seconds);
 	}
 
 	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
@@ -1811,6 +1929,8 @@ void CSfxPackagerDoc::ReadSettings(CGenParser &gp)
 				m_bAppendBuildDate = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
 			else if (!_tcsicmp(name.c_str(), _T("appendversion")))
 				m_bAppendVersion = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
+			else if (!_tcsicmp(name.c_str(), _T("externalarchive")))
+				m_bExternalArchive = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
 		}
 	}
 }
@@ -1933,7 +2053,7 @@ void CSfxPackagerDoc::ReadFiles(CGenParser &gp)
 			gp.NextToken(); // skip '='
 
 			gp.NextToken();
-			scriptsnippet = gp.GetCurrentTokenString();
+			UnescapeString(gp.GetCurrentTokenString(), scriptsnippet);
 		}
 	}
 }
@@ -2014,6 +2134,8 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 
 		s += _T("\n\t\t<appendversion value=\""); s += m_bAppendVersion ? _T("true") : _T("false"); s += _T("\"/>");
 
+		s += _T("\n\t\t<externalarchive value=\""); s += m_bExternalArchive ? _T("true") : _T("false"); s += _T("\"/>");
+
 		TCHAR msb[32];
 		s += _T("\n\t\t<maxsize value=\""); _itot_s(m_MaxSize, msb, 32, 10); s += msb; s += _T("\"/>");
 
@@ -2082,7 +2204,10 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 
 		for (TFileDataMap::iterator it = m_FileData.begin(), last_it = m_FileData.end(); it != last_it; it++)
 		{
-			s.Format(_T("\t\t<file name=\"%s\" src=\"%s\" dst=\"%s\" exclude=\"%s\" snippet=\"%s\" />\n"), it->second.name.c_str(), it->second.srcpath.c_str(), it->second.dstpath.c_str(), it->second.exclude.c_str(), it->second.snippet.c_str());
+			tstring esc_snip;
+			EscapeString(it->second.snippet.c_str(), esc_snip);
+
+			s.Format(_T("\t\t<file name=\"%s\" src=\"%s\" dst=\"%s\" exclude=\"%s\" snippet=\"%s\" />\n"), it->second.name.c_str(), it->second.srcpath.c_str(), it->second.dstpath.c_str(), it->second.exclude.c_str(), esc_snip.c_str());
 
 #if defined(UNICODE)
 			nLen = WideCharToMultiByte(CP_UTF8, 0, (LPCTSTR)s, -1, NULL, NULL, NULL, NULL);

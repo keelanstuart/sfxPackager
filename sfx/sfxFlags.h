@@ -18,6 +18,7 @@ enum ESfxFlagShift
 	FS_ADMINONLY,
 	FS_ALLOWDESTCHG,
 	FS_REBOOTNEEDED,
+	FS_EXTERNALARCHIVE,
 };
 
 #define SFX_FLAG_EXPLORE			(1 << FS_EXPLORE)				// show a check box on the installer that will allow the user to explore the destination folder
@@ -25,6 +26,7 @@ enum ESfxFlagShift
 #define SFX_FLAG_ADMINONLY			(1 << FS_ADMINONLY)				// the install requires admin rights and will try to elevate privileges
 #define SFX_FLAG_ALLOWDESTCHG		(1 << FS_ALLOWDESTCHG)			// indicates that the installer allows the destination directory to be changed
 #define SFX_FLAG_REBOOTNEEDED		(1 << FS_REBOOTNEEDED)			// indicates that the system should be restarted for changes to take effect
+#define SFX_FLAG_EXTERNALARCHIVE	(1 << FS_EXTERNALARCHIVE)		// the files will be stored in a file outside of the exe (with the same name, but with a ".data" extension)
 
 struct sFixupResourceData
 {
@@ -41,7 +43,7 @@ typedef struct sFixupResourceData SFixupResourceData;
 
 
 
-#define SFX_FIXUP_SEARCH_STRING		"CADBURY EGGS!!!"
+#define SFX_FIXUP_SEARCH_STRING		"3xcu5es Beg0ne!"
 
 
 #define KB		* (1 << 10)
