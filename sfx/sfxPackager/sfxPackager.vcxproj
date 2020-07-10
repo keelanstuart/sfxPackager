@@ -67,7 +67,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>PowerProps$(PlatformArchitecture)$(ShortConfiguration).lib;Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;Version.lib</AdditionalDependencies>
+      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;PowerProps$(PlatformArchitecture)$(ShortConfiguration).lib;GenIO$(PlatformArchitecture)$(ShortConfiguration).lib;Version.lib</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -100,7 +100,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>PowerProps$(PlatformArchitecture)$(ShortConfiguration).lib;Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;Version.lib</AdditionalDependencies>
+      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;PowerProps$(PlatformArchitecture)$(ShortConfiguration).lib;GenIO$(PlatformArchitecture)$(ShortConfiguration).lib;Version.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Lib</AdditionalLibraryDirectories>
     </Link>
     <Midl>

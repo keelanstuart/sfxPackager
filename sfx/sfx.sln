@@ -18,6 +18,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Archiver", "..\Archiver\Sou
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PowerProps", "sfxPackager\third-party\PowerProps\PowerProps.vcxproj", "{6BEE76CE-1EE0-4FE1-A88C-F18AE45FF9BF}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenIO", "sfxPackager\third-party\GenIO\GenIO.vcxproj", "{3E55E33C-4834-4D0A-A998-1A33A6B91B74}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -52,6 +54,14 @@ Global
 		{6BEE76CE-1EE0-4FE1-A88C-F18AE45FF9BF}.Release|x64.Build.0 = Release|x64
 		{6BEE76CE-1EE0-4FE1-A88C-F18AE45FF9BF}.Release|x86.ActiveCfg = Release|Win32
 		{6BEE76CE-1EE0-4FE1-A88C-F18AE45FF9BF}.Release|x86.Build.0 = Release|Win32
+		{3E55E33C-4834-4D0A-A998-1A33A6B91B74}.Debug|x64.ActiveCfg = Debug|x64
+		{3E55E33C-4834-4D0A-A998-1A33A6B91B74}.Debug|x64.Build.0 = Debug|x64
+		{3E55E33C-4834-4D0A-A998-1A33A6B91B74}.Debug|x86.ActiveCfg = Debug|Win32
+		{3E55E33C-4834-4D0A-A998-1A33A6B91B74}.Debug|x86.Build.0 = Debug|Win32
+		{3E55E33C-4834-4D0A-A998-1A33A6B91B74}.Release|x64.ActiveCfg = Release|x64
+		{3E55E33C-4834-4D0A-A998-1A33A6B91B74}.Release|x64.Build.0 = Release|x64
+		{3E55E33C-4834-4D0A-A998-1A33A6B91B74}.Release|x86.ActiveCfg = Release|Win32
+		{3E55E33C-4834-4D0A-A998-1A33A6B91B74}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
