@@ -222,33 +222,13 @@ void CProgressDlg::OnCancel()
 
 	while (m_Thread)
 	{
-#if 1
 		while (AfxPumpMessage())
 		{
 
 		}
-#else
-		MSG msg;
-		BOOL bRet;
-
-		while ((bRet = GetMessage(&msg, NULL, 0, 0)) != FALSE)
-		{
-			if (bRet != -1)
-			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-			}
-		}
-#endif
 
 		// then wait for the thread to exit
 		Sleep(50);
-	}
-
-	if (pcancel)
-	{
-		pcancel->SetWindowText(_T("<<  Back"));
-		pcancel->EnableWindow(TRUE);
 	}
 
 	AfxGetApp()->DoWaitCursor(-1);
@@ -617,6 +597,25 @@ void scIsDirectoryEmpty(CScriptVar *c, void *userdata)
 		ret->setInt(result ? 1 : 0);
 }
 
+void scCreateSymbolicLink(CScriptVar *c, void *userdata)
+{
+	tstring targetname = c->getParameter(_T("targetname"))->getString(), _targetname;
+	ReplaceEnvironmentVariables(targetname, _targetname);
+	ReplaceRegistryKeys(_targetname, targetname);
+
+	tstring linkname = c->getParameter(_T("linkname"))->getString(), _linkname;
+	ReplaceEnvironmentVariables(linkname, _linkname);
+	ReplaceRegistryKeys(_linkname, linkname);
+
+	DWORD flags = 0;
+	if (PathIsDirectory(targetname.c_str()))
+		flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;
+
+	BOOL result = CreateSymbolicLink(linkname.c_str(), targetname.c_str(), flags);
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(result ? 1 : 0);
+}
 
 void scCreateShortcut(CScriptVar *c, void *userdata)
 {
@@ -1233,6 +1232,7 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function CopyFile(src, dst)"), scCopyFile, (void *)this);
 	theApp.m_js.addNative(_T("function CreateDirectoryTree(path)"), scCreateDirectoryTree, (void *)this);
 	theApp.m_js.addNative(_T("function CreateShortcut(file, target, args, rundir, desc, showmode, icon, iconidx)"), scCreateShortcut, (void *)this);
+	theApp.m_js.addNative(_T("function CreateSymbolicLink(linkname, targetname)"), scCreateSymbolicLink, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
 	theApp.m_js.addNative(_T("function DownloadFile(url, file)"), scDownloadFile, (void *)this);
 	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
@@ -1495,7 +1495,7 @@ DWORD CProgressDlg::RunInstall()
 		if (!extract_ok)
 			pok->SetWindowText(_T("Close"));
 
-		pok->EnableWindow(!cancelled);
+		pok->EnableWindow(extract_ok || !cancelled);
 	}
 
 	if (pcancel)
@@ -1506,7 +1506,7 @@ DWORD CProgressDlg::RunInstall()
 		pcancel->EnableWindow(cancelled);
 
 		if (cancelled)
-			pok->SetWindowText(_T("<< Back"));
+			pcancel->SetWindowText(_T("<< Back"));
 	}
 
 	m_Thread = nullptr;

@@ -144,33 +144,23 @@ HCURSOR CSfxDlg::OnQueryDragIcon()
 }
 
 
-
-bool CreateDirectories(const TCHAR *dir)
-{
-	if (PathIsRoot(dir) || PathFileExists(dir))
-		return false;
-
-	TCHAR _dir[MAX_PATH];
-	_tcscpy_s(_dir, MAX_PATH, dir);
-	PathRemoveFileSpec(_dir);
-	CreateDirectories(_dir);
-
-	CreateDirectory(dir, NULL);
-
-	return true;
-}
+extern bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst);
+extern bool ReplaceRegistryKeys(const tstring &src, tstring &dst);
+extern bool FLZACreateDirectories(const TCHAR *dir);
 
 void CSfxDlg::OnBnClickedOk()
 {
 	CWnd *pe = GetDlgItem(IDC_EDIT_INSTALLPATH);
 	if (pe)
 	{
-		TCHAR path[MAX_PATH * 2];
-		pe->GetWindowText(path, MAX_PATH * 2);
-		TCHAR expath[MAX_PATH * 4];
-		ExpandEnvironmentStrings(path, expath, MAX_PATH * 4);
+		CString tmppath;
+		pe->GetWindowText(tmppath);
 
-		theApp.m_InstallPath = expath;
+		tstring _expath, expath = tmppath;
+		ReplaceEnvironmentVariables(expath, _expath);
+		ReplaceRegistryKeys(_expath, expath);
+
+		theApp.m_InstallPath = expath.c_str();
 	}
 
 	if (!PathFileExists(theApp.m_InstallPath))
@@ -180,7 +170,7 @@ void CSfxDlg::OnBnClickedOk()
 		switch (::MessageBox(GetSafeHwnd(), s, _T("Path Not Found - Create?"), MB_OKCANCEL | MB_ICONHAND))
 		{
 			case IDOK:
-				CreateDirectories(theApp.m_InstallPath);
+				FLZACreateDirectories(theApp.m_InstallPath);
 				break;
 
 			case IDCANCEL:

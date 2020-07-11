@@ -13,6 +13,7 @@
 #include "FastLZArchiver.h"
 #include <Shlwapi.h>
 #include <direct.h>
+#include <filesystem>
 
 #include "fastlz.h"
 
@@ -564,17 +565,29 @@ bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst)
 
 			if (!env.empty())
 			{
-				DWORD sz = GetEnvironmentVariable(env.c_str(), nullptr, 0);
-				// 0 length means it's bad... just put a blank back
-				if (!sz)
+				// special case for temp and tmp... there seem to be permission problems with the default
+				if (!_tcsicmp(env.c_str(), _T("temp")) || !_tcsicmp(env.c_str(), _T("tmp")))
 				{
-					ret = false;
+					dst += std::filesystem::temp_directory_path();
+				}
+				else if (!_tcsicmp(env.c_str(), _T("cwd")))
+				{
+					dst += std::filesystem::current_path();
 				}
 				else
 				{
-					TCHAR *val = (TCHAR *)_alloca(sizeof(TCHAR) * (sz + 1));
-					GetEnvironmentVariable(env.c_str(), val, sz + 1);
-					dst += val;
+					DWORD sz = GetEnvironmentVariable(env.c_str(), nullptr, 0);
+					// 0 length means it's bad... just put a blank back
+					if (!sz)
+					{
+						ret = false;
+					}
+					else
+					{
+						TCHAR *val = (TCHAR *)_alloca(sizeof(TCHAR) * (sz + 1));
+						GetEnvironmentVariable(env.c_str(), val, sz + 1);
+						dst += val;
+					}
 				}
 			}
 			else
