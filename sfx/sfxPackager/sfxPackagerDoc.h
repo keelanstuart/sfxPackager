@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include "GenParser.h"
-
 #include <vector>
 
 #include "../../Archiver/Include/Archiver.h"
@@ -40,7 +38,7 @@ protected: // create from serialization only
 public:
 	friend class CSfxHandle;
 
-	UINT AddFile(const TCHAR *filename, const TCHAR *srcpath, const TCHAR *dstpath, const TCHAR *exclude, const TCHAR *scriptsnippet);
+	UINT AddFile(const TCHAR *filename = nullptr, const TCHAR *srcpath = nullptr, const TCHAR *dstpath = nullptr, const TCHAR *exclude = nullptr, const TCHAR *scriptsnippet = nullptr);
 	void RemoveFile(UINT handle);
 
 	enum EFileDataType
@@ -81,17 +79,19 @@ public:
 	static CSfxPackagerDoc *GetDoc();
 
 protected:
-	struct SFileData
+
+	typedef enum eFileProp
 	{
-		tstring name;
-		tstring srcpath;
-		tstring dstpath;
-		tstring exclude;	// wildcard exclusion
-		tstring snippet;	// script snippet appended to per-file global
-	};
+		FILENAME = 'NAME',				// the name of the source file(s) (wildcard ok)
+		SOURCE_PATH = 'SRCP',			// the path to the source file(s) 
+		DESTINATION_PATH = 'DSTP',		// the path where the file will be extracted to. If relative, is relative to the target directory, but can be absolute
+		EXCLUDING = 'EXCL',				// a comma-delimited wildcard match of files to exclude
+		PERFILE_SNIPPET = 'SNPT',		// a script that is appended to the per-file global, executed when the given file has been decompressed
+	} EFILEPROP;
+
+	typedef props::IPropertySet * SFileData;
 
 	typedef std::map<UINT, SFileData> TFileDataMap;
-	typedef std::pair<UINT, SFileData> TFileDataPair;
 
 	TFileDataMap m_FileData;
 	UINT m_Key;
@@ -104,23 +104,29 @@ protected:
 	bool CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, const TCHAR *excludespec, UINT recursion = 0);
 
 public:
-	CString m_SfxOutputFile;
-	CString m_IconFile;
-	CString m_ImageFile;
-	CString m_Caption;
-	CString m_Description;
-	CString m_LicenseMessage;
-	CString m_DefaultPath;
-	CString m_VersionID;
-	bool m_bAppendVersion;
-	bool m_bAppendBuildDate;
-	bool m_bExploreOnComplete;
-	bool m_bRequireAdmin;
-	bool m_bRequireReboot;
-	bool m_bAllowDestChg;
-	bool m_bExternalArchive;
-	CString m_LaunchCmd;
-	long m_MaxSize;
+
+	typedef enum eDocProp
+	{
+		OUTPUT_FILE = 'OUTP',
+		OUTPUT_FILE_SUFFIX_MODE = 'OFSF',
+		OUTPUT_MODE = 'OPMD',
+		MAXIMUM_SIZE_MB = 'MXSZ',
+		ICON_FILE = 'ICON',
+		IMAGE_FILE = 'IMAG',
+		CAPTION = 'CPTN',
+		WELCOME_MESSAGE = 'WLCM',
+		LICENSE_MESSAGE = 'LICM',
+		VERSION = 'VERS',
+		DEFAULT_DESTINATION = 'DDST',
+		ALLOW_DESTINATION_CHANGE = 'ADCH',
+		REQUIRE_ADMIN = 'ADMN',
+		REQUIRE_REBOOT = 'BOOT',
+		ENABLE_EXPLORE_CHECKBOX = 'ENEX',
+		LAUNCH_COMMAND = 'LNCH',
+	} EDOCPROP;
+
+	props::IPropertySet *m_Props;
+
 	LARGE_INTEGER m_UncompressedSize;
 
 	CString m_Script[EScriptType::NUMTYPES];
@@ -145,10 +151,10 @@ public:
 public:
 	virtual BOOL OnNewDocument();
 
-	void ReadSettings(CGenParser &gp);
-	void ReadScripts(CGenParser &gp);
-	void ReadFiles(CGenParser &gp);
-	void ReadProject(CGenParser &gp);
+	void ReadSettings(genio::IParserT *gp);
+	void ReadScripts(genio::IParserT *gp);
+	void ReadFiles(genio::IParserT *gp);
+	void ReadProject(genio::IParserT *gp);
 
 	virtual void Serialize(CArchive& ar);
 #ifdef SHARED_HANDLERS

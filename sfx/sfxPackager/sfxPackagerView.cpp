@@ -442,7 +442,8 @@ void CSfxPackagerView::OnEditDelete()
 		if (MessageBox(_T("Do you really want to delete the selected item(s)"), _T("Confirm Delete"), MB_YESNO) == IDNO)
 			return;
 
-		UINT *pdi = (UINT *)_alloca(sizeof(UINT) * selcount);
+		std::vector<UINT> pdi;
+		pdi.resize(selcount);
 
 		for (UINT i = 0; i < selcount; i++)
 		{
@@ -989,16 +990,17 @@ void CSfxPackagerView::OnUpdateAppTestSfx(CCmdUI *pCmdUI)
 	{
 		TCHAR fullfilename[MAX_PATH];
 
-		if (PathIsRelative(pDoc->m_SfxOutputFile))
+		tstring outputfile = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::OUTPUT_FILE]->AsString();
+		if (PathIsRelative(outputfile.c_str()))
 		{
 			TCHAR docpath[MAX_PATH];
 			_tcscpy(docpath, pDoc->GetPathName());
 			PathRemoveFileSpec(docpath);
-			PathCombine(fullfilename, docpath, pDoc->m_SfxOutputFile);
+			PathCombine(fullfilename, docpath, outputfile.c_str());
 		}
 		else
 		{
-			_tcscpy(fullfilename, pDoc->m_SfxOutputFile);
+			_tcscpy(fullfilename, outputfile.c_str());
 		}
 
 		bool exists = PathFileExists(fullfilename);
@@ -1022,16 +1024,17 @@ void CSfxPackagerView::TestSfx()
 
 	TCHAR fullfilename[MAX_PATH];
 
-	if (PathIsRelative(pDoc->m_SfxOutputFile))
+	tstring outputfile = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::OUTPUT_FILE]->AsString();
+	if (PathIsRelative(outputfile.c_str()))
 	{
 		TCHAR docpath[MAX_PATH];
 		_tcscpy(docpath, pDoc->GetPathName());
 		PathRemoveFileSpec(docpath);
-		PathCombine(fullfilename, docpath, pDoc->m_SfxOutputFile);
+		PathCombine(fullfilename, docpath, outputfile.c_str());
 	}
 	else
 	{
-		_tcscpy(fullfilename, pDoc->m_SfxOutputFile);
+		_tcscpy(fullfilename, outputfile.c_str());
 	}
 
 	TCHAR path[MAX_PATH];

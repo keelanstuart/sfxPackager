@@ -156,7 +156,7 @@ void CSfxDlg::OnBnClickedOk()
 		CString tmppath;
 		pe->GetWindowText(tmppath);
 
-		tstring _expath, expath = tmppath;
+		tstring _expath, expath = (LPCTSTR)tmppath;
 		ReplaceEnvironmentVariables(expath, _expath);
 		ReplaceRegistryKeys(_expath, expath);
 

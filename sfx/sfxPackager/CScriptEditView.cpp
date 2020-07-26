@@ -13,7 +13,7 @@ const TCHAR *helpers[CSfxPackagerDoc::EScriptType::NUMTYPES] =
 {
 	_T("var BASEPATH;\t// (string) the base install path"),
 	_T("var BASEPATH;\t// (string) the base install path\r\nvar FILENAME;\t// (string) the name of the file that was just extracted\r\nvar PATH;\t// (string) the output path of that file\r\nvar FILEPATH;\t// (string) the full filename, PATH + FILENAME"),
-	_T("var BASEPATH;\t// (string) the base install path")
+	_T("var BASEPATH;\t// (string) the base install path\r\nvar CANCELLED;\t// (int) 1 if the installation was cancelled by the user, 0 if not\r\nvar INSTALLOK;\t// (int) 1 if the file extraction / installation was ok, 0 if not"),
 };
 
 // CScriptEditView

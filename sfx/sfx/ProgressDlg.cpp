@@ -572,6 +572,27 @@ void scFileExists(CScriptVar *c, void *userdata)
 		ret->setInt(result ? 1 : 0);
 }
 
+void scFilenameHasExtension(CScriptVar *c, void *userdata)
+{
+	tstring filename = c->getParameter(_T("filename"))->getString(), _filename;
+	ReplaceEnvironmentVariables(filename, _filename);
+	ReplaceRegistryKeys(_filename, filename);
+
+	tstring ext = c->getParameter(_T("ext"))->getString();
+
+	TCHAR *p = PathFindExtension(filename.c_str());
+	if (p && (*p == _T('.')))
+		p++;
+
+	bool result = false;
+	if (p)
+		result = (_tcsicmp(p, ext.c_str()) == 0) ? true : false;
+
+	CScriptVar *ret = c->getReturnVar();
+	if (ret)
+		ret->setInt(result ? 1 : 0);
+}
+
 void scIsDirectory(CScriptVar *c, void *userdata)
 {
 	tstring path = c->getParameter(_T("path"))->getString(), _path;
@@ -764,11 +785,7 @@ void scGetRegistryKeyValue(CScriptVar *c, void *userdata)
 	tstring key = c->getParameter(_T("key"))->getString(), _key;
 	ReplaceEnvironmentVariables(key, _key);
 	ReplaceRegistryKeys(_key, key);
-	for (tstring::iterator it = key.begin(), last_it = key.end(); it != last_it; it++)
-	{
-		if (*it == _T('/'))
-			*it = _T('\\');
-	}
+	std::replace(key.begin(), key.end(), _T('/'), _T('\\'));
 
 	tstring valname = c->getParameter(_T("name"))->getString(), _valname;
 	ReplaceEnvironmentVariables(valname, _valname);
@@ -825,11 +842,7 @@ void scSetRegistryKeyValue(CScriptVar *c, void *userdata)
 	tstring key = c->getParameter(_T("key"))->getString(), _key;
 	ReplaceEnvironmentVariables(key, _key);
 	ReplaceRegistryKeys(_key, key);
-	for (tstring::iterator it = key.begin(), last_it = key.end(); it != last_it; it++)
-	{
-		if (*it == _T('/'))
-			*it = _T('\\');
-	}
+	std::replace(key.begin(), key.end(), _T('/'), _T('\\'));
 
 	tstring name = c->getParameter(_T("name"))->getString(), _name;
 	ReplaceEnvironmentVariables(name, _name);
@@ -845,6 +858,49 @@ void scSetRegistryKeyValue(CScriptVar *c, void *userdata)
 		if (SUCCEEDED(cKey.Create(hr, key.c_str())))
 		{
 			cKey.SetStringValue(name.c_str(), val.c_str());
+		}
+	}
+}
+
+
+void scDeleteRegistryKey(CScriptVar *c, void *userdata)
+{
+	tstring root = c->getParameter(_T("root"))->getString();
+	std::transform(root.begin(), root.end(), root.begin(), toupper);
+	HKEY hr = HKEY_LOCAL_MACHINE;
+	if (root == _T("HKEY_CURRENT_USER"))
+		hr = HKEY_CURRENT_USER;
+	else if (root == _T("HKEY_CURRENT_CONFIG"))
+		hr = HKEY_CURRENT_CONFIG;
+	else if (root != _T("HKEY_LOCAL_MACHINE"))
+		return;
+
+	tstring key = c->getParameter(_T("key"))->getString(), _key;
+	ReplaceEnvironmentVariables(key, _key);
+	ReplaceRegistryKeys(_key, key);
+	std::replace(key.begin(), key.end(), _T('/'), _T('\\'));
+
+	tstring subkey = c->getParameter(_T("subkey"))->getString(), _subkey;
+	ReplaceEnvironmentVariables(subkey, _subkey);
+	ReplaceRegistryKeys(_subkey, subkey);
+	std::replace(subkey.begin(), subkey.end(), _T('/'), _T('\\'));
+
+	CScriptVar *ret = c->getReturnVar();
+	if (!ret)
+		ret->setInt(0);
+
+	if (!theApp.m_TestOnlyMode)
+	{
+		HKEY hkey;
+		if (RegOpenKeyEx(hr, key.c_str(), 0, KEY_READ, &hkey) == ERROR_SUCCESS)
+		{
+			if (SUCCEEDED(RegDeleteKey(hkey, subkey.c_str())))
+			{
+				if (!ret)
+					ret->setInt(1);
+			}
+
+			RegCloseKey(hkey);
 		}
 	}
 }
@@ -1234,9 +1290,11 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function CreateShortcut(file, target, args, rundir, desc, showmode, icon, iconidx)"), scCreateShortcut, (void *)this);
 	theApp.m_js.addNative(_T("function CreateSymbolicLink(linkname, targetname)"), scCreateSymbolicLink, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
+	theApp.m_js.addNative(_T("function DeleteRegistryKey(root, key, subkey)"), scDeleteRegistryKey, (void *)this);
 	theApp.m_js.addNative(_T("function DownloadFile(url, file)"), scDownloadFile, (void *)this);
 	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
 	theApp.m_js.addNative(_T("function FileExists(path)"), scFileExists, (void *)this);
+	theApp.m_js.addNative(_T("function FilenameHasExtension(filename, ext)"), scFilenameHasExtension, (void *)this);
 	theApp.m_js.addNative(_T("function GetCurrentDateString()"), scGetCurrentDateStr, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalEnvironmentVariable(varname)"), scGetGlobalEnvironmentVariable, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
@@ -1323,6 +1381,7 @@ DWORD CProgressDlg::RunInstall()
 				{
 					msg.Format(_T("Operation cancelled.\r\n"));
 					cancelled = true;
+					extract_ok = false;
 					continue;
 				}
 
@@ -1424,7 +1483,7 @@ DWORD CProgressDlg::RunInstall()
 				m_Status.SetSel(-1, 0, FALSE);
 				m_Status.ReplaceSel(msg);
 
-				if ((er == IExtractor::ER_OK) && (theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty() || snippet.empty()))
+				if ((er == IExtractor::ER_OK) && (!theApp.m_Script[CSfxApp::EScriptType::PERFILE].empty() || !snippet.empty()))
 				{
 					tstring pfscr;
 
@@ -1471,6 +1530,14 @@ DWORD CProgressDlg::RunInstall()
 		fscr += (LPCTSTR)(theApp.m_InstallPath);
 		fscr += _T("\";  /* the base install path */\n\n");
 
+		fscr += _T("var CANCELLED = \"");
+		fscr += cancelled ? _T("1") : _T("0");
+		fscr += _T("\";  /* 1 if the installation was cancelled by the user, 0 if not */\n\n");
+
+		fscr += _T("var INSTALLOK = \"");
+		fscr += extract_ok ? _T("1") : _T("0");
+		fscr += _T("\";  /* 1 if the file extraction / installation was ok, 0 if not */\n\n");
+
 		fscr += theApp.m_Script[CSfxApp::EScriptType::FINISH];
 
 		if (!IsScriptEmpty(fscr))
@@ -1484,10 +1551,9 @@ DWORD CProgressDlg::RunInstall()
 	CWnd *pok = GetDlgItem(IDOK);
 	CWnd *pcancel = GetDlgItem(IDCANCEL);
 
-	if (!extract_ok)
+	if (!extract_ok && !cancelled)
 	{
 		MessageBox(_T("One or more files in your archive could not be properly extracted.\r\nThis may be due to your user or directory permissions or disk space."), _T("Extraction Failure"), MB_OK);
-		m_Thread = nullptr;
 	}
 
 	if (pok)
@@ -1495,18 +1561,18 @@ DWORD CProgressDlg::RunInstall()
 		if (!extract_ok)
 			pok->SetWindowText(_T("Close"));
 
-		pok->EnableWindow(extract_ok || !cancelled);
+		pok->EnableWindow(!cancelled);
 	}
 
 	if (pcancel)
 	{
-		if (!extract_ok)
+		if (!extract_ok && !cancelled)
 			pcancel->ShowWindow(SW_HIDE);
 	
-		pcancel->EnableWindow(cancelled);
-
 		if (cancelled)
 			pcancel->SetWindowText(_T("<< Back"));
+
+		pcancel->EnableWindow(cancelled);
 	}
 
 	m_Thread = nullptr;

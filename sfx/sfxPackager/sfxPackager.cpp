@@ -27,6 +27,9 @@
 #define new DEBUG_NEW
 #endif
 
+extern bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst);
+extern bool ReplaceRegistryKeys(const tstring &src, tstring &dst);
+extern bool FLZACreateDirectories(const TCHAR *dir);
 
 // CSfxPackagerApp
 
@@ -120,13 +123,13 @@ BOOL CSfxPackagerApp::InitInstance()
 
 			_tcscat_s(workpath, MAX_PATH, _T("sfxPackager"));
 			if (!PathIsDirectory(workpath) && !PathIsDirectory(workpath))
-				if (!CreateDirectory(workpath, nullptr))
+				if (!FLZACreateDirectories(workpath))
 					return false;
 
 			PathAddBackslash(workpath);
 			_tcscat_s(workpath, MAX_PATH, _T("WorkArea"));
 			if (!PathIsDirectory(workpath) && !PathIsDirectory(workpath))
-				if (!CreateDirectory(workpath, nullptr))
+				if (!FLZACreateDirectories(workpath))
 					return false;
 
 			if (!PathIsDirectory(workpath) && !PathIsDirectory(workpath))

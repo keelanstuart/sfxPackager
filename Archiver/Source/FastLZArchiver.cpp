@@ -584,8 +584,8 @@ bool ReplaceEnvironmentVariables(const tstring &src, tstring &dst)
 					}
 					else
 					{
-						TCHAR *val = (TCHAR *)_alloca(sizeof(TCHAR) * (sz + 1));
-						GetEnvironmentVariable(env.c_str(), val, sz + 1);
+						TCHAR val[8192];
+						GetEnvironmentVariable(env.c_str(), val, sizeof(val));
 						dst += val;
 					}
 				}
@@ -746,8 +746,9 @@ bool FLZACreateDirectories(const TCHAR *dir)
 
 	bool ret = true;
 
-	TCHAR _dir[MAX_PATH];
+	TCHAR _dir[MAX_PATH], *d = _dir;
 	_tcscpy_s(_dir, dir);
+	while (d && *(d++)) { if (*d == _T('/')) *d = _T('\\'); }
 	PathRemoveFileSpec(_dir);
 
 	// it's a network path and this is the network device... don't try to create it and don't try to go any further

@@ -9,12 +9,14 @@
 	For inquiries, contact: keelanstuart@gmail.com
 */
 
+#include "wtfpropertygridctrl.h"
+
 #pragma once
 
 
 // CPropertyGrid
 
-class CPropertyGrid : public CMFCPropertyGridCtrl
+class CPropertyGrid : public CWTFPropertyGridCtrl
 {
 	DECLARE_DYNAMIC(CPropertyGrid)
 
@@ -22,16 +24,23 @@ public:
 	CPropertyGrid();
 	virtual ~CPropertyGrid();
 
+	void SetActiveProperties(props::IPropertySet *props);
+
+	CWTFPropertyGridProperty *FindItemByName(const TCHAR *name, CWTFPropertyGridProperty *top = nullptr);
+
 	virtual void OnClickButton(CPoint point);
 
 	bool IsLocked() { return m_bLocked; }
 
 protected:
+	props::IPropertySet *m_Props;
 	bool m_bLocked;
 
 	DECLARE_MESSAGE_MAP()
+
 public:
-	virtual void OnPropertyChanged(CMFCPropertyGridProperty* pProp) const;
+	virtual void OnPropertyChanged(CWTFPropertyGridProperty* pProp);
+
 };
 
 

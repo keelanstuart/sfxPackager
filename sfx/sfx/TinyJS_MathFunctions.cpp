@@ -106,7 +106,7 @@ void scMathRound(CScriptVar *c, void *userdata)
 	}
 	else if (scIsDouble(_T("a")))
 	{
-		scReturnDouble(F_ROUND(scGetDouble(_T("a"))));
+		scReturnDouble(round(scGetDouble(_T("a"))));
 	}
 }
 
