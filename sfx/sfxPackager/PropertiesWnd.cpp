@@ -153,9 +153,6 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 	if (!GetSafeHwnd() || m_wndPropList.IsLocked())
 		return;
 
-	m_wndPropList.RemoveAll();
-	m_wndPropList.Invalidate();
-
 	if (!pd)
 		pd = CSfxPackagerDoc::GetDoc();
 	if (!pd)
@@ -188,196 +185,43 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 	if ((s == PS_FILE) && !pv)
 		return;
 
-	static const TCHAR szIcoFilter[] = _T("Icon Files(*.ico)|*.ico|All Files(*.*)|*.*||");
-	static const TCHAR szBmpFilter[] = _T("Bitmap Files(*.bmp)|*.bmp|All Files(*.*)|*.*||");
-	static const TCHAR szExeFilter[] = _T("Executable Files(*.exe)|*.exe|All Files(*.*)|*.*||");
-
-	m_wndPropList.SetActiveProperties(pd->m_Props);
-
-
-#if 0
 	switch (s)
 	{
 		case PS_PACKAGE:
 		{
-			CWTFPropertyGridProperty *pSettingsGroup = new CWTFPropertyGridProperty(_T("Settings"));
-
-			CWTFPropertyGridProperty *pSfxNameProp = new CWTFPropertyGridFileProperty(_T("Output File"), FALSE, pd->m_SfxOutputFile, _T("exe"), 0, szExeFilter, _T("Specifies the output executable file that will be created when this project is built|*.exe"));
-			CWTFPropertyGridProperty *pAppendVersionProp = new CWTFPropertyGridProperty(_T("Append Version"), (_variant_t)((bool)pd->m_bAppendVersion), _T("If set, appends the version to the output file name, immediately before the extension (maj.min.rel.bld format)."));
-			CWTFPropertyGridProperty *pAppendBuildDateProp = new CWTFPropertyGridProperty(_T("Append Current Date"), (_variant_t)((bool)pd->m_bAppendBuildDate), _T("If set, appends the current date to the output file name, immediately before the extension (YYYYMMDD format)."));
-			CWTFPropertyGridProperty *pMaxSizeProp = new CWTFPropertyGridProperty(_T("Maximum Size (MB)"), pd->m_MaxSize, _T("The maximum size (in MB) constraint for generated sfx archives, beyond which, files will be split (-1 is no constraint)."));
-			CWTFPropertyGridProperty *pExternalArchiveProp = new CWTFPropertyGridProperty(_T("External Archive"), (_variant_t)((bool)pd->m_bExternalArchive), _T("If set, the archived file data will be stored in an external file, not the exe itself; use this if your archive exceeds 4GB."));
-
-			pSettingsGroup->AddSubItem(pSfxNameProp);
-			pSettingsGroup->AddSubItem(pAppendVersionProp);
-			pSettingsGroup->AddSubItem(pAppendBuildDateProp);
-			pSettingsGroup->AddSubItem(pMaxSizeProp);
-			pSettingsGroup->AddSubItem(pExternalArchiveProp);
-
-			m_wndPropList.AddProperty(pSettingsGroup);
-
-			TCHAR *pext = PathFindExtension(pd->m_SfxOutputFile);
-
-			if (pext && !_tcsicmp(pext, _T(".exe")))
-			{
-				{
-					CWTFPropertyGridProperty *pDefaultPathProp = new CWTFPropertyGridFileProperty(_T("Default Path"), pd->m_DefaultPath, 0, _T("The default root path where the install data will go"));
-					CWTFPropertyGridProperty *pRequireAdminProp = new CWTFPropertyGridProperty(_T("Require Admin"), (_variant_t)((bool)pd->m_bRequireAdmin), _T("If set, requires the user to have administrative privileges and will prompt the user to elevate if need be."));
-					CWTFPropertyGridProperty *pShowDestDlgProp = new CWTFPropertyGridProperty(_T("Allow Destination Change"), (_variant_t)((bool)pd->m_bAllowDestChg), _T("If set, will allow the destination folder to be changed by the user. Should normally be set."));
-
-					pSettingsGroup->AddSubItem(pDefaultPathProp);
-					pSettingsGroup->AddSubItem(pRequireAdminProp);
-					pSettingsGroup->AddSubItem(pShowDestDlgProp);
-				}
-
-				CWTFPropertyGridProperty *pAppearanceGroup = new CWTFPropertyGridProperty(_T("Appearance"));
-				{
-					CWTFPropertyGridProperty *pTitleProp = new CWTFPropertyGridProperty(_T("Caption"), pd->m_Caption, _T("Specifies the text that will be displayed in the window's title bar"));
-					CWTFPropertyGridProperty *pDescriptionProp = new CWTFPropertyGridProperty(_T("Description"), pd->m_Description, _T("Specifies the text that will be displayed in the window's main area to tell the end-user what the package is. May contain HTML in-line or reference a filename that contains HTML content"));
-					CWTFPropertyGridProperty *pLicenseMsgProp = new CWTFPropertyGridProperty(_T("License Message"), pd->m_LicenseMessage, _T("OPTIONAL: Specifies the text that will be displayed on the license dialog when the Javascript GetLicenseKey function is called. May contain HTML in-line or reference a filename that contains HTML content. If the JS function is never called, this goes unused."));
-					CWTFPropertyGridProperty *pVersionProp = new CWTFPropertyGridProperty(_T("Version ID"), pd->m_VersionID, _T("Specifies the version number that will be displayed by the installer. This is EITHER a string literal or the path to an .EXE, from which a version number will be extracted"));
-					CWTFPropertyGridFileProperty *pIconProp = new CWTFPropertyGridFileProperty(_T("Icon"), TRUE, pd->m_IconFile, _T("ico"), 0, szIcoFilter, _T("Specifies the ICO-format window icon"));
-					CWTFPropertyGridFileProperty *pImageProp = new CWTFPropertyGridFileProperty(_T("Image"), TRUE, pd->m_ImageFile, _T("bmp"), 0, szBmpFilter, _T("Specifies a BMP-format image that will be displayed on the window"));
-
-					pAppearanceGroup->AddSubItem(pTitleProp);
-					pAppearanceGroup->AddSubItem(pDescriptionProp);
-					pAppearanceGroup->AddSubItem(pLicenseMsgProp);
-					pAppearanceGroup->AddSubItem(pVersionProp);
-					pAppearanceGroup->AddSubItem(pIconProp);
-					pAppearanceGroup->AddSubItem(pImageProp);
-				}
-				m_wndPropList.AddProperty(pAppearanceGroup);
-
-				CWTFPropertyGridProperty *pPostInstallGroup = new CWTFPropertyGridProperty(_T("Post-Install"));
-				{
-					CWTFPropertyGridProperty *pRequireRebootProp = new CWTFPropertyGridProperty(_T("Require Reboot"), (_variant_t)((bool)pd->m_bRequireReboot), _T("If set, will inform that user that a reboot of the system is recommended and prompt to do that."));
-					CWTFPropertyGridProperty *pShowOpenProp = new CWTFPropertyGridProperty(_T("Explore"), (_variant_t)((bool)pd->m_bExploreOnComplete), _T("If set, will open a windows explorer window to the install directory upon completion"));
-					CWTFPropertyGridProperty *pLaunchCmdProp = new CWTFPropertyGridProperty(_T("Launch"), pd->m_LaunchCmd, _T("A command that will be issued when installation is complete (see full docs for parameter options)"));
-
-					pPostInstallGroup->AddSubItem(pRequireRebootProp);
-					pPostInstallGroup->AddSubItem(pShowOpenProp);
-					pPostInstallGroup->AddSubItem(pLaunchCmdProp);
-				}
-				m_wndPropList.AddProperty(pPostInstallGroup);
-			}
-
+			m_wndPropList.SetActiveProperties(pd->m_Props, CSfxPackagerDoc::GetPropertyDescription, CSfxPackagerDoc::GetFileBrowseFilter);
 			break;
 		}
+
 		case PS_FILE:
 		{
 			UINT selcount = 0;
 
-			CString name;
-			CString src;
-			CString dst;
-			CString exclude;
-			CString snippet;
-
-			TCHAR rawsrc[MAX_PATH];
-			rawsrc[0] = _T('\0');
-
-			TCHAR rawdst[MAX_PATH];
-			rawdst[0] = _T('\0');
-
-			bool got_name = false;
-			bool got_src = false;
-			bool got_dst = false;
-			bool got_exclude = false;
-			bool got_snippet = false;
-
 			CListCtrl &list = pv->GetListCtrl();
 			POSITION pos = list.GetFirstSelectedItemPosition();
 
+			props::IPropertySet *props = nullptr;
+
 			while (pos)
 			{
-				selcount++;
-
 				int i = list.GetNextSelectedItem(pos);
 				DWORD_PTR hi = list.GetItemData(i);
 
-				if (!got_name)
-				{
-					name = pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_NAME);
-					got_name = true;
-				}
-				else
-				{
-					name = _T("");
-				}
+				props = pd->GetFileProperties((UINT)hi);
 
-				if (!got_src)
-				{
-					_tcscpy_s(rawsrc, MAX_PATH, pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_SRCPATH));
-					got_src = true;
-				}
-				else
-				{
-					PrunePathToCommonPart(rawsrc, pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_SRCPATH));
-				}
+				m_wndPropList.SetActiveProperties(props, CSfxPackagerDoc::GetPropertyDescription, CSfxPackagerDoc::GetFileBrowseFilter, selcount == 0);
 
-				if (!got_dst)
-				{
-					_tcscpy_s(rawdst, MAX_PATH, pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_DSTPATH));
-					got_dst = true;
-				}
-				else
-				{
-					PrunePathToCommonPart(rawdst, pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_DSTPATH));
-				}
-
-				if (!got_exclude)
-				{
-					exclude = pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_EXCLUDE);
-					got_exclude = true;
-				}
-				else
-				{
-					exclude = _T("");
-				}
-
-				if (!got_snippet)
-				{
-					snippet = pd->GetFileData((UINT)hi, CSfxPackagerDoc::FDT_SNIPPET);
-					got_snippet = true;
-				}
-				else
-				{
-					snippet = _T("");
-				}
+				selcount++;
 			}
-
-			src = rawsrc;
-			dst = rawdst;
-
-			//CString 
-			CWTFPropertyGridProperty *pNameProp = new CWTFPropertyGridProperty(_T("Filename"), name, _T("The name of the file that will be installed (note: this can be different than the name of the source file)"));
-			CWTFPropertyGridProperty *pSrcProp = new CWTFPropertyGridProperty(_T("Source"), src, _T("The source file"));
-			CWTFPropertyGridProperty *pDstProp = new CWTFPropertyGridProperty(_T("Destination"), dst, _T("The destination directory, relative to the install folder chosen by the user"));
-			CWTFPropertyGridProperty *pExcludeProp = new CWTFPropertyGridProperty(_T("Exclude"), exclude, _T("A semi-colon-delimited list of wildcard file descriptions of things that should be excluded (only applies to wildcard Filenames to begin with)"));
-			CWTFPropertyGridProperty *pSnippetProp = new CWTFPropertyGridProperty(_T("Script Add-On"), snippet, _T("This snippet will be appended to the PER-FILE script that is executed after the file is installed. As an example, it could be used to call a function embedded within the global PER-FILE script"));
-
-			pNameProp->Enable((selcount == 1) ? true : false);
-			pExcludeProp->Enable(_tcschr(name, _T('*')) != NULL);
-
-			m_wndPropList.AddProperty(pNameProp);
-			m_wndPropList.AddProperty(pSrcProp);
-			m_wndPropList.AddProperty(pDstProp);
-			m_wndPropList.AddProperty(pExcludeProp);
-			m_wndPropList.AddProperty(pSnippetProp);
 			break;
 		}
 
 		case PS_SETTINGS:
 		{
-			CWTFPropertyGridFileProperty *pTempPathProp = new CWTFPropertyGridFileProperty(_T("Temporary Directory"), theApp.m_sTempPath, NULL, _T("The location where temporary working files will be stored - this should be an isolated location and contain no other files than those copied there by sfxPackager, since they will be deleted"));
-			CWTFPropertyGridFileProperty *p7ZipPathProp = new CWTFPropertyGridFileProperty(_T("7-Zip Executable"), TRUE, theApp.m_s7ZipPath, _T("exe"), 0, szExeFilter, _T("The location of 7z.exe"));
-
-			m_wndPropList.AddProperty(pTempPathProp);
-			m_wndPropList.AddProperty(p7ZipPathProp);
+			m_wndPropList.SetActiveProperties(theApp.m_Props);
 			break;
 		}
 	}
-#endif
 }
 
 void CPropertiesWnd::InitPropList()

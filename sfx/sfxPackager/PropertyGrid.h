@@ -24,7 +24,10 @@ public:
 	CPropertyGrid();
 	virtual ~CPropertyGrid();
 
-	void SetActiveProperties(props::IPropertySet *props);
+	typedef const TCHAR *(*PROPERTY_DESCRIPTION_CB)(props::FOURCHARCODE property_id);
+	typedef const TCHAR *(*FILE_FILTER_CB)(props::FOURCHARCODE property_id);
+
+	void SetActiveProperties(props::IPropertySet *props, PROPERTY_DESCRIPTION_CB prop_desc = nullptr, FILE_FILTER_CB file_filter = nullptr, bool reset = true);
 
 	CWTFPropertyGridProperty *FindItemByName(const TCHAR *name, CWTFPropertyGridProperty *top = nullptr);
 

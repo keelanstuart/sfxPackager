@@ -47,8 +47,16 @@ CSfxPackagerApp::CSfxPackagerApp()
 {
 	m_bHiColorIcons = TRUE;
 
+	m_Props = props::IPropertySet::CreatePropertySet();
+
 	// recommended format for string is CompanyName.ProductName.SubProduct.VersionInformation
-	SetAppID(_T("sfxPackager.sfxPackager.1.1.0.1"));
+	SetAppID(_T("sfxPackager.sfxPackager.3.1.0.0"));
+}
+
+CSfxPackagerApp::~CSfxPackagerApp()
+{
+	m_Props->Release();
+	m_Props = nullptr;
 }
 
 // The one and only CSfxPackagerApp object
@@ -94,51 +102,6 @@ BOOL CSfxPackagerApp::InitInstance()
 	// Change the registry key under which our settings are stored
 	SetRegistryKey(_T("sfxPackager"));
 	LoadStdProfileSettings(4);  // Load standard INI file options (including MRU)
-
-	{
-		TCHAR path7z[MAX_PATH] = {0};
-		HKEY key;
-		if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("SOFTWARE\\7-Zip"), 0, KEY_READ, &key) == ERROR_SUCCESS)
-		{
-			DWORD rkt, rksz;
-			rksz = sizeof(path7z);
-			RegQueryValueEx(key, _T("Path"), 0, &rkt, (BYTE *)path7z, &rksz);
-
-			RegCloseKey(key);
-		}
-		_tcscat_s(path7z, MAX_PATH, _T("7z.exe"));
-
-		m_s7ZipPath = GetProfileString(_T("sfxPackager"), _T("7ZipPath"), path7z);
-	}
-
-	{
-		TCHAR workpath[MAX_PATH] = {0};
-		TCHAR *rootpath;
-		HRESULT hr = SHGetKnownFolderPath(FOLDERID_ProgramData, 0, NULL, &rootpath);
-		if (SUCCEEDED(hr))
-		{
-			_tcscat_s(workpath, MAX_PATH, rootpath);
-			PathAddBackslash(workpath);
-			CoTaskMemFree(rootpath);
-
-			_tcscat_s(workpath, MAX_PATH, _T("sfxPackager"));
-			if (!PathIsDirectory(workpath) && !PathIsDirectory(workpath))
-				if (!FLZACreateDirectories(workpath))
-					return false;
-
-			PathAddBackslash(workpath);
-			_tcscat_s(workpath, MAX_PATH, _T("WorkArea"));
-			if (!PathIsDirectory(workpath) && !PathIsDirectory(workpath))
-				if (!FLZACreateDirectories(workpath))
-					return false;
-
-			if (!PathIsDirectory(workpath) && !PathIsDirectory(workpath))
-				return false;
-
-		}
-
-		m_sTempPath = GetProfileString(_T("sfxPackager"), _T("TempPath"), workpath);
-	}
 
 	InitContextMenuManager();
 
@@ -197,9 +160,6 @@ int CSfxPackagerApp::ExitInstance()
 {
 	//TODO: handle additional resources you may have added
 	AfxOleTerm(FALSE);
-
-	WriteProfileString(_T("sfxPackager"), _T("7ZipPath"), m_s7ZipPath);
-	WriteProfileString(_T("sfxPackager"), _T("TempPath"), m_sTempPath);
 
 	return CWinAppEx::ExitInstance();
 }

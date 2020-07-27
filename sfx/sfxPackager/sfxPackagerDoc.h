@@ -71,6 +71,7 @@ public:
 
 	const TCHAR *GetFileData(UINT handle, EFileDataType fdt);
 	void SetFileData(UINT handle, EFileDataType fdt, const TCHAR *data);
+	props::IPropertySet *GetFileProperties(UINT handle);
 
 	bool AdjustFileOrder(UINT key, EMoveType mt, UINT *swap_key);
 
@@ -139,7 +140,6 @@ public:
 // Operations
 public:
 	bool CreateSFXPackage(const TCHAR *filename = NULL, CSfxPackagerView *pview = NULL);
-	bool CreateTarGzipPackage(const TCHAR *filename = NULL, CSfxPackagerView *pview = NULL);
 
 	static DWORD WINAPI RunCreateSFXPackage(LPVOID param);
 
@@ -164,11 +164,16 @@ public:
 
 // Implementation
 public:
+
 	virtual ~CSfxPackagerDoc();
+
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
+
+	static const TCHAR *GetFileBrowseFilter(props::FOURCHARCODE property_id);
+	static const TCHAR *GetPropertyDescription(props::FOURCHARCODE property_id);
 
 protected:
 

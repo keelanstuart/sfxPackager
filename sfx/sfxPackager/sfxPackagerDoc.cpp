@@ -895,6 +895,109 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 	m_hThread = NULL;
 }
 
+const TCHAR *CSfxPackagerDoc::GetFileBrowseFilter(props::FOURCHARCODE property_id)
+{
+	static const TCHAR szIcoFilter[] = _T("Icon Files(*.ico)|*.ico|All Files(*.*)|*.*||");
+	static const TCHAR szBmpFilter[] = _T("Bitmap Files(*.bmp)|*.bmp|All Files(*.*)|*.*||");
+	static const TCHAR szExeFilter[] = _T("Executable Files(*.exe)|*.exe|All Files(*.*)|*.*||");
+	static const TCHAR szAllFilter[] = _T("All Files(*.*)|*.*||");
+
+	switch (property_id)
+	{
+		case EDOCPROP::ICON_FILE:
+			return szIcoFilter;
+
+		case EDOCPROP::IMAGE_FILE:
+			return szBmpFilter;
+
+		case EDOCPROP::OUTPUT_FILE:
+			return szExeFilter;
+	}
+
+	return szAllFilter;
+}
+
+props::IPropertySet *CSfxPackagerDoc::GetFileProperties(UINT handle)
+{
+	TFileDataMap::iterator it = m_FileData.find(handle);
+	if (it != m_FileData.end())
+		return it->second;
+
+	return nullptr;
+}
+
+const TCHAR *CSfxPackagerDoc::GetPropertyDescription(props::FOURCHARCODE property_id)
+{
+	switch (property_id)
+	{
+		case EDOCPROP::OUTPUT_FILE:
+			return _T("Specifies the output executable file that will be created when this project is built | *.exe");
+
+		case EDOCPROP::OUTPUT_FILE_SUFFIX_MODE:
+			return _T("Allows suffix to be automatically added immediately before the output file names extension. You can choose no suffix, the version (maj.min.rel.bld format) or the current date (YYYYMMDD format)");
+
+		case EDOCPROP::OUTPUT_MODE:
+			return _T("Determines whether the package data is stored inside the exe or in another data file; if your archive exceeds 4GB, use an external data file");
+
+		case EDOCPROP::MAXIMUM_SIZE_MB:
+			return _T("The maximum size (in MB) constraint for generated sfx archives, beyond which, files will be split (-1 is no constraint)");
+
+		case EDOCPROP::ICON_FILE:
+			return _T("Specifies the ICO-format window icon");
+
+		case EDOCPROP::IMAGE_FILE:
+			return _T("Specifies a BMP-format image that will be displayed on the window (the default size is 200 x 400)");
+
+		case EDOCPROP::CAPTION:
+			return _T("Specifies the text that will be displayed in the window's title bar");
+
+		case EDOCPROP::WELCOME_MESSAGE:
+			return _T("Specifies the text that will be displayed in the window's main area to tell the end-user what the package is. May contain HTML in-line or reference a filename that contains HTML content");
+
+		case EDOCPROP::LICENSE_MESSAGE:
+			return _T("OPTIONAL: Specifies the text that will be displayed on the license dialog when the Javascript GetLicenseKey function is called. May contain HTML in-line or reference a filename that contains HTML content. If the JS function is never called, this goes unused");
+
+		case EDOCPROP::VERSION:
+			return _T("Specifies the version number that will be displayed by the installer. This is EITHER a string literal or the path to an .EXE, from which a version number will be extracted");
+
+		case EDOCPROP::DEFAULT_DESTINATION:
+			return _T("The default root path where the install data will go");
+
+		case EDOCPROP::ALLOW_DESTINATION_CHANGE:
+			return _T("Allow the user to change the install destination folder");
+
+		case EDOCPROP::REQUIRE_ADMIN:
+			return _T("If set, requires the user to have administrative privileges and will prompt the user to elevate if they do not");
+
+		case EDOCPROP::REQUIRE_REBOOT:
+			return _T("If set, will inform that user that a reboot of the system is recommended and prompt to do that");
+
+		case EDOCPROP::ENABLE_EXPLORE_CHECKBOX:
+			return _T("If set, will open a windows explorer window to the install directory upon completion");
+
+		case EDOCPROP::LAUNCH_COMMAND:
+			return _T("A command that will be issued when installation is complete (see full docs for parameter options)");
+
+
+		case EFILEPROP::FILENAME:
+			return _T("The name of the file that will be installed (note: this can be different than the name of the source file)");
+
+		case EFILEPROP::SOURCE_PATH:
+			return _T("The source file");
+
+		case EFILEPROP::DESTINATION_PATH:
+			return _T("The destination directory, relative to the install folder chosen by the user");
+
+		case EFILEPROP::EXCLUDING:
+			return _T("A semi-colon-delimited list of wildcard file descriptions of things that should be excluded (only applies to wildcard Filenames to begin with)");
+
+		case EFILEPROP::PERFILE_SNIPPET:
+			return _T("This Javascript code snippet will be appended to the PER-FILE script that is executed after the file is installed. As an example, it could be used to call a function embedded within the global PER-FILE script");
+	}
+
+	return _T("TODO: add property description");
+}
+
 CSfxPackagerDoc::~CSfxPackagerDoc()
 {
 	if (m_hThread)

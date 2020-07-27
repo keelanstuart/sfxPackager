@@ -140,11 +140,20 @@ protected:
 IMPLEMENT_DYNAMIC(CWTFPropertyGridTimeProperty, CWTFPropertyGridProperty)
 
 
-void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
+void CPropertyGrid::SetActiveProperties(props::IPropertySet *props, PROPERTY_DESCRIPTION_CB prop_desc, FILE_FILTER_CB file_filter, bool reset)
 {
-	m_Props = props;
+	if (reset)
+	{
+		if (props == m_Props)
+			return;
 
-	RemoveAll();
+		m_Props = props;
+
+		RemoveAll();
+	}
+
+	if (!props)
+		return;
 
 	TCHAR tempname[256];
 	SetGroupNameFullWidth(TRUE, FALSE);
@@ -167,16 +176,20 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 
 			propname = name_start;
 
-			// create a collapsible parent property
 			CWTFPropertyGridProperty *tmpprop = FindItemByName(propname);
-			if (!tmpprop)
-			{
-				tmpprop = new CWTFPropertyGridProperty(propname, 0Ui64, FALSE);
 
-				if (parent_prop)
-					parent_prop->AddSubItem(tmpprop);
-				else
-					AddProperty(tmpprop);
+			if (reset)
+			{
+				// create a collapsible parent property
+				if (!tmpprop)
+				{
+					tmpprop = new CWTFPropertyGridProperty(propname, 0Ui64, FALSE);
+
+					if (parent_prop)
+						parent_prop->AddSubItem(tmpprop);
+					else
+						AddProperty(tmpprop);
+				}
 			}
 
 			parent_prop = tmpprop;
@@ -188,6 +201,21 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 
 		propname = name_start;
 
+		if (!reset)
+		{
+			props::IProperty *op = m_Props->GetPropertyById(p->GetID());
+			if (op && !p->IsSameAs(op))
+			{
+				CWTFPropertyGridProperty *tmpprop = FindItemByName(propname);
+				if (tmpprop)
+				{
+					tmpprop->SetValue(_T(""));
+				}
+			}
+
+			continue;
+		}
+
 		switch (p->GetType())
 		{
 			case props::IProperty::PROPERTY_TYPE::PT_STRING:
@@ -197,13 +225,15 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 				{
 					case props::IProperty::PROPERTY_ASPECT::PA_FILENAME:
 					{
-						pwp = new CWTFPropertyGridFileProperty(propname, TRUE, CString(p->AsString()), _T(""), 0, _T("*.*"), _T("A File"));
+						pwp = new CWTFPropertyGridFileProperty(propname, TRUE, CString(p->AsString()), _T(""), 0, file_filter ? file_filter(p->GetID()) : _T("*.*"));
+						pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A File"));
 						break;
 					}
 
 					case props::IProperty::PROPERTY_ASPECT::PA_DIRECTORY:
 					{
-						pwp = new CWTFPropertyGridFileProperty(propname, CString(p->AsString()), 0, _T("A Directory"));
+						pwp = new CWTFPropertyGridFileProperty(propname, CString(p->AsString()), 0);
+						pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A Directory"));
 						break;
 					}
 
@@ -213,6 +243,7 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 						struct tm _tt;
 						gmtime_s(&_tt, &tt);
 						pwp = new CWTFPropertyGridDateProperty(propname, _tt);
+						pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A Date"));
 						break;
 					}
 
@@ -222,6 +253,7 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 						struct tm _tt;
 						gmtime_s(&_tt, &tt);
 						pwp = new CWTFPropertyGridTimeProperty(propname, _tt);
+						pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A Time"));
 						break;
 					}
 
@@ -234,6 +266,7 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 					default:
 					{
 						pwp = new CWTFPropertyGridProperty(propname, p->AsString());
+						pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A String"));
 						break;
 					}
 				}
@@ -264,6 +297,8 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 					pwp->AddOption(falsestr);
 					pwp->AddOption(truestr);
 					pwp->AllowEdit(false);
+					pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A Boolean"));
+
 				}
 				break;
 			}
@@ -277,6 +312,7 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 						pwp->AddOption(p->GetEnumString(i));
 
 					pwp->AllowEdit(false);
+					pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("An Enumerated Type"));
 				}
 				break;
 			}
@@ -294,6 +330,7 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 						pwp = new CWTFPropertyGridColorProperty(propname, RGB(r, g, b));
 						((CWTFPropertyGridColorProperty *)pwp)->EnableOtherButton(_T("Other..."));
 						((CWTFPropertyGridColorProperty *)pwp)->EnableAutomaticButton(_T("Default"), ::GetSysColor(COLOR_3DFACE));
+						pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A Color"));
 						break;
 					}
 
@@ -304,6 +341,7 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 						gmtime_s(&_tt, &tt);
 
 						pwp = new CWTFPropertyGridDateProperty(propname, _tt);
+						pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A Date"));
 						break;
 					}
 
@@ -314,12 +352,14 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 						gmtime_s(&_tt, &tt);
 
 						pwp = new CWTFPropertyGridTimeProperty(propname, _tt);
+						pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A Time"));
 						break;
 					}
 
 					default:
 					{
 						pwp = new CWTFPropertyGridProperty(propname, (LONG)(p->AsInt()), NULL, NULL, NULL, NULL, _T("0123456789-"));
+						pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("An Integer"));
 						break;
 					}
 				}
@@ -340,6 +380,19 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 						yname = _T("Lattitude");
 						zname = _T("Altitude");
 						break;
+
+					case props::IProperty::PROPERTY_ASPECT::PA_COLOR_RGB:
+						xname = _T("Red");
+						yname = _T("Green");
+						zname = _T("Blue");
+						break;
+
+					case props::IProperty::PROPERTY_ASPECT::PA_COLOR_RGBA:
+						xname = _T("Red");
+						yname = _T("Green");
+						zname = _T("Blue");
+						wname = _T("Alpha");
+						break;
 				}
 
 				pwp->AddSubItem(new CWTFPropertyGridProperty(xname, (LONG)(p->AsVec2I()->x), NULL, NULL, NULL, NULL, _T("0123456789-")));
@@ -348,12 +401,15 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 					pwp->AddSubItem(new CWTFPropertyGridProperty(zname, (LONG)(p->AsVec3I()->z), NULL, NULL, NULL, NULL, _T("0123456789-")));
 				if (p->GetAspect() == props::IProperty::PROPERTY_TYPE::PT_INT_V4)
 					pwp->AddSubItem(new CWTFPropertyGridProperty(wname, (LONG)(p->AsVec4I()->w), NULL, NULL, NULL, NULL, _T("0123456789-")));
+
+				pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T(""));
 				break;
 			}
 
 			case props::IProperty::PROPERTY_TYPE::PT_FLOAT:
 			{
 				pwp = new CWTFPropertyGridProperty(propname, p->AsFloat(), NULL, NULL, NULL, NULL, _T("0123456789.-"));
+				pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("A Real Number"));
 				break;
 			}
 
@@ -369,6 +425,8 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 					pwp = new CWTFPropertyGridColorProperty(propname, RGB(r, g, b));
 					((CWTFPropertyGridColorProperty *)pwp)->EnableOtherButton(_T("Other..."));
 					((CWTFPropertyGridColorProperty *)pwp)->EnableAutomaticButton(_T("Default"), ::GetSysColor(COLOR_3DFACE));
+
+					pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("RGB Color"));
 				}
 				else if ((props::IProperty::PROPERTY_TYPE::PT_FLOAT_V4 == p->GetType()) && (props::IProperty::PROPERTY_ASPECT::PA_COLOR_RGBA == p->GetAspect()))
 				{
@@ -379,6 +437,8 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 					pwp = new CWTFPropertyGridColorProperty(propname, RGB(r, g, b));
 					((CWTFPropertyGridColorProperty *)pwp)->EnableOtherButton(_T("Other..."));
 					((CWTFPropertyGridColorProperty *)pwp)->EnableAutomaticButton(_T("Default"), ::GetSysColor(COLOR_3DFACE));
+
+					pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T("RGBA Color"));
 				}
 				else
 				{
@@ -404,6 +464,8 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props)
 						pwp->AddSubItem(new CWTFPropertyGridProperty(zname, p->AsVec3F()->z, NULL, NULL, NULL, NULL, _T("0123456789.-")));
 					if (p->GetAspect() == props::IProperty::PROPERTY_TYPE::PT_FLOAT_V4)
 						pwp->AddSubItem(new CWTFPropertyGridProperty(wname, p->AsVec4F()->w, NULL, NULL, NULL, NULL, _T("0123456789.-")));
+
+					pwp->SetDescription(prop_desc ? prop_desc(p->GetID()) : _T(""));
 				}
 
 				break;

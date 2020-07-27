@@ -29,7 +29,7 @@ class CSfxPackagerApp : public CWinAppEx
 {
 public:
 	CSfxPackagerApp();
-
+	virtual ~CSfxPackagerApp();
 
 // Overrides
 public:
@@ -40,8 +40,7 @@ public:
 	UINT  m_nAppLook;
 	BOOL  m_bHiColorIcons;
 
-	CString m_s7ZipPath;
-	CString m_sTempPath;
+	props::IPropertySet *m_Props;
 
 	virtual void PreLoadState();
 	virtual void LoadCustomState();
