@@ -133,9 +133,6 @@
     <ClInclude Include="PropertyGrid.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GenParser.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\sfxFlags.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -202,9 +199,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PropertyGrid.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GenParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ProgressStatusBar.cpp">

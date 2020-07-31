@@ -21,6 +21,7 @@
 
 #include "resource.h"		// main symbols
 #include "TinyJS.h"
+#include "LicenseEntryDlg.h"
 
 
 // CSfxApp:
@@ -43,13 +44,19 @@ public:
 
 	bool m_TestOnlyMode;
 
+	props::IPropertySet *m_Props;
+
 	CTinyJS m_js;
+
+	CLicenseKeyEntryDlg *m_LicenseDlg;
 
 	enum EScriptType
 	{
-		INIT = 0,
-		PERFILE,
-		FINISH,
+		INITIALIZE = 0,
+		PREINSTALL,
+		PREFILE,
+		POSTFILE,
+		POSTINSTALL,
 
 		NUMTYPES
 	};
@@ -62,11 +69,15 @@ public:
 // Overrides
 public:
 	virtual BOOL InitInstance();
+	virtual BOOL ExitInstance();
 	virtual BOOL ProcessMessageFilter(int code, LPMSG lpMsg);
 
 // Implementation
+	void Echo(const TCHAR *msg);
 
 	DECLARE_MESSAGE_MAP()
 };
 
 extern CSfxApp theApp;
+
+extern bool IsScriptEmpty(const tstring &scr);

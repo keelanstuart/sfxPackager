@@ -106,7 +106,7 @@ public:
 	// Adds a file to the archive
 	// src_filename can be either absolute or relative
 	// dst_filename should always be relative
-	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp = nullptr, uint64_t *sz_comp = nullptr, const TCHAR *scriptsnippet = nullptr) = NULL;
+	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp = nullptr, uint64_t *sz_comp = nullptr, const TCHAR *prefile_scriptsnippet = nullptr, const TCHAR *postfile_scriptsnippet = nullptr) = NULL;
 
 	// Finalizes the output, performing any operations that may be necessary to later extract and decompress the data (writing file tables, etc)
 	virtual FINALIZE_RESULT Finalize() = NULL;
@@ -148,6 +148,8 @@ public:
 
 		ER_MUSTDOWNLOAD,
 
+		ER_SKIP,
+
 		ER_UNKNOWN_ERROR
 	};
 
@@ -158,7 +160,7 @@ public:
 	// Returns the number of files that are in the archive
 	virtual size_t GetFileCount() = NULL;
 
-	virtual bool GetFileInfo(size_t file_idx, tstring *filename = NULL, tstring *filepath = NULL, uint64_t *csize = NULL, uint64_t *usize = NULL, FILETIME *ctime = NULL, FILETIME *mtime = NULL, tstring *scriptsnippet = nullptr) = NULL;
+	virtual bool GetFileInfo(size_t file_idx, tstring *filename = NULL, tstring *filepath = NULL, uint64_t *csize = NULL, uint64_t *usize = NULL, FILETIME *ctime = NULL, FILETIME *mtime = NULL, tstring *prefile_scriptsnippet = nullptr, tstring *postfile_scriptsnippet = nullptr) = NULL;
 
 	// Extracts the next file from the archive - this is assumed to be a serial process where the whole
 	// archive will be extracted at once, so no choice as to which file to extract is provided

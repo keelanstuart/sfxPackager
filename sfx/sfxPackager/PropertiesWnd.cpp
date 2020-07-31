@@ -201,6 +201,7 @@ void CPropertiesWnd::FillPropertyList(CSfxPackagerDoc *pd, EPropertySet s)
 			POSITION pos = list.GetFirstSelectedItemPosition();
 
 			props::IPropertySet *props = nullptr;
+			m_wndPropList.SetActiveProperties(props, CSfxPackagerDoc::GetPropertyDescription, CSfxPackagerDoc::GetFileBrowseFilter);
 
 			while (pos)
 			{

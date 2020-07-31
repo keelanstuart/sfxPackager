@@ -101,6 +101,23 @@ BOOL CWelcomeDlg::OnInitDialog()
 		pVerStr->SetWindowText(theApp.m_VersionID);
 	}
 
+	if (m_pDynamicLayout)
+	{
+		delete m_pDynamicLayout;
+	}
+
+	m_pDynamicLayout = new CMFCDynamicLayout();
+	if (m_pDynamicLayout)
+	{
+		m_pDynamicLayout->Create(this);
+
+		m_pDynamicLayout->AddItem(GetDlgItem(IDOK)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
+		m_pDynamicLayout->AddItem(GetDlgItem(IDCANCEL)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_VERSIONID)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontal(100), CMFCDynamicLayout::SizeHorizontal(100));
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_BROWSER)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeHorizontalAndVertical(100, 100));
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_IMAGE)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeVertical(100));
+	}
+
 	SetWindowText(theApp.m_Caption);
 
 	ShowWindow(SW_SHOWNORMAL);

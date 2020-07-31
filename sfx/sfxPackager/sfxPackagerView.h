@@ -57,7 +57,8 @@ public:
 	void SetSrcFolderForSelection(const TCHAR *src, const TCHAR *rootsrc);
 	void SetFilenameForSelection(const TCHAR *name);
 	void SetExclusionsForSelection(const TCHAR *exclude);
-	void SetScriptSnippetForSelection(const TCHAR *snippet);
+	void SetPreFileScriptSnippetForSelection(const TCHAR *snippet);
+	void SetPostFileScriptSnippetForSelection(const TCHAR *snippet);
 
 protected:
 	void ImportLivingFolder(const TCHAR *dir, const TCHAR *include_ext = _T("*"), const TCHAR *exclude_ext = NULL);

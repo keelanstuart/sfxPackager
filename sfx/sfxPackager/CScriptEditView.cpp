@@ -11,7 +11,9 @@ enum { CID_SELECTOR = 1, CID_HELPER, CID_HELPERFRAME, CID_EDITOR };
 
 const TCHAR *helpers[CSfxPackagerDoc::EScriptType::NUMTYPES] =
 {
+	_T(""),
 	_T("var BASEPATH;\t// (string) the base install path"),
+	_T("var BASEPATH;\t// (string) the base install path\r\nvar FILENAME;\t// (string) the name of the file that was just extracted\r\nvar PATH;\t// (string) the output path of that file\r\nvar FILEPATH;\t// (string) the full filename, PATH + FILENAME"),
 	_T("var BASEPATH;\t// (string) the base install path\r\nvar FILENAME;\t// (string) the name of the file that was just extracted\r\nvar PATH;\t// (string) the output path of that file\r\nvar FILEPATH;\t// (string) the full filename, PATH + FILENAME"),
 	_T("var BASEPATH;\t// (string) the base install path\r\nvar CANCELLED;\t// (int) 1 if the installation was cancelled by the user, 0 if not\r\nvar INSTALLOK;\t// (int) 1 if the file extraction / installation was ok, 0 if not"),
 };
@@ -79,13 +81,19 @@ void CScriptEditView::OnInitialUpdate()
 		int idx;
 
 		idx = m_cbScriptSelect.AddString(_T("Initialization Script"));
-		m_cbScriptSelect.SetItemData(idx, (DWORD_PTR)&(doc->m_Script[CSfxPackagerDoc::EScriptType::INIT]));
+		m_cbScriptSelect.SetItemData(idx, (DWORD_PTR)&(doc->m_Script[CSfxPackagerDoc::EScriptType::INITIALIZE]));
 
-		idx = m_cbScriptSelect.AddString(_T("Per-File Script"));
-		m_cbScriptSelect.SetItemData(idx, (DWORD_PTR)&(doc->m_Script[CSfxPackagerDoc::EScriptType::PERFILE]));
+		idx = m_cbScriptSelect.AddString(_T("Pre-Install Script"));
+		m_cbScriptSelect.SetItemData(idx, (DWORD_PTR)&(doc->m_Script[CSfxPackagerDoc::EScriptType::PREINSTALL]));
 
-		idx = m_cbScriptSelect.AddString(_T("Finalization Script"));
-		m_cbScriptSelect.SetItemData(idx, (DWORD_PTR)&(doc->m_Script[CSfxPackagerDoc::EScriptType::FINISH]));
+		idx = m_cbScriptSelect.AddString(_T("Pre-File Script"));
+		m_cbScriptSelect.SetItemData(idx, (DWORD_PTR)&(doc->m_Script[CSfxPackagerDoc::EScriptType::PREFILE]));
+
+		idx = m_cbScriptSelect.AddString(_T("Post-File Script"));
+		m_cbScriptSelect.SetItemData(idx, (DWORD_PTR)&(doc->m_Script[CSfxPackagerDoc::EScriptType::POSTFILE]));
+
+		idx = m_cbScriptSelect.AddString(_T("Post-Install Script"));
+		m_cbScriptSelect.SetItemData(idx, (DWORD_PTR)&(doc->m_Script[CSfxPackagerDoc::EScriptType::POSTINSTALL]));
 
 		m_cbScriptSelect.SetCurSel(0);
 		m_LastSel = 0;

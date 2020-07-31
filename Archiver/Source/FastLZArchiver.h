@@ -38,7 +38,8 @@ struct sFileTableEntry
 	FILETIME m_FTModified;
 	tstring m_Filename;
 	tstring m_Path;
-	tstring m_ScriptSnippet;
+	tstring m_PreFileScriptSnippet;
+	tstring m_PostFileScriptSnippet;
 
 	sFileTableEntry()
 	{
@@ -108,7 +109,7 @@ public:
 	virtual size_t GetFileCount(INFO_MODE mode);
 
 	// Adds a file to the archive
-	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp = nullptr, uint64_t *sz_comp = nullptr, const TCHAR *scriptsnippet = nullptr);
+	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp = nullptr, uint64_t *sz_comp = nullptr, const TCHAR *prefile_scriptsnippet = nullptr, const TCHAR *postfile_scriptsnippet = nullptr);
 
 	virtual FINALIZE_RESULT Finalize();
 
@@ -141,7 +142,7 @@ public:
 
 	virtual size_t GetFileCount();
 
-	virtual bool GetFileInfo(size_t file_idx, tstring *filename = NULL, tstring *filepath = NULL, uint64_t *csize = NULL, uint64_t *usize = NULL, FILETIME *ctime = NULL, FILETIME *mtime = NULL, tstring *snippet = NULL);
+	virtual bool GetFileInfo(size_t file_idx, tstring *filename = NULL, tstring *filepath = NULL, uint64_t *csize = NULL, uint64_t *usize = NULL, FILETIME *ctime = NULL, FILETIME *mtime = NULL, tstring *prefile_snippet = NULL, tstring *postfile_snippet = NULL);
 
 	virtual EXTRACT_RESULT ExtractFile(size_t file_idx, tstring *output_filename = NULL, const TCHAR *override_filename = NULL, bool test_only = false);
 

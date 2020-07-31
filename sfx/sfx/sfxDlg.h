@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "PropertyGrid.h"
+
 
 // CSfxDlg dialog
 class CSfxDlg : public CDialogEx
@@ -29,10 +31,10 @@ public:
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
-
 // Implementation
 protected:
 	HICON m_hIcon;
+	CPropertyGrid m_PropGrid;
 
 	// Generated message map functions
 	virtual BOOL OnInitDialog();

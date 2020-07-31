@@ -98,13 +98,37 @@
     <ClInclude Include="HtmlCtrl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\sfxPackager\GenParser.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="LicenseEntryDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HttpDownload.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sfxPackager\wtfcolorbar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sfxPackager\wtfcolorbutton.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sfxPackager\wtfcolormenubutton.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sfxPackager\wtfcolorpopupmenu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sfxPackager\wtfpropertygridctrl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sfxPackager\wtfpropertygridtooltipctrl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sfxPackager\wtfvslistbox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PropertyGrid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TinyJS_SfxFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -139,13 +163,37 @@
     <ClCompile Include="HtmlCtrl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\sfxPackager\GenParser.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LicenseEntryDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HttpDownload.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sfxPackager\wtfcolorbar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sfxPackager\wtfcolorbutton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sfxPackager\wtfcolormenubutton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sfxPackager\wtfcolorpopupmenu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sfxPackager\wtfpropertygridctrl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sfxPackager\wtfpropertygridtooltipctrl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sfxPackager\wtfvslistbox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PropertyGrid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TinyJS_SfxFunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -752,7 +752,7 @@ void CSfxPackagerView::SetExclusionsForSelection(const TCHAR *exclude)
 	RefreshProperties();
 }
 
-void CSfxPackagerView::SetScriptSnippetForSelection(const TCHAR *snippet)
+void CSfxPackagerView::SetPreFileScriptSnippetForSelection(const TCHAR *snippet)
 {
 	CSfxPackagerDoc *pDoc = GetDocument();
 
@@ -769,7 +769,34 @@ void CSfxPackagerView::SetScriptSnippetForSelection(const TCHAR *snippet)
 
 			UINT handle = (UINT)list.GetItemData(item);
 
-			pDoc->SetFileData(handle, CSfxPackagerDoc::FDT_SNIPPET, snippet);
+			pDoc->SetFileData(handle, CSfxPackagerDoc::FDT_PREFILE_SNIPPET, snippet);
+		}
+	}
+
+	list.RedrawItems(list.GetTopIndex(), list.GetTopIndex() + list.GetCountPerPage());
+	Invalidate(NULL);
+
+	RefreshProperties();
+}
+
+void CSfxPackagerView::SetPostFileScriptSnippetForSelection(const TCHAR *snippet)
+{
+	CSfxPackagerDoc *pDoc = GetDocument();
+
+	CListCtrl &list = GetListCtrl();
+	UINT selcount = list.GetSelectedCount();
+	int item = -1;
+
+	// Update all of the selected items.
+	if (selcount > 0)
+	{
+		for (UINT i = 0; i < selcount; i++)
+		{
+			item = list.GetNextItem(item, LVNI_SELECTED);
+
+			UINT handle = (UINT)list.GetItemData(item);
+
+			pDoc->SetFileData(handle, CSfxPackagerDoc::FDT_POSTFILE_SNIPPET, snippet);
 		}
 	}
 

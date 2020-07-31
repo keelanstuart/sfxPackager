@@ -38,25 +38,28 @@ protected: // create from serialization only
 public:
 	friend class CSfxHandle;
 
-	UINT AddFile(const TCHAR *filename = nullptr, const TCHAR *srcpath = nullptr, const TCHAR *dstpath = nullptr, const TCHAR *exclude = nullptr, const TCHAR *scriptsnippet = nullptr);
+	UINT AddFile(const TCHAR *filename = nullptr, const TCHAR *srcpath = nullptr, const TCHAR *dstpath = nullptr, const TCHAR *exclude = nullptr, const TCHAR *prefile_scriptsnippet = nullptr, const TCHAR *postfile_scriptsnippet = nullptr);
 	void RemoveFile(UINT handle);
 
 	enum EFileDataType
 	{
 		FDT_NAME = 0,
 		FDT_SRCPATH,
-		FDT_DSTPATH,		// the destination where files will be installed
-		FDT_EXCLUDE,		// a semi-colon-delimited set of file specifications (wildcards ok) of things to be excluded from the build
-		FDT_SNIPPET,		// a script snippet that is appended to the per-file global script
+		FDT_DSTPATH,			// the destination where files will be installed
+		FDT_EXCLUDE,			// a semi-colon-delimited set of file specifications (wildcards ok) of things to be excluded from the build
+		FDT_PREFILE_SNIPPET,	// a script snippet that is appended to the pre-file global script and executed before a file installed
+		FDT_POSTFILE_SNIPPET,	// a script snippet that is appended to the post-file global script and executed after a file is installed
 
 		FDT_NUMTYPES
 	};
 
 	enum EScriptType
 	{
-		INIT = 0,
-		PERFILE,
-		FINISH,
+		INITIALIZE = 0,
+		PREINSTALL,
+		PREFILE,
+		POSTFILE,
+		POSTINSTALL,
 
 		NUMTYPES
 	};
@@ -87,7 +90,8 @@ protected:
 		SOURCE_PATH = 'SRCP',			// the path to the source file(s) 
 		DESTINATION_PATH = 'DSTP',		// the path where the file will be extracted to. If relative, is relative to the target directory, but can be absolute
 		EXCLUDING = 'EXCL',				// a comma-delimited wildcard match of files to exclude
-		PERFILE_SNIPPET = 'SNPT',		// a script that is appended to the per-file global, executed when the given file has been decompressed
+		PREFILE_SNIPPET = 'PRES',		// a script that is appended to the per-file global, executed BEFORE the given file has been decompressed
+		POSTFILE_SNIPPET = 'SNPT',		// a script that is appended to the per-file global, executed AFTER the given file has been decompressed
 	} EFILEPROP;
 
 	typedef props::IPropertySet * SFileData;
@@ -98,7 +102,7 @@ protected:
 	UINT m_Key;
 
 	bool InitializeArchive(CSfxPackagerView *pview, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *basename, UINT span = 0);
-	bool AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *excludespec, const TCHAR *scriptsnippet, const TCHAR *dstpath, const TCHAR *dstfilename = NULL, uint64_t *sz_uncomp = NULL, uint64_t *sz_comp = NULL, UINT recursion = 0);
+	bool AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *excludespec, const TCHAR *prefile_scriptsnippet, const TCHAR *postfile_scriptsnippet, const TCHAR *dstpath, const TCHAR *dstfilename = NULL, uint64_t *sz_uncomp = NULL, uint64_t *sz_comp = NULL, UINT recursion = 0);
 	bool FixupPackage(const TCHAR *filename, const TCHAR *launchcmd, bool span, UINT32 filecount);
 	bool SetupSfxExecutable(const TCHAR *filename, UINT span = 0);
 

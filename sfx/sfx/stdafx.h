@@ -117,3 +117,5 @@ typedef std::basic_ifstream<TCHAR, std::char_traits<TCHAR>> tifstream;
 typedef std::basic_ofstream<TCHAR, std::char_traits<TCHAR>> tofstream;
 typedef std::basic_fstream<TCHAR, std::char_traits<TCHAR>> tfstream;
 
+#include <genio.h>
+#include <PowerProps.h>

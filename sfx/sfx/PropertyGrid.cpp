@@ -16,10 +16,8 @@
 #include "sfxPackager.h"
 #include "PropertyGrid.h"
 
-#if 1
-#include "sfxPackagerDoc.h"
-#include "sfxPackagerView.h"
-#endif
+//#include "sfxPackagerDoc.h"
+//#include "sfxPackagerView.h"
 
 // CPropertyGrid
 
@@ -515,21 +513,6 @@ END_MESSAGE_MAP()
 
 void CPropertyGrid::OnPropertyChanged(CWTFPropertyGridProperty* pProp)
 {
-#if 1
-	CSfxPackagerDoc *pd = CSfxPackagerDoc::GetDoc();
-	POSITION pos = pd->GetFirstViewPosition();
-	CView *pv = nullptr;
-	CSfxPackagerView *ppv = nullptr;
-	while ((pv = pd->GetNextView(pos)) != nullptr)
-	{
-		ppv = dynamic_cast<CSfxPackagerView *>(pv);
-		if (ppv)
-			break;
-	}
-	if (!pd || !ppv)
-		return;
-#endif
-
 	if (!m_Props)
 		return;
 

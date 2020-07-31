@@ -64,7 +64,7 @@ size_t CFastLZArchiver::GetFileCount(IArchiver::INFO_MODE mode)
 }
 
 // Adds a file to the archive
-CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp, uint64_t *sz_comp, const TCHAR *scriptsnippet)
+CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp, uint64_t *sz_comp, const TCHAR *prefile_scriptsnippet, const TCHAR *postfile_scriptsnippet)
 {
 	CFastLZArchiver::ADD_RESULT ret = AR_UNKNOWN_ERROR;
 
@@ -96,7 +96,8 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 	fte.m_Filename = fn;
 	fte.m_Path = dst_path;
 
-	fte.m_ScriptSnippet = scriptsnippet;
+	fte.m_PreFileScriptSnippet = prefile_scriptsnippet;
+	fte.m_PostFileScriptSnippet = postfile_scriptsnippet;
 
 	if (fte.m_Flags & SFileTableEntry::FTEFLAG_DOWNLOAD)
 	{
@@ -308,11 +309,18 @@ bool sFileTableEntry::Write(HANDLE hOut) const
 	ret &= (bool)WriteFile(hOut, &m_BlockCount, sizeof(m_BlockCount), &wb, NULL);
 	ret &= (bool)WriteFile(hOut, &m_Offset, sizeof(m_Offset), &wb, NULL);
 
-	sz = (uint32_t)m_ScriptSnippet.size();
+	sz = (uint32_t)m_PreFileScriptSnippet.size();
 	ret &= (bool)WriteFile(hOut, &sz, sizeof(sz), &wb, NULL);
 	if (sz)
 	{
-		ret &= (bool)WriteFile(hOut, m_ScriptSnippet.c_str(), sizeof(TCHAR) * sz, &wb, NULL);
+		ret &= (bool)WriteFile(hOut, m_PreFileScriptSnippet.c_str(), sizeof(TCHAR) * sz, &wb, NULL);
+	}
+
+	sz = (uint32_t)m_PostFileScriptSnippet.size();
+	ret &= (bool)WriteFile(hOut, &sz, sizeof(sz), &wb, NULL);
+	if (sz)
+	{
+		ret &= (bool)WriteFile(hOut, m_PostFileScriptSnippet.c_str(), sizeof(TCHAR) * sz, &wb, NULL);
 	}
 
 	return ret;
@@ -362,12 +370,23 @@ bool sFileTableEntry::Read(HANDLE hIn)
 	ret &= (bool)ReadFile(hIn, &sz, sizeof(sz), &rb, NULL);
 	if (sz)
 	{
-		m_ScriptSnippet.resize(sz, _T('#'));
-		ret &= (bool)ReadFile(hIn, (TCHAR *)(m_ScriptSnippet.data()), sizeof(TCHAR) * sz, &rb, NULL);
+		m_PreFileScriptSnippet.resize(sz, _T('#'));
+		ret &= (bool)ReadFile(hIn, (TCHAR *)(m_PreFileScriptSnippet.data()), sizeof(TCHAR) * sz, &rb, NULL);
 	}
 	else
 	{
-		m_ScriptSnippet.clear();
+		m_PreFileScriptSnippet.clear();
+	}
+
+	ret &= (bool)ReadFile(hIn, &sz, sizeof(sz), &rb, NULL);
+	if (sz)
+	{
+		m_PostFileScriptSnippet.resize(sz, _T('#'));
+		ret &= (bool)ReadFile(hIn, (TCHAR *)(m_PostFileScriptSnippet.data()), sizeof(TCHAR) * sz, &rb, NULL);
+	}
+	else
+	{
+		m_PostFileScriptSnippet.clear();
 	}
 
 	return ret;
@@ -376,7 +395,7 @@ bool sFileTableEntry::Read(HANDLE hIn)
 
 size_t sFileTableEntry::Size() const
 {
-	size_t ret = (m_Filename.size() + m_Path.size() + m_ScriptSnippet.size()) * sizeof(TCHAR);
+	size_t ret = (m_Filename.size() + m_Path.size() + m_PreFileScriptSnippet.size() + m_PostFileScriptSnippet.size()) * sizeof(TCHAR);
 
 	ret +=
 		sizeof(uint64_t) + /* m_Flags */ 
@@ -389,7 +408,8 @@ size_t sFileTableEntry::Size() const
 		sizeof(FILETIME) + /* m_FTModified */ 
 		sizeof(uint32_t) + /* m_Filename LENGTH */ 
 		sizeof(uint32_t) + /* m_Path LENGTH */
-		sizeof(uint32_t);  /* m_ScriptSnippet LENGTH */
+		sizeof(uint32_t) + /* m_PreFileScriptSnippet LENGTH */
+		sizeof(uint32_t);  /* m_PostFileScriptSnippet LENGTH */
 
 	return ret;
 }
@@ -690,7 +710,7 @@ bool ReplaceRegistryKeys(const tstring &src, tstring &dst)
 	return true;
 }
 
-bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *filepath, uint64_t *csize, uint64_t *usize, FILETIME *ctime, FILETIME *mtime, tstring *snippet)
+bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *filepath, uint64_t *csize, uint64_t *usize, FILETIME *ctime, FILETIME *mtime, tstring *prefile_snippet, tstring *postfile_snippet)
 {
 	if (file_idx >= m_FileTable.size())
 		return false;
@@ -727,8 +747,11 @@ bool CFastLZExtractor::GetFileInfo(size_t file_idx, tstring *filename, tstring *
 	if (mtime)
 		*mtime = fte.m_FTModified;
 
-	if (snippet)
-		*snippet = fte.m_ScriptSnippet;
+	if (prefile_snippet)
+		*prefile_snippet = fte.m_PreFileScriptSnippet;
+
+	if (postfile_snippet)
+		*postfile_snippet = fte.m_PostFileScriptSnippet;
 
 	return true;
 }

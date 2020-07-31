@@ -37,6 +37,8 @@ CSfxDlg::CSfxDlg(CWnd* pParent /*=NULL*/)
 
 void CSfxDlg::DoDataExchange(CDataExchange* pDX)
 {
+	DDX_Control(pDX, IDC_OPTIONS, m_PropGrid);
+
 	CDialogEx::DoDataExchange(pDX);
 }
 
@@ -98,6 +100,52 @@ BOOL CSfxDlg::OnInitDialog()
 
 		pe->SetWindowText(theApp.m_InstallPath);
 		pe->EnableWindow(theApp.m_Flags & SFX_FLAG_ALLOWDESTCHG);
+	}
+
+	CWnd *pot = GetDlgItem(IDC_OPTIONSTEXT);
+	if (pot)
+	{
+		CRect rt;
+		pot->GetWindowRect(rt);
+		rt.left += wd;
+		ScreenToClient(rt);
+		pot->MoveWindow(rt, FALSE);
+
+		if (theApp.m_Props->GetPropertyCount() == 0)
+			pot->ShowWindow(SW_HIDE);
+	}
+
+	if (m_PropGrid.GetSafeHwnd())
+	{
+		CRect rt;
+		m_PropGrid.GetWindowRect(rt);
+		rt.left += wd;
+		ScreenToClient(rt);
+		m_PropGrid.MoveWindow(rt, FALSE);
+
+		if (theApp.m_Props->GetPropertyCount() == 0)
+			m_PropGrid.ShowWindow(SW_HIDE);
+		else
+			m_PropGrid.SetActiveProperties(theApp.m_Props);
+	}
+
+	if (m_pDynamicLayout)
+	{
+		delete m_pDynamicLayout;
+	}
+
+	m_pDynamicLayout = new CMFCDynamicLayout();
+	if (m_pDynamicLayout)
+	{
+		m_pDynamicLayout->Create(this);
+
+		m_pDynamicLayout->AddItem(GetDlgItem(IDOK)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
+		m_pDynamicLayout->AddItem(GetDlgItem(IDCANCEL)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_CHOOSETEXT)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeHorizontal(100));
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_EDIT_INSTALLPATH)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeHorizontal(100));
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_OPTIONSTEXT)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeHorizontal(100));
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_OPTIONS)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeHorizontalAndVertical(100, 100));
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_IMAGE)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeVertical(100));
 	}
 
 	SetWindowText(theApp.m_Caption);

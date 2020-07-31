@@ -20,8 +20,6 @@
 #include "sfxPackager.h"
 #endif
 
-#include "GenParser.h"
-
 #include "sfxPackagerDoc.h"
 #include "sfxPackagerView.h"
 #include "ChildFrm.h"
@@ -424,17 +422,25 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 				}
 			}
 
-			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INIT"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::INIT]),
-									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::INIT].GetLength() + 1) * sizeof(TCHAR));
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INITIALIZE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::INITIALIZE]),
+									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::INITIALIZE].GetLength() + 1) * sizeof(TCHAR));
 
-			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PERFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::PERFILE]),
-									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::PERFILE].GetLength() + 1) * sizeof(TCHAR));
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PREINSTALL"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREINSTALL]),
+									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREINSTALL].GetLength() + 1) * sizeof(TCHAR));
 
-			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_FINISH"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::FINISH]),
-									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::FINISH].GetLength() + 1) * sizeof(TCHAR));
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PREFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREFILE]),
+									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREFILE].GetLength() + 1) * sizeof(TCHAR));
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_POSTFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTFILE]),
+									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTFILE].GetLength() + 1) * sizeof(TCHAR));
+
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_POSTINSTALL"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTINSTALL]),
+									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTINSTALL].GetLength() + 1) * sizeof(TCHAR));
 
 			SFixupResourceData furd;
 			ZeroMemory(&furd, sizeof(SFixupResourceData));
@@ -991,8 +997,11 @@ const TCHAR *CSfxPackagerDoc::GetPropertyDescription(props::FOURCHARCODE propert
 		case EFILEPROP::EXCLUDING:
 			return _T("A semi-colon-delimited list of wildcard file descriptions of things that should be excluded (only applies to wildcard Filenames to begin with)");
 
-		case EFILEPROP::PERFILE_SNIPPET:
-			return _T("This Javascript code snippet will be appended to the PER-FILE script that is executed after the file is installed. As an example, it could be used to call a function embedded within the global PER-FILE script");
+		case EFILEPROP::PREFILE_SNIPPET:
+			return _T("This Javascript code snippet will be appended to the PRE-FILE script that is executed before file is installed. As an example, it could be used to call a function embedded within the global PRE-FILE script. This is where one might call Skip() if the file should not be installed.");
+
+		case EFILEPROP::POSTFILE_SNIPPET:
+			return _T("This Javascript code snippet will be appended to the POST-FILE script that is executed after the file is installed. As an example, it could be used to call a function embedded within the global POST-FILE script");
 	}
 
 	return _T("TODO: add property description");
@@ -1159,7 +1168,7 @@ bool ShouldExclude(const TCHAR *filename, const TCHAR *excludespec)
 	return ret;
 }
 
-bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *excludespec, const TCHAR *scriptsnippet, const TCHAR *dstpath, const TCHAR *dstfilename, uint64_t *sz_uncomp, uint64_t *sz_comp, UINT recursion)
+bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *excludespec, const TCHAR *prefile_scriptsnippet, const TCHAR *postfile_scriptsnippet, const TCHAR *dstpath, const TCHAR *dstfilename, uint64_t *sz_uncomp, uint64_t *sz_comp, UINT recursion)
 {
 	DWORD wr = WaitForSingleObject(m_hCancelEvent, 0);
 	if ((wr == WAIT_OBJECT_0) || (wr == WAIT_ABANDONED))
@@ -1191,7 +1200,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 
 			while (dp && *(dp++)) { if (*dp == _T('/')) *dp = _T('\\'); }
 
-			parc->AddFile(srcspec, local_dstpath, nullptr, nullptr, scriptsnippet);
+			parc->AddFile(srcspec, local_dstpath, nullptr, nullptr, prefile_scriptsnippet, postfile_scriptsnippet);
 
 			msg.Format(_T("    Adding download reference to \"%s\" from (%s) ...\r\n"), local_dstpath, srcspec);
 			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
@@ -1268,7 +1277,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 						_tcscat(local_dstpath, fd.cFileName);
 
 						uint64_t rcomp = 0, runcomp = 0;
-						ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, fullfilename, excludespec, scriptsnippet, local_dstpath, NULL, &runcomp, &rcomp, recursion + 1);
+						ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, fullfilename, excludespec, prefile_scriptsnippet, postfile_scriptsnippet, local_dstpath, NULL, &runcomp, &rcomp, recursion + 1);
 						if (ret)
 						{
 							uncomp = runcomp;
@@ -1296,7 +1305,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 							msg.Format(_T("    Adding \"%s\" from \"%s\" ...\r\n"), dst, fullfilename);
 							pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
-							parc->AddFile(fullfilename, dst, &uncomp, &comp, scriptsnippet);
+							parc->AddFile(fullfilename, dst, &uncomp, &comp, prefile_scriptsnippet, postfile_scriptsnippet);
 						}
 						else
 						{
@@ -1482,27 +1491,32 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 			}
 
 			tstring name;
-			props::IProperty *pname = it->second->GetPropertyById('NAME');
+			props::IProperty *pname = it->second->GetPropertyById(EFILEPROP::FILENAME);
 			if (pname)
 				name = pname->AsString();
 
 			tstring srcpath;
-			props::IProperty *psrcpath = it->second->GetPropertyById('SRCP');
+			props::IProperty *psrcpath = it->second->GetPropertyById(EFILEPROP::SOURCE_PATH);
 			if (psrcpath)
 				srcpath = psrcpath->AsString();
 
 			tstring exclude;
-			props::IProperty *pexclude = it->second->GetPropertyById('EXCL');
+			props::IProperty *pexclude = it->second->GetPropertyById(EFILEPROP::EXCLUDING);
 			if (pexclude)
 				exclude = pexclude->AsString();
 
-			tstring snippet;
-			props::IProperty *psnippet = it->second->GetPropertyById('SNPT');
-			if (psnippet)
-				snippet = psnippet->AsString();
+			tstring prefile_scriptsnippet;
+			props::IProperty *ppresnippet = it->second->GetPropertyById(EFILEPROP::PREFILE_SNIPPET);
+			if (ppresnippet)
+				prefile_scriptsnippet = ppresnippet->AsString();
+
+			tstring postfile_scriptsnippet;
+			props::IProperty *ppostsnippet = it->second->GetPropertyById(EFILEPROP::POSTFILE_SNIPPET);
+			if (ppostsnippet)
+				postfile_scriptsnippet = ppostsnippet->AsString();
 
 			tstring dstpath;
-			props::IProperty *pdstpath = it->second->GetPropertyById('DSTP');
+			props::IProperty *pdstpath = it->second->GetPropertyById(EFILEPROP::DESTINATION_PATH);
 			if (pdstpath)
 				dstpath = pdstpath->AsString();
 
@@ -1521,11 +1535,11 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 				PathAddBackslash(wcsrcpath);
 				_tcscat(wcsrcpath, name.c_str());
 
-				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, wcsrcpath, exclude.c_str(), snippet.c_str(), dstpath.c_str(), nullptr, &sz_uncomp, &sz_comp);
+				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, wcsrcpath, exclude.c_str(), prefile_scriptsnippet.c_str(), postfile_scriptsnippet.c_str(), dstpath.c_str(), nullptr, &sz_uncomp, &sz_comp);
 			}
 			else
 			{
-				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, srcpath.c_str(), nullptr, snippet.c_str(), dstpath.c_str(), name.c_str(), &sz_uncomp, &sz_comp);
+				ret &= AddFileToArchive(pview, parc, created_archives, created_archive_filecounts, srcpath.c_str(), nullptr, prefile_scriptsnippet.c_str(), postfile_scriptsnippet.c_str(), dstpath.c_str(), name.c_str(), &sz_uncomp, &sz_comp);
 			}
 
 			sz_totalcomp = sz_comp;
@@ -1713,36 +1727,41 @@ bool CSfxPackagerDoc::CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcsp
 }
 
 
-UINT CSfxPackagerDoc::AddFile(const TCHAR *filename, const TCHAR *srcpath, const TCHAR *dstpath, const TCHAR *exclude, const TCHAR *scriptsnippet)
+UINT CSfxPackagerDoc::AddFile(const TCHAR *filename, const TCHAR *srcpath, const TCHAR *dstpath, const TCHAR *exclude, const TCHAR *prefile_scriptsnippet, const TCHAR *postfile_scriptsnippet)
 {
 	TFileDataMap::value_type fd(m_Key, props::IPropertySet::CreatePropertySet());
 
 	props::IProperty *p;
 
-	if (((p = fd.second->CreateProperty(_T("Filename"), CSfxPackagerDoc::EFILEPROP::FILENAME)) != nullptr) && filename)
+	if ((p = fd.second->CreateProperty(_T("Filename"), CSfxPackagerDoc::EFILEPROP::FILENAME)) != nullptr)
 	{
-		p->SetString(filename);
+		p->SetString(filename ? filename : _T(""));
 	}
 
-	if (((p = fd.second->CreateProperty(_T("Source Path"), CSfxPackagerDoc::EFILEPROP::SOURCE_PATH)) != nullptr) && srcpath)
+	if ((p = fd.second->CreateProperty(_T("Source Path"), CSfxPackagerDoc::EFILEPROP::SOURCE_PATH)) != nullptr)
 	{
 		p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
-		p->SetString(srcpath);
+		p->SetString(srcpath ? srcpath : _T(""));
 	}
 
-	if (((p = fd.second->CreateProperty(_T("Destination Path"), CSfxPackagerDoc::EFILEPROP::DESTINATION_PATH)) != nullptr) && dstpath)
+	if ((p = fd.second->CreateProperty(_T("Destination Path"), CSfxPackagerDoc::EFILEPROP::DESTINATION_PATH)) != nullptr)
 	{
-		p->SetString(dstpath);
+		p->SetString(dstpath ? dstpath : _T(""));
 	}
 
-	if (((p = fd.second->CreateProperty(_T("Exclude"), CSfxPackagerDoc::EFILEPROP::EXCLUDING)) != nullptr) && exclude)
+	if ((p = fd.second->CreateProperty(_T("Exclude"), CSfxPackagerDoc::EFILEPROP::EXCLUDING)) != nullptr)
 	{
 		p->SetString(exclude ? exclude : _T(""));
 	}
 
-	if (((p = fd.second->CreateProperty(_T("Snippet"), CSfxPackagerDoc::EFILEPROP::PERFILE_SNIPPET)) != nullptr) && scriptsnippet)
+	if ((p = fd.second->CreateProperty(_T("Pre-Install Snippet"), CSfxPackagerDoc::EFILEPROP::PREFILE_SNIPPET)) != nullptr)
 	{
-		p->SetString(scriptsnippet ? scriptsnippet : _T(""));
+		p->SetString(prefile_scriptsnippet ? prefile_scriptsnippet : _T(""));
+	}
+
+	if ((p = fd.second->CreateProperty(_T("Post-Install Snippet"), CSfxPackagerDoc::EFILEPROP::POSTFILE_SNIPPET)) != nullptr)
+	{
+		p->SetString(postfile_scriptsnippet ? postfile_scriptsnippet : _T(""));
 	}
 
 	m_FileData.insert(fd);
@@ -1842,8 +1861,12 @@ const TCHAR *CSfxPackagerDoc::GetFileData(UINT handle, EFileDataType fdt)
 			return (*it->second)[EFILEPROP::EXCLUDING]->AsString();
 			break;
 
-		case FDT_SNIPPET:
-			return (*it->second)[EFILEPROP::PERFILE_SNIPPET]->AsString();
+		case FDT_PREFILE_SNIPPET:
+			return (*it->second)[EFILEPROP::PREFILE_SNIPPET]->AsString();
+			break;
+
+		case FDT_POSTFILE_SNIPPET:
+			return (*it->second)[EFILEPROP::POSTFILE_SNIPPET]->AsString();
 			break;
 	}
 
@@ -1874,8 +1897,12 @@ void CSfxPackagerDoc::SetFileData(UINT handle, EFileDataType fdt, const TCHAR *d
 			(*it->second)[EFILEPROP::EXCLUDING]->SetString(data);
 			break;
 
-		case FDT_SNIPPET:
-			(*it->second)[EFILEPROP::PERFILE_SNIPPET]->SetString(data);
+		case FDT_PREFILE_SNIPPET:
+			(*it->second)[EFILEPROP::PREFILE_SNIPPET]->SetString(data);
+			break;
+
+		case FDT_POSTFILE_SNIPPET:
+			(*it->second)[EFILEPROP::POSTFILE_SNIPPET]->SetString(data);
 			break;
 	}
 }
@@ -2065,17 +2092,25 @@ void CSfxPackagerDoc::ReadScripts(genio::IParserT *gp)
 						tstring ues;
 						UnescapeString(s.c_str(), ues);
 
-						if (!_tcsicmp(t.c_str(), _T("init")))
+						if (!_tcsicmp(t.c_str(), _T("initialize")))
 						{
-							m_Script[EScriptType::INIT] = ues.c_str();
+							m_Script[EScriptType::INITIALIZE] = ues.c_str();
 						}
-						else if (!_tcsicmp(t.c_str(), _T("perfile")))
+						else if (!_tcsicmp(t.c_str(), _T("init")) || !_tcsicmp(t.c_str(), _T("preinstall")))
 						{
-							m_Script[EScriptType::PERFILE] = ues.c_str();
+							m_Script[EScriptType::PREINSTALL] = ues.c_str();
 						}
-						else if (!_tcsicmp(t.c_str(), _T("finish")))
+						else if (!_tcsicmp(t.c_str(), _T("prefile")))
 						{
-							m_Script[EScriptType::FINISH] = ues.c_str();
+							m_Script[EScriptType::PREFILE] = ues.c_str();
+						}
+						else if (!_tcsicmp(t.c_str(), _T("perfile")) || !_tcsicmp(t.c_str(), _T("postfile")))
+						{
+							m_Script[EScriptType::POSTFILE] = ues.c_str();
+						}
+						else if (!_tcsicmp(t.c_str(), _T("finish")) || !_tcsicmp(t.c_str(), _T("postinstall")))
+						{
+							m_Script[EScriptType::POSTINSTALL] = ues.c_str();
 						}
 					}
 				}
@@ -2095,7 +2130,7 @@ void CSfxPackagerDoc::ReadScripts(genio::IParserT *gp)
 
 void CSfxPackagerDoc::ReadFiles(genio::IParserT *gp)
 {
-	tstring name, src, dst, exclude, scriptsnippet;
+	tstring name, src, dst, exclude, prefile_scriptsnippet, postfile_scriptsnippet;
 
 	while (gp->NextToken())
 	{
@@ -2105,7 +2140,8 @@ void CSfxPackagerDoc::ReadFiles(genio::IParserT *gp)
 			src.clear();
 			dst.clear();
 			exclude.clear();
-			scriptsnippet.clear();
+			prefile_scriptsnippet.clear();
+			postfile_scriptsnippet.clear();
 
 			gp->NextToken();
 			if (!gp->IsToken(_T("file")))
@@ -2115,7 +2151,7 @@ void CSfxPackagerDoc::ReadFiles(genio::IParserT *gp)
 		{
 			if (!name.empty() && !src.empty() && !dst.empty())
 			{
-				UINT handle = AddFile(name.c_str(), src.c_str(), dst.c_str(), exclude.c_str(), scriptsnippet.c_str());
+				UINT handle = AddFile(name.c_str(), src.c_str(), dst.c_str(), exclude.c_str(), prefile_scriptsnippet.c_str(), postfile_scriptsnippet.c_str());
 			}
 
 			while (gp->NextToken() && !gp->IsToken(_T(">"))) { }
@@ -2148,12 +2184,19 @@ void CSfxPackagerDoc::ReadFiles(genio::IParserT *gp)
 			gp->NextToken();
 			exclude = gp->GetCurrentTokenString();
 		}
-		else if (gp->IsToken(_T("snippet")))
+		else if (gp->IsToken(_T("prefile_snippet")))
 		{
 			gp->NextToken(); // skip '='
 
 			gp->NextToken();
-			UnescapeString(gp->GetCurrentTokenString(), scriptsnippet);
+			UnescapeString(gp->GetCurrentTokenString(), prefile_scriptsnippet);
+		}
+		else if (gp->IsToken(_T("snippet")) || gp->IsToken(_T("postfile_snippet")))
+		{
+			gp->NextToken(); // skip '='
+
+			gp->NextToken();
+			UnescapeString(gp->GetCurrentTokenString(), postfile_scriptsnippet);
 		}
 	}
 }
@@ -2270,25 +2313,39 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 
 		tstring scr;
 
-		if (!m_Script[EScriptType::INIT].IsEmpty())
+		if (!m_Script[EScriptType::INITIALIZE].IsEmpty())
 		{
-			EscapeString(m_Script[EScriptType::INIT], scr);
+			EscapeString(m_Script[EScriptType::INITIALIZE], scr);
 			if (!scr.empty())
-				s += _T("\n\n<script type=\"init\">"); s += scr.c_str(); s += _T("</script>");
+				s += _T("\n\n<script type=\"initialize\">"); s += scr.c_str(); s += _T("</script>");
 		}
 
-		if (!m_Script[EScriptType::PERFILE].IsEmpty())
+		if (!m_Script[EScriptType::PREINSTALL].IsEmpty())
 		{
-			EscapeString(m_Script[EScriptType::PERFILE], scr);
+			EscapeString(m_Script[EScriptType::PREINSTALL], scr);
 			if (!scr.empty())
-				s += _T("\n\n<script type=\"perfile\">"); s += scr.c_str(); s += _T("</script>");
+				s += _T("\n\n<script type=\"preinstall\">"); s += scr.c_str(); s += _T("</script>");
 		}
 
-		if (!m_Script[EScriptType::FINISH].IsEmpty())
+		if (!m_Script[EScriptType::PREFILE].IsEmpty())
 		{
-			EscapeString(m_Script[EScriptType::FINISH], scr);
+			EscapeString(m_Script[EScriptType::PREFILE], scr);
 			if (!scr.empty())
-				s += _T("\n\n<script type=\"finish\">"); s += scr.c_str(); s += _T("</script>");
+				s += _T("\n\n<script type=\"prefile\">"); s += scr.c_str(); s += _T("</script>");
+		}
+
+		if (!m_Script[EScriptType::POSTFILE].IsEmpty())
+		{
+			EscapeString(m_Script[EScriptType::POSTFILE], scr);
+			if (!scr.empty())
+				s += _T("\n\n<script type=\"postfile\">"); s += scr.c_str(); s += _T("</script>");
+		}
+
+		if (!m_Script[EScriptType::POSTINSTALL].IsEmpty())
+		{
+			EscapeString(m_Script[EScriptType::POSTINSTALL], scr);
+			if (!scr.empty())
+				s += _T("\n\n<script type=\"postinstall\">"); s += scr.c_str(); s += _T("</script>");
 		}
 
 		s += _T("\n\n</scripts>\n\n");

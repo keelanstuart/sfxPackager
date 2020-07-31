@@ -65,25 +65,31 @@
     <OutDir>$(SolutionDir)bin\</OutDir>
     <IntDir>$(ProjectDir)obj\$(Configuration)$(PlatformArchitecture)\</IntDir>
     <TargetName>$(ProjectName)</TargetName>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)sfxPackager\third-party\GenIO\Include;$(SolutionDir)sfxPackager\third-party\PowerProps\Include;$(SolutionDir)sfxPackager</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(SolutionDir)lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin\</OutDir>
     <IntDir>$(ProjectDir)obj\$(Configuration)$(PlatformArchitecture)\</IntDir>
     <TargetName>$(ProjectName)</TargetName>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)sfxPackager\third-party\GenIO\Include;$(SolutionDir)sfxPackager\third-party\PowerProps\Include;$(SolutionDir)sfxPackager</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(SolutionDir)lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin\</OutDir>
     <IntDir>$(ProjectDir)obj\$(Configuration)$(PlatformArchitecture)\</IntDir>
     <TargetName>$(ProjectName)</TargetName>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)sfxPackager\third-party\GenIO\Include;$(SolutionDir)sfxPackager\third-party\PowerProps\Include;$(SolutionDir)sfxPackager</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(SolutionDir)lib</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GENIO_STATIC;POWERPROPS_STATIC;_CRT_SECURE_NO_WARNINGS;WIN32;_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -93,7 +99,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)Lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;Version.lib</AdditionalDependencies>
+      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;GenIO$(PlatformArchitecture)$(ShortConfiguration)S.lib;PowerProps$(PlatformArchitecture)$(ShortConfiguration)S.lib;Version.lib</AdditionalDependencies>
       <SwapRunFromCD>false</SwapRunFromCD>
     </Link>
     <Midl>
@@ -113,7 +119,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GENIO_STATIC;POWERPROPS_STATIC;_CRT_SECURE_NO_WARNINGS;WIN32;_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -128,7 +134,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
       <AdditionalLibraryDirectories>$(SolutionDir)Lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;Version.lib</AdditionalDependencies>
+      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;GenIO$(PlatformArchitecture)$(ShortConfiguration)S.lib;PowerProps$(PlatformArchitecture)$(ShortConfiguration)S.lib;Version.lib</AdditionalDependencies>
       <SwapRunFromCD>false</SwapRunFromCD>
     </Link>
     <Midl>
@@ -148,7 +154,7 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GENIO_STATIC;POWERPROPS_STATIC;_CRT_SECURE_NO_WARNINGS;WIN32;_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <SupportJustMyCode>true</SupportJustMyCode>
@@ -162,7 +168,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
       <AdditionalLibraryDirectories>$(SolutionDir)Lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;Version.lib</AdditionalDependencies>
+      <AdditionalDependencies>Archiver$(PlatformArchitecture)$(ShortConfiguration).lib;GenIO$(PlatformArchitecture)$(ShortConfiguration)S.lib;PowerProps$(PlatformArchitecture)$(ShortConfiguration)S.lib;Version.lib</AdditionalDependencies>
       <SwapRunFromCD>false</SwapRunFromCD>
     </Link>
     <Midl>
@@ -199,12 +205,19 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\sfxPackager\GenParser.h" />
+    <ClInclude Include="..\sfxPackager\wtfcolorbar.h" />
+    <ClInclude Include="..\sfxPackager\wtfcolorbutton.h" />
+    <ClInclude Include="..\sfxPackager\wtfcolormenubutton.h" />
+    <ClInclude Include="..\sfxPackager\wtfcolorpopupmenu.h" />
+    <ClInclude Include="..\sfxPackager\wtfpropertygridctrl.h" />
+    <ClInclude Include="..\sfxPackager\wtfpropertygridtooltipctrl.h" />
+    <ClInclude Include="..\sfxPackager\wtfvslistbox.h" />
     <ClInclude Include="HttpDownload.h" />
     <ClInclude Include="LicenseEntryDlg.h" />
     <ClInclude Include="FinishDlg.h" />
     <ClInclude Include="HtmlCtrl.h" />
     <ClInclude Include="ProgressDlg.h" />
+    <ClInclude Include="PropertyGrid.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="sfx.h" />
     <ClInclude Include="sfxDlg.h" />
@@ -213,15 +226,23 @@
     <ClInclude Include="TinyJS.h" />
     <ClInclude Include="TinyJS_Functions.h" />
     <ClInclude Include="TinyJS_MathFunctions.h" />
+    <ClInclude Include="TinyJS_SfxFunctions.h" />
     <ClInclude Include="WelcomeDlg.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\sfxPackager\GenParser.cpp" />
+    <ClCompile Include="..\sfxPackager\wtfcolorbar.cpp" />
+    <ClCompile Include="..\sfxPackager\wtfcolorbutton.cpp" />
+    <ClCompile Include="..\sfxPackager\wtfcolormenubutton.cpp" />
+    <ClCompile Include="..\sfxPackager\wtfcolorpopupmenu.cpp" />
+    <ClCompile Include="..\sfxPackager\wtfpropertygridctrl.cpp" />
+    <ClCompile Include="..\sfxPackager\wtfpropertygridtooltipctrl.cpp" />
+    <ClCompile Include="..\sfxPackager\wtfvslistbox.cpp" />
     <ClCompile Include="HttpDownload.cpp" />
     <ClCompile Include="LicenseEntryDlg.cpp" />
     <ClCompile Include="FinishDlg.cpp" />
     <ClCompile Include="HtmlCtrl.cpp" />
     <ClCompile Include="ProgressDlg.cpp" />
+    <ClCompile Include="PropertyGrid.cpp" />
     <ClCompile Include="sfx.cpp" />
     <ClCompile Include="sfxDlg.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -232,6 +253,7 @@
     <ClCompile Include="TinyJS.cpp" />
     <ClCompile Include="TinyJS_Functions.cpp" />
     <ClCompile Include="TinyJS_MathFunctions.cpp" />
+    <ClCompile Include="TinyJS_SfxFunctions.cpp" />
     <ClCompile Include="WelcomeDlg.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -43,6 +43,8 @@ protected:
 	HICON m_hIcon;
 	HANDLE m_mutexInstallStart;
 
+	POINT m_ImgSize;
+
 	DECLARE_MESSAGE_MAP()
 public:
 	virtual BOOL OnInitDialog();
@@ -51,4 +53,6 @@ public:
 	virtual void OnCancel();
 	virtual void OnOK();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+
 };

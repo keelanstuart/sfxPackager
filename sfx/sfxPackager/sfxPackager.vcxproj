@@ -163,7 +163,6 @@
     <ClInclude Include="..\sfxFlags.h" />
     <ClInclude Include="ChildFrm.h" />
     <ClInclude Include="CScriptEditView.h" />
-    <ClInclude Include="GenParser.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="OutputWnd.h" />
     <ClInclude Include="ProgressStatusBar.h" />
@@ -189,7 +188,6 @@
   <ItemGroup>
     <ClCompile Include="ChildFrm.cpp" />
     <ClCompile Include="CScriptEditView.cpp" />
-    <ClCompile Include="GenParser.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="OutputWnd.cpp" />
     <ClCompile Include="ProgressStatusBar.cpp" />
