@@ -113,7 +113,7 @@ BOOL CWelcomeDlg::OnInitDialog()
 
 		m_pDynamicLayout->AddItem(GetDlgItem(IDOK)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
 		m_pDynamicLayout->AddItem(GetDlgItem(IDCANCEL)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
-		m_pDynamicLayout->AddItem(GetDlgItem(IDC_VERSIONID)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontal(100), CMFCDynamicLayout::SizeHorizontal(100));
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_VERSIONID)->GetSafeHwnd(), CMFCDynamicLayout::MoveVertical(100), CMFCDynamicLayout::SizeHorizontal(100));
 		m_pDynamicLayout->AddItem(GetDlgItem(IDC_BROWSER)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeHorizontalAndVertical(100, 100));
 		m_pDynamicLayout->AddItem(GetDlgItem(IDC_IMAGE)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeVertical(100));
 	}
