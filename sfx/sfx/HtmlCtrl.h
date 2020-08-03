@@ -33,4 +33,5 @@ public:
 	
 	DECLARE_MESSAGE_MAP();
 	DECLARE_DYNAMIC(CHtmlCtrl)
+	virtual void OnDraw(CDC * /*pDC*/);
 };

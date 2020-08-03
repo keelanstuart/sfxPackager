@@ -35,13 +35,15 @@ BOOL CHtmlCtrl::CreateFromStatic(UINT nID, CWnd* pParent)
 	wndStatic.DestroyWindow();
 	
 	// create HTML control (CHtmlView)
-	return Create(NULL,					// class name
+	BOOL ret = Create(NULL,				// class name
 		NULL,							// title
-		(WS_CHILD | WS_VISIBLE ),		// style
+		(WS_CHILD | WS_VISIBLE),		// style
 		rc,								// rectangle
 		pParent,						// parent
 		nID,							// control ID
 		NULL);							// frame/doc context not used
+
+	return ret;
 }
 
 ////////////////
@@ -91,4 +93,22 @@ void CHtmlCtrl::OnBeforeNavigate2( LPCTSTR		lpszURL,
 	{
 		*pbCancel = FALSE;
 	}
+}
+
+
+void CHtmlCtrl::OnDraw(CDC *pDC)
+{
+	// Draw the html control without flickering -- the unfortunate thing is that due to the time taken
+	// by the control to render itself, we get a blank space until it's done. Sigh. Better than flashies.
+
+	CPaintDC dc(this); // device context for painting
+
+	CMemDC mdc(dc, this);
+
+	CHtmlView::OnDraw((CDC *)&mdc);
+
+	CRect rcli;
+	GetClientRect(rcli);
+
+	pDC->BitBlt(0, 0, rcli.Width(), rcli.Height(), &(mdc.GetDC()), 0, 0, SRCCOPY);
 }
