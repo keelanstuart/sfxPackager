@@ -17,6 +17,7 @@
 #pragma once
 
 #include <vector>
+#include <set>
 
 #include "../../Archiver/Include/Archiver.h"
 
@@ -109,6 +110,11 @@ protected:
 	bool CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, const TCHAR *excludespec, UINT recursion = 0);
 
 public:
+	typedef const TCHAR *TResType;
+	typedef std::set<const TCHAR *> TResNameSet;
+	typedef std::map<TResType, TResNameSet> TResMap;
+
+	TResMap m_ResMap, m_PackageResMap;
 
 	typedef enum eDocProp
 	{
@@ -128,6 +134,10 @@ public:
 		REQUIRE_REBOOT = 'BOOT',
 		ENABLE_EXPLORE_CHECKBOX = 'ENEX',
 		LAUNCH_COMMAND = 'LNCH',
+		VERSION_PRODUCTNAME = 'VPRD',
+		VERSION_DESCRIPTION = 'VDSC',
+		VERSION_COPYRIGHT = 'VCPY',
+
 	} EDOCPROP;
 
 	props::IPropertySet *m_Props;
@@ -135,8 +145,6 @@ public:
 	LARGE_INTEGER m_UncompressedSize;
 
 	CString m_Script[EScriptType::NUMTYPES];
-
-	LPTSTR m_IconName;
 
 	HANDLE m_hThread;
 	HANDLE m_hCancelEvent;
@@ -147,8 +155,8 @@ public:
 
 	static DWORD WINAPI RunCreateSFXPackage(LPVOID param);
 
-	static BOOL CALLBACK EnumTypesFunc(HMODULE hModule, LPTSTR lpType, LONG_PTR lParam);
-	static BOOL CALLBACK EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPTSTR lpName, LONG_PTR lParam);
+	static BOOL CALLBACK EnumTypesFunc(HMODULE hModule, LPCTSTR lpType, LONG_PTR lParam);
+	static BOOL CALLBACK EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPCTSTR lpName, LONG_PTR lParam);
 	static BOOL CALLBACK EnumLangsFunc(HMODULE hModule, LPCTSTR lpType, LPCTSTR lpName, WORD wLang, LONG_PTR lParam);
 
 // Overrides

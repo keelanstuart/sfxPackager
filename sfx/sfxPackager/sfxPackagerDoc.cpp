@@ -33,6 +33,7 @@
 #include <vector>
 #include <chrono>
 #include <ctime>
+#include <map>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -44,7 +45,10 @@ extern bool FLZACreateDirectories(const TCHAR *dir);
 
 #define SFXRESID_ICON		130
 
-bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release, int &build)
+
+bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release, int &build, VS_FIXEDFILEINFO *retffi = nullptr);
+
+bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release, int &build, VS_FIXEDFILEINFO *retffi)
 {
 	bool ret = false;
 
@@ -55,11 +59,11 @@ bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release,
 
 	if (verSize != NULL)
 	{
-		LPSTR verData = new char[verSize];
+		LPBYTE verData = new BYTE[verSize];
 
 		if (GetFileVersionInfo(filename, verHandle, verSize, verData))
 		{
-			if (VerQueryValue(verData, _T("\\"), (VOID FAR * FAR *) & lpBuffer, &size))
+			if (VerQueryValue(verData, _T("\\"), (LPVOID *)&lpBuffer, &size))
 			{
 				if (size)
 				{
@@ -71,6 +75,9 @@ bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release,
 						release = (verInfo->dwFileVersionLS >> 16) & 0xffff;
 						build = (verInfo->dwFileVersionLS >> 0) & 0xffff;
 
+						if (retffi)
+							memcpy(retffi, verInfo, sizeof(VS_FIXEDFILEINFO));
+
 						ret = true;
 					}
 				}
@@ -81,6 +88,24 @@ bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release,
 	}
 
 	return ret;
+}
+
+wchar_t *FindWStringInMemory(const BYTE *mem, const wchar_t *str, size_t memlen)
+{
+	if (!mem || !str || !memlen)
+		return nullptr;
+
+	size_t ss = wcslen(str);
+	if (!ss)
+		return nullptr;
+
+	for (size_t i = 0; i < memlen; i++, mem++)
+	{
+		if (!memcmp(mem, str, ss))
+			return (wchar_t *)mem;
+	}
+
+	return nullptr;
 }
 
 #pragma pack(push, 1)
@@ -115,6 +140,17 @@ typedef struct
 	DWORD ImageOffset;      // resource ID
 } ICONDATA_FILE;
 #pragma pack(pop)
+
+BOOL EnumResLangProc(HMODULE hMod, LPCTSTR lpszType, LPCTSTR lpszName, WORD wIDLanguage, LONG_PTR lParam)
+{
+	if ((lpszType == RT_VERSION) && (lpszName == MAKEINTRESOURCE(VS_VERSION_INFO)))
+	{
+		*(WORD *)lParam = wIDLanguage;
+		return FALSE;
+	}
+
+	return TRUE;
+}
 
 bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hFile, size_t spanIdx)
 {
@@ -157,16 +193,116 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 		}
 	}
 
+	EnumResourceTypes(NULL, (ENUMRESTYPEPROC)CSfxPackagerDoc::EnumTypesFunc, (LONG_PTR)pDoc);
+
 	HMODULE hmod = LoadLibraryEx(filename, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_IMAGE_RESOURCE | LOAD_LIBRARY_AS_DATAFILE);
 	EnumResourceTypes(hmod, (ENUMRESTYPEPROC)CSfxPackagerDoc::EnumTypesFunc, (LONG_PTR)pDoc);
 
 	if (hmod)
 	{
-		HRSRC hrinf = FindResource(hmod, _T("VERSION_INFO"), RT_VERSION);
-		HGLOBAL hginf = LoadResource(hmod, hrinf);
-		BYTE *peinf = (BYTE *)LockResource(hginf);
+		// Load the existing version info from the sfx .exe and replace it with the metadata our user has given
+		BYTE *pverinfo = nullptr;
+		DWORD pverinfosz = 0;
+		WORD verlang = MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
+		HRSRC hir = FindResource(hmod, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
+		if (hir)
+		{
+			EnumResourceLanguages(hmod, RT_VERSION, MAKEINTRESOURCE(VS_VERSION_INFO), EnumResLangProc, (LONG_PTR)&verlang);
 
-		UnlockResource(hginf);
+			HGLOBAL hgv = LoadResource(hmod, hir);
+			BYTE *pev = (BYTE *)LockResource(hgv);
+			pverinfosz = SizeofResource(hmod, hir);
+
+			if (pev && pverinfosz)
+			{
+				pverinfo = (BYTE *)malloc(pverinfosz);
+				if (pverinfo)
+				{
+					memcpy(pverinfo, pev, pverinfosz);
+
+					// 3 WORDS preceed the string id
+					BYTE *pid = (BYTE *)wcsstr((wchar_t *)((BYTE *)pverinfo + (sizeof(WORD) * 3)), L"VS_VERSION_INFO");
+					if (pid)
+					{
+						pid += (sizeof(wchar_t) * 17);
+
+						VS_FIXEDFILEINFO *pffi = (VS_FIXEDFILEINFO *)pid;
+
+						if (pffi->dwSignature == 0xFEEF04BD)
+						{
+							// get the packager's version...
+							TCHAR exename[MAX_PATH];
+							_tcscpy_s(exename, theApp.m_pszHelpFilePath);
+							PathRemoveExtension(exename);
+							PathAddExtension(exename, _T(".exe"));
+
+							// ...and make the installer's FileVersion that version, so it can be tracked back in case of issues
+							int major, minor, release, build;
+
+							major = 1; minor = 0; release = 0; build = 0;
+							GetFileVersion(exename, major, minor, release, build);
+							pffi->dwFileVersionMS = (major << 16) | minor;
+							pffi->dwFileVersionLS = (release << 16) | build;
+
+							// Then get the version number from the file the user has said contains it... or use 1.0.0.0 if none was specified
+							major = 1; minor = 0; release = 0; build = 0;
+							CString vers;
+							auto pversion = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::VERSION];
+							if (pversion)
+								vers = pversion->AsString();
+							if (PathFileExists(vers))
+							{
+								GetFileVersion(vers, major, minor, release, build);
+							}
+							else
+							{
+								_stscanf(vers, _T("%d.%d.%d.%d"), &major, &minor, &release, &build);
+							}
+							pffi->dwProductVersionMS = (major << 16) | minor;
+							pffi->dwProductVersionLS = (release << 16) | build;
+
+							wchar_t *pcopyright = FindWStringInMemory(pverinfo, L"<LegalCopyright>", pverinfosz);
+							if (pcopyright)
+							{
+								auto _pcopyright = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::VERSION_COPYRIGHT];
+								if (_pcopyright)
+								{
+									wcsncpy_s(pcopyright, 128, _pcopyright->AsString(), 127);
+								}
+								else
+									*pcopyright = L'\0';
+							}
+
+							wchar_t *pfiledesc = FindWStringInMemory(pverinfo, L"<FileDescription>", pverinfosz);
+							if (pfiledesc)
+							{
+								auto _pfiledesc = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::VERSION_DESCRIPTION];
+								if (_pfiledesc)
+								{
+									wcsncpy_s(pfiledesc, 128, _pfiledesc->AsString(), 127);
+								}
+								else
+									*pfiledesc = L'\0';
+							}
+
+							wchar_t *pproductname = FindWStringInMemory(pverinfo, L"<ProductName>", pverinfosz);
+							if (pproductname)
+							{
+								auto _pproductname = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::VERSION_PRODUCTNAME];
+								if (_pproductname)
+								{
+									wcsncpy_s(pproductname, 128, _pproductname->AsString(), 127);
+								}
+								else
+									*pproductname = L'\0';
+							}
+						}
+					}
+				}
+			}
+
+			UnlockResource(hgv);
+		}
 
 		HRSRC hii = FindResource(hmod, _T("ICON"), RT_GROUP_ICON);
 		HGLOBAL hgi = LoadResource(hmod, hii);
@@ -189,6 +325,14 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 
 		if (hbur)
 		{
+			// if we found some version info, we modified it above -- so update the resource now
+			if (pverinfo)
+			{
+				bresult = UpdateResource(hbur, RT_VERSION, MAKEINTRESOURCE(VS_VERSION_INFO), verlang, pverinfo, pverinfosz);
+				free(pverinfo);
+				pverinfo = nullptr;
+			}
+
 			tstring iconpathraw;
 			auto picon = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::ICON_FILE];
 			if (picon)
@@ -206,6 +350,7 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 					_tcscpy_s(iconpath, MAX_PATH, iconpathraw.c_str());
 				}
 
+				// Replace the icon if desired
 				if (PathFileExists(iconpath))
 				{
 					HANDLE hicobin = CreateFile(iconpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -817,7 +962,7 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 
 		if ((p = m_Props->CreateProperty(_T("Appearance\\Caption"), EDOCPROP::CAPTION)) != nullptr)
 		{
-			p->SetString(_T("My Installer"));
+			p->SetString(_T("My Setup"));
 		}
 
 		if ((p = m_Props->CreateProperty(_T("Appearance\\Version"), EDOCPROP::VERSION)) != nullptr)
@@ -894,6 +1039,21 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 		{
 			p->SetEnumStrings(_T("Self-Extracting Executable,Executable With External Data"));
 			p->SetEnumVal(0);
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Metadata\\Copyright"), EDOCPROP::VERSION_COPYRIGHT)) != nullptr)
+		{
+			p->SetString(_T(""));
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Metadata\\File Description"), EDOCPROP::VERSION_DESCRIPTION)) != nullptr)
+		{
+			p->SetString(_T(""));
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Metadata\\Product Name"), EDOCPROP::VERSION_PRODUCTNAME)) != nullptr)
+		{
+			p->SetString(_T(""));
 		}
 	}
 
@@ -984,6 +1144,15 @@ const TCHAR *CSfxPackagerDoc::GetPropertyDescription(props::FOURCHARCODE propert
 		case EDOCPROP::LAUNCH_COMMAND:
 			return _T("A command that will be issued when installation is complete (see full docs for parameter options)");
 
+		case EDOCPROP::VERSION_COPYRIGHT:
+			return _T("Sets the Copyright field in the installer executable version info, as visible from the Properties->Details tab in Windows Explorer");
+
+		case EDOCPROP::VERSION_DESCRIPTION:
+			return _T("Sets the File Description field in the installer executable version info, as visible from the Properties->Details tab in Windows Explorer");
+
+		case EDOCPROP::VERSION_PRODUCTNAME:
+			return _T("Sets the Product Name field in the installer executable version info, as visible from the Properties->Details tab in Windows Explorer");
+
 
 		case EFILEPROP::FILENAME:
 			return _T("The name of the file that will be installed (note: this can be different than the name of the source file)");
@@ -1049,27 +1218,32 @@ BOOL CSfxPackagerDoc::OnNewDocument()
 }
 
 
-BOOL CSfxPackagerDoc::EnumTypesFunc(HMODULE hModule, LPTSTR lpType, LONG_PTR lParam)
+BOOL CSfxPackagerDoc::EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPCTSTR lpName, LONG_PTR lParam)
 {
 	CSfxPackagerDoc *_this = (CSfxPackagerDoc *)lParam;
 
-	EnumResourceNames(hModule, lpType, (ENUMRESNAMEPROC)EnumNamesFunc, lParam);
+	TResMap *rm = (hModule == NULL) ? &(_this->m_ResMap) : &(_this->m_PackageResMap);
+
+	TResMap::iterator it = rm->find(lpType);
+
+	if (it == rm->end())
+	{
+		std::pair<TResMap::iterator, bool> insret = rm->insert(TResMap::value_type(lpType, TResNameSet()));
+		if (insret.second)
+			it = insret.first;
+	}
+
+	if (it != rm->end())
+		it->second.insert(lpName);
 
 	return TRUE;
 }
 
-BOOL CSfxPackagerDoc::EnumNamesFunc(HMODULE hModule, LPCTSTR lpType, LPTSTR lpName, LONG_PTR lParam)
+BOOL CSfxPackagerDoc::EnumTypesFunc(HMODULE hModule, LPCTSTR lpType, LONG_PTR lParam)
 {
 	CSfxPackagerDoc *_this = (CSfxPackagerDoc *)lParam;
 
-	if ((ULONGLONG)lpName & 0xFFFF0000)
-	{
-	}
-
-	if (lpType == RT_ICON)
-	{
-		_this->m_IconName = lpName;
-	}
+	EnumResourceNames(hModule, lpType, (ENUMRESNAMEPROC)EnumNamesFunc, lParam);
 
 	return TRUE;
 }
@@ -1985,7 +2159,7 @@ void EscapeString(const TCHAR *in, tstring &out)
 	}
 }
 
-
+// Legacy settings!! New path is through props
 void CSfxPackagerDoc::ReadSettings(genio::IParserT *gp)
 {
 	tstring name, value;
@@ -2050,14 +2224,6 @@ void CSfxPackagerDoc::ReadSettings(genio::IParserT *gp)
 				(*m_Props)[EDOCPROP::REQUIRE_REBOOT]->SetBool(!_tcsicmp(value.c_str(), _T("true")) ? true : false);
 			else if (!_tcsicmp(name.c_str(), _T("allowdestchg")))
 				(*m_Props)[EDOCPROP::ALLOW_DESTINATION_CHANGE]->SetBool(!_tcsicmp(value.c_str(), _T("true")) ? true : false);
-			/*
-			else if (!_tcsicmp(name.c_str(), _T("appendbuilddate")))
-				m_bAppendBuildDate = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
-			else if (!_tcsicmp(name.c_str(), _T("appendversion")))
-				m_bAppendVersion = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
-			else if (!_tcsicmp(name.c_str(), _T("externalarchive")))
-				m_bExternalArchive = (!_tcsicmp(value.c_str(), _T("true")) ? true : false);
-			*/
 		}
 	}
 }
