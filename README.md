@@ -8,13 +8,14 @@ _Copyright (C) 2013-2020 Keelan Stuart (keelanstuart@gmail.com)_
 * Project-based; create your install project once, then re-build when your files have changed without any modifications
 * Easy drag'n'drop user experience
 * Integrated JavaScript system, featuring built-in code editor, with extensive installer-related API to help get the job done
+* Robust property system that you can initialize in scripts, allow the user to modify in your configuration dialog, and then check during install
 * Recognizes and replaces environment variables and registry keys in paths
 * Custom HTML content displayable in your welcome (and license) dialog - either in-line or from a file you specify
 * Embed URLs as the file source to pull content from the web, rather than storing it statically in your package
 * Disk spanning, allowing installs to be partitioned into discretely-size chunks for easy distribution with multiple media sources
 * Tools to facilitate License validation
 * Unicode used throughout
-* 64-bit; very large archives are no problem
+* 64-bit; very large archives are no problem, though for self-contained installers, a limit of 4GB is implied (though not enforced!)
 
 View the [user's guide](https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub?start=false&loop=false&delayms=30000) to get started!
 
