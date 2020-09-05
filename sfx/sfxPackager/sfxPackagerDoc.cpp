@@ -1928,12 +1928,12 @@ UINT CSfxPackagerDoc::AddFile(const TCHAR *filename, const TCHAR *srcpath, const
 		p->SetString(exclude ? exclude : _T(""));
 	}
 
-	if ((p = fd.second->CreateProperty(_T("Pre-Install Snippet"), CSfxPackagerDoc::EFILEPROP::PREFILE_SNIPPET)) != nullptr)
+	if ((p = fd.second->CreateProperty(_T("Pre-File Snippet"), CSfxPackagerDoc::EFILEPROP::PREFILE_SNIPPET)) != nullptr)
 	{
 		p->SetString(prefile_scriptsnippet ? prefile_scriptsnippet : _T(""));
 	}
 
-	if ((p = fd.second->CreateProperty(_T("Post-Install Snippet"), CSfxPackagerDoc::EFILEPROP::POSTFILE_SNIPPET)) != nullptr)
+	if ((p = fd.second->CreateProperty(_T("Post-File Snippet"), CSfxPackagerDoc::EFILEPROP::POSTFILE_SNIPPET)) != nullptr)
 	{
 		p->SetString(postfile_scriptsnippet ? postfile_scriptsnippet : _T(""));
 	}

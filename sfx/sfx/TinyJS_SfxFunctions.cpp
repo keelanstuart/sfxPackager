@@ -537,6 +537,8 @@ void scDeleteRegistryKey(CScriptVar *c, void *userdata)
 
 void scSpawnProcess(CScriptVar *c, void *userdata)
 {
+	CSfxApp *_this = (CSfxApp *)userdata;
+
 	tstring cmd = c->getParameter(_T("cmd"))->getString(), _cmd;
 	ReplaceEnvironmentVariables(cmd, _cmd);
 	ReplaceRegistryKeys(_cmd, cmd);
@@ -565,18 +567,60 @@ void scSpawnProcess(CScriptVar *c, void *userdata)
 		arg += params;
 	}
 
-	STARTUPINFO si = { 0 };
-	si.cb = sizeof(si);
-	PROCESS_INFORMATION pi;
+	tstring msg;
+	if (!rundir.empty())
+	{
+		msg += rundir;
+		msg += _T("> ");
+	}
+	msg += arg.c_str();
+
+	_this->Echo(_T("Spawning Process:\t"));
+	_this->Echo(msg.c_str());
+	_this->Echo(_T("\r\n"));
 
 	BOOL created = true;
 	if (!theApp.m_TestOnlyMode)
 	{
+		STARTUPINFO si = { 0 };
+		si.cb = sizeof(si);
+
+		PROCESS_INFORMATION pi;
+
+#if 0
+		SECURITY_ATTRIBUTES saAttr; 
+
+		saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
+		saAttr.bInheritHandle = TRUE; 
+		saAttr.lpSecurityDescriptor = NULL; 
+
+		HANDLE hChildStdOutR, hChildStdOutW;
+		HANDLE hChildStdInR, hChildStdInW;
+
+		// Create a pipe for the child process's STDOUT. 
+		CreatePipe(&hChildStdOutR, &hChildStdOutW, &saAttr, 0);
+		SetHandleInformation(hChildStdOutR, HANDLE_FLAG_INHERIT, 0);
+
+		// Create a pipe for the child process's STDIN. 
+		CreatePipe(&hChildStdInR, &hChildStdInW, &saAttr, 0);
+		SetHandleInformation(hChildStdInW, HANDLE_FLAG_INHERIT, 0);
+
+		si.hStdError = hChildStdOutW;
+		si.hStdOutput = hChildStdOutW;
+		si.hStdInput = hChildStdInR;
+		si.dwFlags |= STARTF_USESTDHANDLES;
+#endif
+
 		created = CreateProcess(nullptr, (TCHAR *)(arg.c_str()), NULL, NULL, FALSE, NULL, NULL, rundir.empty() ? NULL : rundir.c_str(), &si, &pi);
 		if (created)
 		{
 			if (block)
 				WaitForSingleObject(pi.hProcess, INFINITE);
+
+#if 0
+			CloseHandle(hChildStdOutW);
+			CloseHandle(hChildStdInR);
+#endif
 		}
 		else
 		{
@@ -586,9 +630,9 @@ void scSpawnProcess(CScriptVar *c, void *userdata)
 						  NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
 
 			// Display the error
-			CSfxApp *_this = (CSfxApp *)userdata;
-			_this->Echo(_T("SpawnProcess Failed:\n\t"));
+			_this->Echo(_T("SpawnProcess Failed:\t"));
 			_this->Echo((const TCHAR *)lpMsgBuf);
+			_this->Echo(_T("\r\n"));
 
 			// Free resources created by the system
 			LocalFree(lpMsgBuf);
@@ -804,9 +848,13 @@ void scTextFileWrite(CScriptVar *c, void *userdata)
 
 	if (phandle && ptext)
 	{
+		tstring t = ptext->getString(), _t;
+		ReplaceEnvironmentVariables(t, _t);
+		ReplaceRegistryKeys(_t, t);
+
 		FILE *f = (FILE *)phandle->getInt();
 		if (f)
-			_fputts(ptext->getString().c_str(), f);
+			_fputts(t.c_str(), f);
 	}
 }
 

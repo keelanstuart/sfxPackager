@@ -416,14 +416,15 @@ DWORD CProgressDlg::RunInstall()
 
 	theApp.m_js.addNative(_T("function Skip()"), scSkip, (void *)&skip);
 
-	theApp.m_InstallPath.Replace(_T("\\"), _T("/"));
+	CString installPath = theApp.m_InstallPath;
+	installPath.Replace(_T("\\"), _T("\\\\"));
 
 	if (!theApp.m_Script[CSfxApp::EScriptType::PREINSTALL].empty())
 	{
 		tstring iscr;
 
 		iscr += _T("var BASEPATH = \"");
-		iscr += (LPCTSTR)(theApp.m_InstallPath);
+		iscr += (LPCTSTR)(installPath);
 		iscr += _T("\";  /* the base install path */\n\n");
 
 		iscr += theApp.m_Script[CSfxApp::EScriptType::PREINSTALL];
@@ -489,19 +490,31 @@ DWORD CProgressDlg::RunInstall()
 				tstring file_scripts_preamble;
 
 				file_scripts_preamble += _T("var BASEPATH = \"");
-				file_scripts_preamble += (LPCTSTR)(theApp.m_InstallPath);
+				file_scripts_preamble += (LPCTSTR)(installPath);
 				file_scripts_preamble += _T("\";  /* the base install path */\n\n");
+
+				tstring _fpath;
+				for (tstring::const_iterator fpi = fpath.cbegin(), fpil = fpath.cend(); fpi != fpil; fpi++)
+				{
+					if (*fpi != _T('\\'))
+						_fpath += *fpi;
+					else
+						_fpath += _T("\\\\");
+				}
 
 				file_scripts_preamble += _T("var FILENAME = \"");
 				file_scripts_preamble += fname.c_str();
 				file_scripts_preamble += _T("\";  /* the name of the file that was just extracted */\n");
 
 				file_scripts_preamble += _T("var PATH = \"");
-				file_scripts_preamble += fpath.c_str();
+				file_scripts_preamble += _fpath.c_str();
 				file_scripts_preamble += _T("\";  /* the output path of that file */\n");
 
+				tstring _ffull = _fpath;
+				_ffull += _T("\\\\");
+				_ffull += fname;
 				file_scripts_preamble += _T("var FILEPATH = \"");
-				file_scripts_preamble += ffull.c_str();
+				file_scripts_preamble += _ffull.c_str();
 				file_scripts_preamble += _T("\";  /* the full filename (path + name) */\n\n");
 
 				IExtractor::EXTRACT_RESULT er = IExtractor::EXTRACT_RESULT::ER_SKIP;
@@ -647,7 +660,7 @@ DWORD CProgressDlg::RunInstall()
 		tstring fscr;
 
 		fscr += _T("var BASEPATH = \"");
-		fscr += (LPCTSTR)(theApp.m_InstallPath);
+		fscr += (LPCTSTR)(installPath);
 		fscr += _T("\";  /* the base install path */\n\n");
 
 		fscr += _T("var CANCELLED = \"");
