@@ -493,21 +493,30 @@ DWORD CProgressDlg::RunInstall()
 				file_scripts_preamble += (LPCTSTR)(installPath);
 				file_scripts_preamble += _T("\";  /* the base install path */\n\n");
 
-				tstring _fpath;
-				for (tstring::const_iterator fpi = fpath.cbegin(), fpil = fpath.cend(); fpi != fpil; fpi++)
+				CString _fpath;
+
+				if (PathIsRelative(fpath.c_str()))
 				{
-					if (*fpi != _T('\\'))
-						_fpath += *fpi;
-					else
-						_fpath += _T("\\\\");
+					_fpath = theApp.m_InstallPath;
+					if (!fpath.empty())
+					{
+						_fpath += _T("\\");
+						_fpath += fpath.c_str();
+					}
 				}
+				else
+				{
+					_fpath = fpath.c_str();
+				}
+
+				_fpath.Replace(_T("\\"), _T("\\\\"));
 
 				file_scripts_preamble += _T("var FILENAME = \"");
 				file_scripts_preamble += fname.c_str();
 				file_scripts_preamble += _T("\";  /* the name of the file that was just extracted */\n");
 
 				file_scripts_preamble += _T("var PATH = \"");
-				file_scripts_preamble += _fpath.c_str();
+				file_scripts_preamble += _fpath;
 				file_scripts_preamble += _T("\";  /* the output path of that file */\n");
 
 				tstring _ffull = _fpath;
@@ -517,12 +526,12 @@ DWORD CProgressDlg::RunInstall()
 				file_scripts_preamble += _ffull.c_str();
 				file_scripts_preamble += _T("\";  /* the full filename (path + name) */\n\n");
 
-				IExtractor::EXTRACT_RESULT er = IExtractor::EXTRACT_RESULT::ER_SKIP;
+				IExtractor::EXTRACT_RESULT er = IExtractor::EXTRACT_RESULT::ER_OK;
 
 				// reset skip each iteration so that if the user calls the Skip() js function, we won't actually extract it
 				skip = false;
 
-				if ((er == IExtractor::ER_OK) && (!theApp.m_Script[CSfxApp::EScriptType::PREFILE].empty() || !prefile_snippet.empty()))
+				if (!theApp.m_Script[CSfxApp::EScriptType::PREFILE].empty() || !prefile_snippet.empty())
 				{
 					tstring pfscr;
 
@@ -537,6 +546,8 @@ DWORD CProgressDlg::RunInstall()
 
 				if (!skip)
 					er = pie->ExtractFile(i, &ffull, nullptr, theApp.m_TestOnlyMode);
+				else
+					er = IExtractor::EXTRACT_RESULT::ER_SKIP;
 
 				m_Progress.SetPos((int)i + 1);
 
