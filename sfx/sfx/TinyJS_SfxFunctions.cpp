@@ -706,6 +706,30 @@ void scCompareStrings(CScriptVar* c, void* userdata)
 }
 
 
+void scToUpper(CScriptVar* c, void* userdata)
+{
+	tstring str = c->getParameter(_T("str"))->getString();
+
+	std::transform(str.begin(), str.end(), str.begin(), std::toupper);
+
+	CScriptVar* ret = c->getReturnVar();
+	if (ret)
+		ret->setString(str);
+}
+
+
+void scToLower(CScriptVar* c, void* userdata)
+{
+	tstring str = c->getParameter(_T("str"))->getString();
+
+	std::transform(str.begin(), str.end(), str.begin(), std::tolower);
+
+	CScriptVar* ret = c->getReturnVar();
+	if (ret)
+		ret->setString(str);
+}
+
+
 void scAbortInstall(CScriptVar* c, void* userdata)
 {
 	exit(-1);

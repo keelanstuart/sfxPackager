@@ -81,6 +81,8 @@ public:
 
 	UINT GetNumFiles();
 
+	const TCHAR *LastBuiltInstallerFilename() { return m_LastBuiltInstallerFilename.c_str(); }
+
 	static CSfxPackagerDoc *GetDoc();
 
 protected:
@@ -101,6 +103,8 @@ protected:
 
 	TFileDataMap m_FileData;
 	UINT m_Key;
+
+	tstring m_LastBuiltInstallerFilename;
 
 	bool InitializeArchive(CSfxPackagerView *pview, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *basename, UINT span = 0);
 	bool AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc, TStringArray &created_archives, TSizeArray &created_archive_filecounts, const TCHAR *srcspec, const TCHAR *excludespec, const TCHAR *prefile_scriptsnippet, const TCHAR *postfile_scriptsnippet, const TCHAR *dstpath, const TCHAR *dstfilename = NULL, uint64_t *sz_uncomp = NULL, uint64_t *sz_comp = NULL, UINT recursion = 0);
@@ -137,6 +141,7 @@ public:
 		VERSION_PRODUCTNAME = 'VPRD',
 		VERSION_DESCRIPTION = 'VDSC',
 		VERSION_COPYRIGHT = 'VCPY',
+		COMPRESSION_BLOCKSIZE = 'CBSZ',
 
 	} EDOCPROP;
 

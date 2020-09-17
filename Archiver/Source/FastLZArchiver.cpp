@@ -30,6 +30,8 @@ CFastLZArchiver::CFastLZArchiver(IArchiveHandle *pah)
 	m_pah = pah;
 	m_InitialOffset = m_pah->GetOffset();
 
+	m_BlockSize = IArchiver::BUFFER_SIZE::DEFAULT;
+
 	DWORD bw;
 
 	// temporary file table offset
@@ -119,6 +121,8 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 			GetFileTime(hin, &(fte.m_FTCreated), NULL, &(fte.m_FTModified));
 
 			SFileBlock b;
+			DWORD size_flags = (m_BlockSize << FTEFLAG_BLOCKSIZESHIFT) & (uint64_t)sFileTableEntry::FTEFLAG_BLOCKSIZEMASK;
+			b.m_Header.m_Flags |= size_flags;
 
 			fte.m_Offset = m_pah->GetOffset();
 
@@ -419,7 +423,14 @@ bool sFileBlock::ReadUncompressedData(HANDLE hIn)
 {
 	m_Header.m_SizeC = -1;		// invalidate our compressed data once we read new uncompressed data
 
-	if (ReadFile(hIn, m_BufU, FB_UNCOMPRESSED_BUFSIZE, (LPDWORD)&(m_Header.m_SizeU), NULL) && (m_Header.m_SizeU > 0))
+	DWORD shift_amt = (m_Header.m_Flags & (uint64_t)sFileTableEntry::FTEFLAG_BLOCKSIZEMASK) >> FTEFLAG_BLOCKSIZESHIFT;
+	if (!shift_amt)
+		shift_amt = IArchiver::BUFFER_SIZE::NORMAL;
+	shift_amt--;
+
+	DWORD read_amt = FB_UNCOMPRESSED_BUFSIZE >> shift_amt;
+
+	if (ReadFile(hIn, m_BufU, read_amt, (LPDWORD)&(m_Header.m_SizeU), NULL) && (m_Header.m_SizeU > 0))
 	{
 		return true;
 	}
@@ -474,9 +485,16 @@ bool sFileBlock::ReadCompressedData(HANDLE hIn)
 
 bool sFileBlock::DecompressData()
 {
+	DWORD shift_amt = (m_Header.m_Flags & (uint64_t)sFileTableEntry::FTEFLAG_BLOCKSIZEMASK) >> FTEFLAG_BLOCKSIZESHIFT;
+	if (!shift_amt)
+		shift_amt = IArchiver::BUFFER_SIZE::NORMAL;
+	shift_amt--;
+
+	DWORD read_amt = FB_UNCOMPRESSED_BUFSIZE >> shift_amt;
+
 	if (m_Header.m_SizeC != (uint32_t)-1)
 	{
-		m_Header.m_SizeU = fastlz_decompress(m_BufC, m_Header.m_SizeC, m_BufU, FB_UNCOMPRESSED_BUFSIZE);
+		m_Header.m_SizeU = fastlz_decompress(m_BufC, m_Header.m_SizeC, m_BufU, read_amt);
 
 		return true;
 	}

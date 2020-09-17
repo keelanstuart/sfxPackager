@@ -91,6 +91,19 @@ public:
 		IM_SPAN				// information about only the current span
 	};
 
+	typedef enum BUFFER_SIZE
+	{
+		DEFAULT = 0,
+
+		LARGEST,		// 256k, 1
+		LARGER,			// 128k, 2
+		LARGE,			// 64k,  3
+		NORMAL,			// 32k,  4
+		SMALL,			// 16k,  5
+		SMALLER,		// 8k,   6
+		SMALLEST,		// 4k,   7
+	} EBufferSize;
+
 	enum { MAGIC = 'MAGI' };
 
 	// Creates and destroys the archiver
@@ -107,6 +120,9 @@ public:
 	// src_filename can be either absolute or relative
 	// dst_filename should always be relative
 	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp = nullptr, uint64_t *sz_comp = nullptr, const TCHAR *prefile_scriptsnippet = nullptr, const TCHAR *postfile_scriptsnippet = nullptr) = NULL;
+
+	// Sets the size of the pre-compressed blocks after the time of this call
+	virtual void SetCompressionBlockSize(EBufferSize sz) = NULL;
 
 	// Finalizes the output, performing any operations that may be necessary to later extract and decompress the data (writing file tables, etc)
 	virtual FINALIZE_RESULT Finalize() = NULL;

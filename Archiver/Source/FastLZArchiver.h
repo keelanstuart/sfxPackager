@@ -24,11 +24,14 @@ struct sFileTableEntry
 {
 	enum
 	{
-		FTEFLAG_SPANNED		= 0x0000000000000001,		// a spanned file will be partially in multiple files
-		FTEFLAG_DOWNLOAD	= 0x0000000000000002,		// an empty file that is just a download reference
+		FTEFLAG_SPANNED			= 0x0000000000000001,		// a spanned file will be partially in multiple files
+		FTEFLAG_DOWNLOAD		= 0x0000000000000002,		// an empty file that is just a download reference
+		FTEFLAG_BLOCKSIZEMASK	= 0x000000000000001C,		// a mask of 3 bits (0-7) that indicates the size of the block
 	};
 
-	uint64_t m_Flags;
+	#define FTEFLAG_BLOCKSIZESHIFT		2					// mask off the bytes with BLOCKSIZEMASK, then shift right by this amount
+
+	uint32_t m_Flags;
 	uint64_t m_UncompressedSize;
 	uint64_t m_CompressedSize;
 	uint32_t m_Crc;
@@ -67,9 +70,12 @@ typedef std::deque<SFileTableEntry> TFileTable;
 
 struct sFileBlock
 {
+
+#define MAX_UNCOMPRESSED_BUFSIZE		256
+
 	enum
 	{
-		FB_UNCOMPRESSED_BUFSIZE = 64 * (1 << 10),
+		FB_UNCOMPRESSED_BUFSIZE = MAX_UNCOMPRESSED_BUFSIZE * (1 << 10),
 		FB_COMPRESSED_BUFSIZE = (FB_UNCOMPRESSED_BUFSIZE * 2)
 	};
 
@@ -111,6 +117,9 @@ public:
 	// Adds a file to the archive
 	virtual ADD_RESULT AddFile(const TCHAR *src_filename, const TCHAR *dst_filename, uint64_t *sz_uncomp = nullptr, uint64_t *sz_comp = nullptr, const TCHAR *prefile_scriptsnippet = nullptr, const TCHAR *postfile_scriptsnippet = nullptr);
 
+	// Sets the size of the pre-compressed blocks after the time of this call
+	virtual void SetCompressionBlockSize(IArchiver::EBufferSize sz) { m_BlockSize = sz; }
+
 	virtual FINALIZE_RESULT Finalize();
 
 	enum { MAGIC_FASTLZ = 'FSTL' };
@@ -131,6 +140,7 @@ protected:
 
 	uint64_t m_MaxSize;
 
+	IArchiver::EBufferSize m_BlockSize;
 };
 
 class CFastLZExtractor : public IExtractor

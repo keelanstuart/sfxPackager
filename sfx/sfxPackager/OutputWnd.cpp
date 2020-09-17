@@ -102,7 +102,7 @@ int COutputWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndTabs.AddTab(&m_wndOutputDebug, strTabName, (UINT)1);
 
 	// Fill output tabs with some dummy text (nothing magic here)
-	AppendMessage(OT_DEBUG, _T("sfxPackager v2.6 - contact Keelan Stuart (keelanstuart@gmail.com) with comments, bug reports, or suggestions.\r\n"));
+	AppendMessage(OT_DEBUG, _T("sfxPackager v3.3 - contact Keelan Stuart (keelanstuart@gmail.com) with comments, bug reports, or suggestions.\r\n"));
 
 	return 0;
 }
@@ -169,7 +169,6 @@ BEGIN_MESSAGE_MAP(COutputList, CListBox)
 	ON_WM_CONTEXTMENU()
 	ON_COMMAND(ID_EDIT_COPY, OnEditCopy)
 	ON_COMMAND(ID_EDIT_CLEAR, OnEditClear)
-	ON_COMMAND(ID_VIEW_OUTPUTWND, OnViewOutput)
 	ON_WM_WINDOWPOSCHANGING()
 END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
@@ -198,24 +197,28 @@ void COutputList::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 
 void COutputList::OnEditCopy()
 {
-	MessageBox(_T("Copy output"));
+	int sa, sb;
+	bool clearsel = false;
+
+	GetSel(sa, sb);
+	size_t size = sb - sa;
+
+	if (!size)
+	{
+		SetSel(0, -1);
+		clearsel = true;
+	}
+
+	Copy();
+
+	if (clearsel)
+		SetSel(0);
 }
 
 void COutputList::OnEditClear()
 {
+	SetSel(0, -1, TRUE);
+	SetReadOnly(FALSE);
 	Clear();
-}
-
-void COutputList::OnViewOutput()
-{
-	CDockablePane* pParentBar = DYNAMIC_DOWNCAST(CDockablePane, GetOwner());
-	CMDIFrameWndEx* pMainFrame = DYNAMIC_DOWNCAST(CMDIFrameWndEx, GetTopLevelFrame());
-
-	if (pMainFrame != NULL && pParentBar != NULL)
-	{
-		pMainFrame->SetFocus();
-		pMainFrame->ShowPane(pParentBar, FALSE, FALSE, FALSE);
-		pMainFrame->RecalcLayout();
-
-	}
+	SetReadOnly(TRUE);
 }

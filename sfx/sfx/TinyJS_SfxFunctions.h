@@ -39,3 +39,5 @@ extern void scGetFileNameFromPath(CScriptVar *c, void *userdata);
 extern void scEcho(CScriptVar *c, void *userdata);
 extern void scSetProperty(CScriptVar *c, void *userdata);
 extern void scGetProperty(CScriptVar *c, void *userdata);
+extern void scToLower(CScriptVar *c, void *userdata);
+extern void scToUpper(CScriptVar *c, void *userdata);

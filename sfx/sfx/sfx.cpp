@@ -145,12 +145,14 @@ BOOL CSfxApp::InitInstance()
 	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteRegistryKey(root, key, subkey)"), scDeleteRegistryKey, (void *)this);
 	theApp.m_js.addNative(_T("function DownloadFile(url, file)"), scDownloadFile, (void *)this);
+	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
 	theApp.m_js.addNative(_T("function FileExists(path)"), scFileExists, (void *)this);
 	theApp.m_js.addNative(_T("function FilenameHasExtension(filename, ext)"), scFilenameHasExtension, (void *)this);
 	theApp.m_js.addNative(_T("function GetCurrentDateString()"), scGetCurrentDateStr, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalEnvironmentVariable(varname)"), scGetGlobalEnvironmentVariable, (void *)this);
 	theApp.m_js.addNative(_T("function GetGlobalInt(name)"), scGetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function GetExeVersion(file)"), scGetExeVersion, (void*)this);
+	theApp.m_js.addNative(_T("function GetProperty(name)"), scGetProperty, (void *)this);
 	theApp.m_js.addNative(_T("function GetRegistryKeyValue(root, key, name)"), scGetRegistryKeyValue, (void *)this);
 	theApp.m_js.addNative(_T("function GetFileNameFromPath(filepath)"), scGetFileNameFromPath, (void*)this);
 	theApp.m_js.addNative(_T("function GetLicenseKey()"), scGetLicenseKey, (void *)this);
@@ -164,6 +166,7 @@ BOOL CSfxApp::InitInstance()
 	theApp.m_js.addNative(_T("function RenameFile(filename, newname)"), scRenameFile, (void *)this);
 	theApp.m_js.addNative(_T("function SetGlobalEnvironmentVariable(varname, val)"), scSetGlobalEnvironmentVariable, (void *)this);
 	theApp.m_js.addNative(_T("function SetGlobalInt(name, val)"), scSetGlobalInt, (void *)this);
+	theApp.m_js.addNative(_T("function SetProperty(name, type, aspect, value)"), scSetProperty, (void *)this);
 	theApp.m_js.addNative(_T("function SetRegistryKeyValue(root, key, name, val)"), scSetRegistryKeyValue, (void *)this);
 	theApp.m_js.addNative(_T("function ShowLicenseDlg()"), scShowLicenseDlg, (void *)this);
 	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, rundir, block)"), scSpawnProcess, (void *)this);
@@ -172,9 +175,8 @@ BOOL CSfxApp::InitInstance()
 	theApp.m_js.addNative(_T("function TextFileReadLn(handle)"), scTextFileReadLn, (void *)this);
 	theApp.m_js.addNative(_T("function TextFileWrite(handle, text)"), scTextFileWrite, (void *)this);
 	theApp.m_js.addNative(_T("function TextFileReachedEOF(handle)"), scTextFileReachedEOF, (void *)this);
-	theApp.m_js.addNative(_T("function Echo(msg)"), scEcho, (void *)this);
-	theApp.m_js.addNative(_T("function SetProperty(name, type, aspect, value)"), scSetProperty, (void *)this);
-	theApp.m_js.addNative(_T("function GetProperty(name)"), scGetProperty, (void *)this);
+	theApp.m_js.addNative(_T("function ToLower(str)"), scToLower, (void *)this);
+	theApp.m_js.addNative(_T("function ToUpper(str)"), scToUpper, (void *)this);
 
 	// Create the shell manager, in case the dialog contains
 	// any shell tree view or shell list view controls.

@@ -960,50 +960,16 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 			p->SetInt(-1);
 		}
 
-		if ((p = m_Props->CreateProperty(_T("Appearance\\Caption"), EDOCPROP::CAPTION)) != nullptr)
+		if ((p = m_Props->CreateProperty(_T("Settings\\Output File Suffix"), EDOCPROP::OUTPUT_FILE_SUFFIX_MODE)) != nullptr)
 		{
-			p->SetString(_T("My Setup"));
+			p->SetEnumStrings(_T("None,Build Date,Version"));
+			p->SetEnumVal(0);
 		}
 
-		if ((p = m_Props->CreateProperty(_T("Appearance\\Version"), EDOCPROP::VERSION)) != nullptr)
+		if ((p = m_Props->CreateProperty(_T("Settings\\Installer Type"), EDOCPROP::OUTPUT_MODE)) != nullptr)
 		{
-			p->SetString(_T(""));
-			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
-		}
-
-		if ((p = m_Props->CreateProperty(_T("Appearance\\Welcome Message"), EDOCPROP::WELCOME_MESSAGE)) != nullptr)
-		{
-			p->SetString(_T("Provide a description for the files being installed"));
-			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
-		}
-
-		if ((p = m_Props->CreateProperty(_T("Appearance\\License Message"), EDOCPROP::LICENSE_MESSAGE)) != nullptr)
-		{
-			p->SetString(_T(""));
-			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
-		}
-
-		if ((p = m_Props->CreateProperty(_T("Appearance\\Icon File"), EDOCPROP::ICON_FILE)) != nullptr)
-		{
-			p->SetString(_T(""));
-			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
-		}
-
-		if ((p = m_Props->CreateProperty(_T("Appearance\\Image File"), EDOCPROP::IMAGE_FILE)) != nullptr)
-		{
-			p->SetString(_T(""));
-			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
-		}
-
-		if ((p = m_Props->CreateProperty(_T("Post-Install\\Enable Explore Checkbox"), EDOCPROP::ENABLE_EXPLORE_CHECKBOX)) != nullptr)
-		{
-			p->SetBool(false);
-			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_BOOL_YESNO);
-		}
-
-		if ((p = m_Props->CreateProperty(_T("Post-Install\\Launch Command"), EDOCPROP::LAUNCH_COMMAND)) != nullptr)
-		{
-			p->SetString(_T(""));
+			p->SetEnumStrings(_T("Self-Extracting Executable,Executable With External Data"));
+			p->SetEnumVal(0);
 		}
 
 		if ((p = m_Props->CreateProperty(_T("Settings\\Default Path"), EDOCPROP::DEFAULT_DESTINATION)) != nullptr)
@@ -1023,22 +989,62 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_BOOL_YESNO);
 		}
 
-		if ((p = m_Props->CreateProperty(_T("Post-Install\\Require Reboot"), EDOCPROP::REQUIRE_REBOOT)) != nullptr)
+		if ((p = m_Props->CreateProperty(_T("Settings\\Compresion Block Size (advanced)"), EDOCPROP::COMPRESSION_BLOCKSIZE)) != nullptr)
+		{
+			p->SetEnumStrings(_T("Default,Smallest,Smaller,Small,Normal,Large,Larger,Largest"));
+			p->SetEnumVal(0);
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Appearance\\Caption"), EDOCPROP::CAPTION)) != nullptr)
+		{
+			p->SetString(_T("My Setup"));
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Appearance\\Welcome Message"), EDOCPROP::WELCOME_MESSAGE)) != nullptr)
+		{
+			p->SetString(_T("Provide a description for the files being installed"));
+			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Appearance\\Icon File"), EDOCPROP::ICON_FILE)) != nullptr)
+		{
+			p->SetString(_T(""));
+			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Appearance\\Image File"), EDOCPROP::IMAGE_FILE)) != nullptr)
+		{
+			p->SetString(_T(""));
+			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Appearance\\Version"), EDOCPROP::VERSION)) != nullptr)
+		{
+			p->SetString(_T(""));
+			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Appearance\\License Message"), EDOCPROP::LICENSE_MESSAGE)) != nullptr)
+		{
+			p->SetString(_T(""));
+			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Post-Install\\Enable Explore Checkbox"), EDOCPROP::ENABLE_EXPLORE_CHECKBOX)) != nullptr)
 		{
 			p->SetBool(false);
 			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_BOOL_YESNO);
 		}
 
-		if ((p = m_Props->CreateProperty(_T("Settings\\Output File Suffix"), EDOCPROP::OUTPUT_FILE_SUFFIX_MODE)) != nullptr)
+		if ((p = m_Props->CreateProperty(_T("Post-Install\\Launch Command"), EDOCPROP::LAUNCH_COMMAND)) != nullptr)
 		{
-			p->SetEnumStrings(_T("None,Build Date,Version"));
-			p->SetEnumVal(0);
+			p->SetString(_T(""));
 		}
 
-		if ((p = m_Props->CreateProperty(_T("Settings\\Installer Type"), EDOCPROP::OUTPUT_MODE)) != nullptr)
+		if ((p = m_Props->CreateProperty(_T("Post-Install\\Require Reboot"), EDOCPROP::REQUIRE_REBOOT)) != nullptr)
 		{
-			p->SetEnumStrings(_T("Self-Extracting Executable,Executable With External Data"));
-			p->SetEnumVal(0);
+			p->SetBool(false);
+			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_BOOL_YESNO);
 		}
 
 		if ((p = m_Props->CreateProperty(_T("Metadata\\Copyright"), EDOCPROP::VERSION_COPYRIGHT)) != nullptr)
@@ -1099,14 +1105,26 @@ const TCHAR *CSfxPackagerDoc::GetPropertyDescription(props::FOURCHARCODE propert
 		case EDOCPROP::OUTPUT_FILE:
 			return _T("Specifies the output executable file that will be created when this project is built | *.exe");
 
+		case EDOCPROP::MAXIMUM_SIZE_MB:
+			return _T("The maximum size (in MB) constraint for generated sfx archives, beyond which, files will be split (-1 is no constraint)");
+
 		case EDOCPROP::OUTPUT_FILE_SUFFIX_MODE:
 			return _T("Allows suffix to be automatically added immediately before the output file names extension. You can choose no suffix, the version (maj.min.rel.bld format) or the current date (YYYYMMDD format)");
 
 		case EDOCPROP::OUTPUT_MODE:
 			return _T("Determines whether the package data is stored inside the exe or in another data file; if your archive exceeds 4GB, use an external data file");
 
-		case EDOCPROP::MAXIMUM_SIZE_MB:
-			return _T("The maximum size (in MB) constraint for generated sfx archives, beyond which, files will be split (-1 is no constraint)");
+		case EDOCPROP::DEFAULT_DESTINATION:
+			return _T("The default root path where the install data will go");
+
+		case EDOCPROP::ALLOW_DESTINATION_CHANGE:
+			return _T("Allow the user to change the install destination folder");
+
+		case EDOCPROP::REQUIRE_ADMIN:
+			return _T("If set, requires the user to have administrative privileges and will prompt the user to elevate if they do not");
+
+		case EDOCPROP::COMPRESSION_BLOCKSIZE:
+			return _T("Specifies the size of pre-compression blocks, ranging from 8KB to 256KB. Some data may compress better in larger or smaller blocks. WARNING: ADJUST AT YOUR OWN RISK.");
 
 		case EDOCPROP::ICON_FILE:
 			return _T("Specifies the ICO-format window icon");
@@ -1125,15 +1143,6 @@ const TCHAR *CSfxPackagerDoc::GetPropertyDescription(props::FOURCHARCODE propert
 
 		case EDOCPROP::VERSION:
 			return _T("Specifies the version number that will be displayed by the installer. This is EITHER a string literal or the path to an .EXE, from which a version number will be extracted");
-
-		case EDOCPROP::DEFAULT_DESTINATION:
-			return _T("The default root path where the install data will go");
-
-		case EDOCPROP::ALLOW_DESTINATION_CHANGE:
-			return _T("Allow the user to change the install destination folder");
-
-		case EDOCPROP::REQUIRE_ADMIN:
-			return _T("If set, requires the user to have administrative privileges and will prompt the user to elevate if they do not");
 
 		case EDOCPROP::REQUIRE_REBOOT:
 			return _T("If set, will inform that user that a reboot of the system is recommended and prompt to do that");
@@ -1605,8 +1614,16 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 		_tcscat(fullfilename, extcpy);
 	}
 
+	m_LastBuiltInstallerFilename = fullfilename;
+
+	TCHAR timebuf[160];
+	struct tm * timeinfo;
+
+	timeinfo = localtime (&start_op);
+	_tcsftime(timebuf, 160, _T("%c"), timeinfo);
+
 	auto pcaption = (*m_Props)[CSfxPackagerDoc::EDOCPROP::CAPTION];
-	msg.Format(_T("Beginning build of \"%s\" (%s) ...\r\n"), pcaption ? pcaption->AsString() : _T("???"), fullfilename);
+	msg.Format(_T("[%s] Beginning build of \"%s\" (%s) ...\r\n"), timebuf, pcaption ? pcaption->AsString() : _T("???"), fullfilename);
 	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 	TStringArray created_archives;
@@ -1646,6 +1663,9 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 
 		if (pah)
 			pah->SetArchiver(parc);
+
+		auto pblocksize = (*m_Props)[CSfxPackagerDoc::EDOCPROP::COMPRESSION_BLOCKSIZE];
+		parc->SetCompressionBlockSize((IArchiver::EBufferSize)pblocksize->AsInt());
 
 		auto pmaxsize = (*m_Props)[CSfxPackagerDoc::EDOCPROP::MAXIMUM_SIZE_MB];
 		int64_t maxsz = pmaxsize ? pmaxsize->AsInt() : -1;
@@ -1748,13 +1768,16 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	int minutes = elapsed / 60;
 	int seconds = elapsed % 60;
 
+	timeinfo = localtime (&finish_op);
+	_tcsftime(timebuf, 160, _T("%c"), timeinfo);
+
 	if ((wr == WAIT_OBJECT_0) || (wr == WAIT_ABANDONED))
 	{
-		msg.Format(_T("Cancelled. (after: %02d:%02d:%02d)\r\n"), hours, minutes, seconds);
+		msg.Format(_T("[%s] Cancelled. (after: %02d:%02d:%02d)\r\n"), timebuf, hours, minutes, seconds);
 	}
 	else
 	{
-		msg.Format(_T("Done.\r\n\r\nAdded %d files, spanning %d archive(s).\r\n"), parc->GetFileCount(IArchiver::IM_WHOLE), spanct);
+		msg.Format(_T("[%s] Finished.\r\n\r\nAdded %d files, spanning %d archive(s).\r\n"), timebuf, parc->GetFileCount(IArchiver::IM_WHOLE), spanct);
 		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 		double comp_pct = 0.0;
@@ -1767,7 +1790,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 		msg.Format(_T("Uncompressed Size: %1.02fMB\r\nCompressed Size: %1.02fMB\r\nCompression: %1.02f%%\r\n\r\n"), uncomp_sz / 1024.0f / 1024.0f, comp_sz / 1024.0f / 1024.0f, comp_pct);
 		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
-		msg.Format(_T("Completed in: %02d:%02d:%02d\r\n\r\n\r\n"), hours, minutes, seconds);
+		msg.Format(_T("Elapsed Time: %02d:%02d:%02d\r\n\r\n\r\n"), hours, minutes, seconds);
 	}
 
 	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);

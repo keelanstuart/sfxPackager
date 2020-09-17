@@ -63,6 +63,8 @@ BEGIN_MESSAGE_MAP(CSfxPackagerView, CListView)
 	ON_UPDATE_COMMAND_UI(ID_ADJUSTPOS_DOWN, &CSfxPackagerView::OnUpdateAdjustPos)
 	ON_UPDATE_COMMAND_UI(ID_ADJUSTPOS_TOP, &CSfxPackagerView::OnUpdateAdjustPos)
 	ON_UPDATE_COMMAND_UI(ID_ADJUSTPOS_BOTTOM, &CSfxPackagerView::OnUpdateAdjustPos)
+	ON_COMMAND(ID_EXPLORE_SOURCE, &CSfxPackagerView::OnExploreSelection)
+	ON_UPDATE_COMMAND_UI(ID_EXPLORE_SOURCE, &CSfxPackagerView::OnUpdateExploreSelection)
 END_MESSAGE_MAP()
 
 // CSfxPackagerView construction/destruction
@@ -995,6 +997,71 @@ void CSfxPackagerView::OnUpdateAdjustPos(CCmdUI *pCmdUI)
 }
 
 
+void CSfxPackagerView::OnExploreSelection()
+{
+	CSfxPackagerDoc *pDoc = GetDocument();
+
+	CListCtrl &list = GetListCtrl();
+	int sel = list.GetSelectionMark();
+
+	UINT handle = (UINT)list.GetItemData(sel);
+	const TCHAR *srcpath = pDoc->GetFileData(handle, CSfxPackagerDoc::EFileDataType::FDT_SRCPATH);
+
+	if (srcpath && PathFileExists(srcpath))
+	{
+		CString s;
+		if (!PathIsDirectory(srcpath))
+			s = _T("/select, ");
+
+		s += srcpath;
+		while (s.GetLength() && (s[s.GetLength() - 1] == _T('\\')))
+			s.Delete(s.GetLength() - 1);
+
+		HINSTANCE hinst = ShellExecute(NULL, nullptr, _T("explorer.exe"), s, NULL, SW_SHOWNORMAL);
+		if (*((int *)&hinst) <= 32)
+		{
+			LPVOID lpMsgBuf;
+			DWORD dw = GetLastError();
+			FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+						  NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
+
+			// Display the error
+			CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
+			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_DEBUG, _T("Explore failed: "));
+			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_DEBUG, (const TCHAR *)lpMsgBuf);
+			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_DEBUG, _T("\r\n"));
+
+			// Free resources created by the system
+			LocalFree(lpMsgBuf);
+		}
+	}
+}
+
+void CSfxPackagerView::OnUpdateExploreSelection(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(FALSE);
+
+	CSfxPackagerDoc *pDoc = GetDocument();
+	if (!pDoc)
+		return;
+
+	CListCtrl &list = GetListCtrl();
+	if (list.GetSelectedCount() != 1)
+		return;
+
+	int sel = list.GetSelectionMark();
+	if (sel >= 0)
+	{
+		UINT handle = (UINT)list.GetItemData(sel);
+		const TCHAR *srcpath = pDoc->GetFileData(handle, CSfxPackagerDoc::EFileDataType::FDT_SRCPATH);
+		if (!srcpath)
+			return;
+
+		pCmdUI->Enable(TRUE);
+	}
+}
+
+
 BOOL CSfxPackagerView::PreTranslateMessage(MSG *pMsg)
 {
 	if (m_hAccelTable)
@@ -1015,24 +1082,7 @@ void CSfxPackagerView::OnUpdateAppTestSfx(CCmdUI *pCmdUI)
 	bool creating = (pDoc->m_hThread != NULL);
 	if (!creating)
 	{
-		TCHAR fullfilename[MAX_PATH];
-
-		tstring outputfile = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::OUTPUT_FILE]->AsString();
-		if (PathIsRelative(outputfile.c_str()))
-		{
-			TCHAR docpath[MAX_PATH];
-			_tcscpy(docpath, pDoc->GetPathName());
-			PathRemoveFileSpec(docpath);
-			PathCombine(fullfilename, docpath, outputfile.c_str());
-		}
-		else
-		{
-			_tcscpy(fullfilename, outputfile.c_str());
-		}
-
-		bool exists = PathFileExists(fullfilename);
-		if (exists)
-			enabled = true;
+		enabled = PathFileExists(pDoc->LastBuiltInstallerFilename()) ? true : false;
 	}
 
 	pCmdUI->Enable(enabled);
@@ -1049,26 +1099,11 @@ void CSfxPackagerView::TestSfx()
 	si.cb = sizeof(si);
 	PROCESS_INFORMATION pi;
 
-	TCHAR fullfilename[MAX_PATH];
-
-	tstring outputfile = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::OUTPUT_FILE]->AsString();
-	if (PathIsRelative(outputfile.c_str()))
-	{
-		TCHAR docpath[MAX_PATH];
-		_tcscpy(docpath, pDoc->GetPathName());
-		PathRemoveFileSpec(docpath);
-		PathCombine(fullfilename, docpath, outputfile.c_str());
-	}
-	else
-	{
-		_tcscpy(fullfilename, outputfile.c_str());
-	}
-
 	TCHAR path[MAX_PATH];
-	_tcscpy(path, fullfilename);
+	_tcscpy(path, pDoc->LastBuiltInstallerFilename());
 	PathRemoveFileSpec(path);
 	TCHAR command[MAX_PATH * 2];
-	_tcscpy(command, fullfilename);
+	_tcscpy(command, pDoc->LastBuiltInstallerFilename());
 	_tcscat(command, _T(" -testonly"));
 
 	BOOL created = CreateProcess(NULL, command, NULL, NULL, FALSE, NULL, NULL, path, &si, &pi);
