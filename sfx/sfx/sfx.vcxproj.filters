@@ -131,6 +131,9 @@
     <ClInclude Include="TinyJS_SfxFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LicenseAcceptanceDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sfx.cpp">
@@ -194,6 +197,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TinyJS_SfxFunctions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LicenseAcceptanceDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

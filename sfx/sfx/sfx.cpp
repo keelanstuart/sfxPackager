@@ -49,6 +49,7 @@ CSfxApp::CSfxApp()
 {
 	m_Flags = 0;
 	m_LicenseDlg = nullptr;
+	m_LicenseAcceptanceDlg = nullptr;
 }
 
 
@@ -168,6 +169,7 @@ BOOL CSfxApp::InitInstance()
 	theApp.m_js.addNative(_T("function SetGlobalInt(name, val)"), scSetGlobalInt, (void *)this);
 	theApp.m_js.addNative(_T("function SetProperty(name, type, aspect, value)"), scSetProperty, (void *)this);
 	theApp.m_js.addNative(_T("function SetRegistryKeyValue(root, key, name, val)"), scSetRegistryKeyValue, (void *)this);
+	theApp.m_js.addNative(_T("function ShowLicenseAcceptanceDlg()"), scShowLicenseAcceptanceDlg, (void *)this);
 	theApp.m_js.addNative(_T("function ShowLicenseDlg()"), scShowLicenseDlg, (void *)this);
 	theApp.m_js.addNative(_T("function SpawnProcess(cmd, params, rundir, block)"), scSpawnProcess, (void *)this);
 	theApp.m_js.addNative(_T("function TextFileOpen(filename, mode)"), scTextFileOpen, (void *)this);
@@ -309,9 +311,10 @@ BOOL CSfxApp::InitInstance()
 
 	UINT dt = runnow ? DT_PROGRESS : DT_FIRST;
 
+	CDialog *dlg = nullptr;
 	while (dt != DT_QUIT)
 	{
-		CDialog *dlg = CreateSfxDialog((ESfxDlgType)dt);
+		dlg = CreateSfxDialog((ESfxDlgType)dt);
 		if (!dlg)
 			break;
 
@@ -356,8 +359,15 @@ BOOL CSfxApp::InitInstance()
 #endif
 
 		m_pMainWnd = nullptr;
+
 		delete dlg;
-		dlg = NULL;
+		dlg = nullptr;
+	}
+
+	if (dlg)
+	{
+		delete dlg;
+		dlg = nullptr;
 	}
 
 	// Delete the shell manager created above.
@@ -383,6 +393,12 @@ BOOL CSfxApp::ExitInstance()
 	{
 		delete m_LicenseDlg;
 		m_LicenseDlg = nullptr;
+	}
+
+	if (m_LicenseAcceptanceDlg)
+	{
+		delete m_LicenseAcceptanceDlg;
+		m_LicenseAcceptanceDlg = nullptr;
 	}
 
 	return TRUE;

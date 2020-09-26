@@ -24,6 +24,7 @@ extern void scSpawnProcess(CScriptVar *c, void *userdata);
 extern void scGetExeVersion(CScriptVar* c, void* userdata);
 extern void scCompareStrings(CScriptVar* c, void* userdata);
 extern void scAbortInstall(CScriptVar* c, void* userdata);
+extern void scShowLicenseAcceptanceDlg(CScriptVar *c, void *userdata);
 extern void scShowLicenseDlg(CScriptVar *c, void *userdata);
 extern void scGetLicenseKey(CScriptVar *c, void *userdata);
 extern void scGetLicenseUser(CScriptVar *c, void *userdata);

@@ -22,6 +22,7 @@
 #include "resource.h"		// main symbols
 #include "TinyJS.h"
 #include "LicenseEntryDlg.h"
+#include "LicenseAcceptanceDlg.h"
 
 
 // CSfxApp:
@@ -49,6 +50,7 @@ public:
 	CTinyJS m_js;
 
 	CLicenseKeyEntryDlg *m_LicenseDlg;
+	CLicenseAcceptanceDlg *m_LicenseAcceptanceDlg;
 
 	enum EScriptType
 	{

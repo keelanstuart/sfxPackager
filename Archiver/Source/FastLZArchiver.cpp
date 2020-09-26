@@ -42,6 +42,7 @@ CFastLZArchiver::CFastLZArchiver(IArchiveHandle *pah)
 
 CFastLZArchiver::~CFastLZArchiver()
 {
+	m_FileTable.clear();
 }
 
 

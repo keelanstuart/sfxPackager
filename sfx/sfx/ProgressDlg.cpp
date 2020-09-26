@@ -736,9 +736,9 @@ UINT CProgressDlg::InstallThreadProc(LPVOID param)
 
 void CProgressDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
-	if (m_Thread && (nID == SC_CLOSE))
+	if (nID == SC_CLOSE)
 	{
-		if (MessageBox(_T("Do you really want to cancel this installation process and exit?"), _T("Confirm Exit"), MB_YESNO) == IDYES)
+		if (!m_Thread || (MessageBox(_T("Do you really want to cancel this installation process and exit?"), _T("Confirm Exit"), MB_YESNO) == IDYES))
 			ExitProcess(0);
 
 		return;

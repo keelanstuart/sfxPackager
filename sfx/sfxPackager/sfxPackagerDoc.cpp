@@ -59,32 +59,35 @@ bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release,
 
 	if (verSize != NULL)
 	{
-		LPBYTE verData = new BYTE[verSize];
+		LPBYTE verData = (LPBYTE)malloc(verSize);
 
-		if (GetFileVersionInfo(filename, verHandle, verSize, verData))
+		if (verData)
 		{
-			if (VerQueryValue(verData, _T("\\"), (LPVOID *)&lpBuffer, &size))
+			if (GetFileVersionInfo(filename, verHandle, verSize, verData))
 			{
-				if (size)
+				if (VerQueryValue(verData, _T("\\"), (LPVOID *)&lpBuffer, &size))
 				{
-					VS_FIXEDFILEINFO *verInfo = (VS_FIXEDFILEINFO *)lpBuffer;
-					if (verInfo->dwSignature == 0xfeef04bd)
+					if (size)
 					{
-						major = (verInfo->dwFileVersionMS >> 16) & 0xffff;
-						minor = (verInfo->dwFileVersionMS >> 0) & 0xffff;
-						release = (verInfo->dwFileVersionLS >> 16) & 0xffff;
-						build = (verInfo->dwFileVersionLS >> 0) & 0xffff;
+						VS_FIXEDFILEINFO *verInfo = (VS_FIXEDFILEINFO *)lpBuffer;
+						if (verInfo->dwSignature == 0xfeef04bd)
+						{
+							major = (verInfo->dwFileVersionMS >> 16) & 0xffff;
+							minor = (verInfo->dwFileVersionMS >> 0) & 0xffff;
+							release = (verInfo->dwFileVersionLS >> 16) & 0xffff;
+							build = (verInfo->dwFileVersionLS >> 0) & 0xffff;
 
-						if (retffi)
-							memcpy(retffi, verInfo, sizeof(VS_FIXEDFILEINFO));
+							if (retffi)
+								memcpy(retffi, verInfo, sizeof(VS_FIXEDFILEINFO));
 
-						ret = true;
+							ret = true;
+						}
 					}
 				}
 			}
-		}
 
-		delete[] verData;
+			free(verData);
+		}
 	}
 
 	return ret;
@@ -594,6 +597,12 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_FIXUPDATA"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), &furd, sizeof(SFixupResourceData));
 
 			bresult = EndUpdateResource(hbur, FALSE);
+		}
+
+		if (pverinfo)
+		{
+			free(pverinfo);
+			pverinfo = nullptr;
 		}
 	}
 
@@ -1495,7 +1504,8 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 							msg.Format(_T("    WARNING: \"%s\" NOT FOUND!\r\n"), fullfilename);
 							pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
-							return false;
+							ret = false;
+							break;
 						}
 					}
 				}
@@ -1619,11 +1629,11 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	TCHAR timebuf[160];
 	struct tm * timeinfo;
 
-	timeinfo = localtime (&start_op);
-	_tcsftime(timebuf, 160, _T("%c"), timeinfo);
+	timeinfo = localtime(&start_op);
+	_tcsftime(timebuf, 160, _T("%R:%S   %A, %e %B %Y"), timeinfo);
 
 	auto pcaption = (*m_Props)[CSfxPackagerDoc::EDOCPROP::CAPTION];
-	msg.Format(_T("[%s] Beginning build of \"%s\" (%s) ...\r\n"), timebuf, pcaption ? pcaption->AsString() : _T("???"), fullfilename);
+	msg.Format(_T("Beginning build of \"%s\"  ----  [ %s ]\r\n\r\n    Output File: %s\r\n\r\n"), pcaption ? pcaption->AsString() : fullfilename, timebuf, fullfilename);
 	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 	TStringArray created_archives;
@@ -1637,10 +1647,10 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	UINT spanct;
 	uint64_t sz_uncomp = 0, sz_totalcomp = 0, sz_comp = 0;
 
+	CPackagerArchiveHandle *pah = nullptr;
+
 	DWORD wr = 0;
 	{
-		CPackagerArchiveHandle *pah = nullptr;
-
 		auto parcmode = (*m_Props)[CSfxPackagerDoc::EDOCPROP::OUTPUT_MODE];
 		if (parcmode)
 		{
@@ -1751,12 +1761,6 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 		LARGE_INTEGER tsz = {0};
 		tsz.LowPart = GetFileSize(pah->GetHandle(), (LPDWORD)&tsz.HighPart);
 		sz_totalcomp += tsz.QuadPart;
-
-		if (pah)
-		{
-			pah->Release();
-			pah = nullptr;
-		}
 	}
 
 	time(&finish_op);
@@ -1769,15 +1773,15 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	int seconds = elapsed % 60;
 
 	timeinfo = localtime (&finish_op);
-	_tcsftime(timebuf, 160, _T("%c"), timeinfo);
+	_tcsftime(timebuf, 160, _T("%R:%S   %A, %e %B %Y"), timeinfo);
 
 	if ((wr == WAIT_OBJECT_0) || (wr == WAIT_ABANDONED))
 	{
-		msg.Format(_T("[%s] Cancelled. (after: %02d:%02d:%02d)\r\n"), timebuf, hours, minutes, seconds);
+		msg.Format(_T("\r\nCancelled build of \"%s\"  ----  [ %s ]. (after: %02d:%02d:%02d)\r\n"), pcaption ? pcaption->AsString() : fullfilename, timebuf, hours, minutes, seconds);
 	}
 	else
 	{
-		msg.Format(_T("[%s] Finished.\r\n\r\nAdded %d files, spanning %d archive(s).\r\n"), timebuf, parc->GetFileCount(IArchiver::IM_WHOLE), spanct);
+		msg.Format(_T("\r\nFinished build of \"%s\"  ----  [ %s ].\r\n\r\nAdded %d files, spanning %d archive(s).\r\n"), pcaption ? pcaption->AsString() : fullfilename, timebuf, parc->GetFileCount(IArchiver::IM_WHOLE), spanct);
 		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 		double comp_pct = 0.0;
@@ -1787,16 +1791,22 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 		{
 			comp_pct = 100.0 * std::max<double>(0.0, ((uncomp_sz / comp_sz) - 1.0));
 		}
-		msg.Format(_T("Uncompressed Size: %1.02fMB\r\nCompressed Size: %1.02fMB\r\nCompression: %1.02f%%\r\n\r\n"), uncomp_sz / 1024.0f / 1024.0f, comp_sz / 1024.0f / 1024.0f, comp_pct);
+		msg.Format(_T("Uncompressed size: %1.02fMB\r\nCompressed size (including installer overhead): %1.02fMB\r\nCompression: %1.02f%%\r\n\r\n"), uncomp_sz / 1024.0f / 1024.0f, comp_sz / 1024.0f / 1024.0f, comp_pct);
 		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
-		msg.Format(_T("Elapsed Time: %02d:%02d:%02d\r\n\r\n\r\n"), hours, minutes, seconds);
+		msg.Format(_T("Elapsed time: %02d:%02d:%02d\r\n\r\n\r\n"), hours, minutes, seconds);
 	}
 
 	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
 	pmf->GetStatusBarWnd().PostMessage(CProgressStatusBar::WM_UPDATE_STATUS, -1, 0);
 	Sleep(0);
+
+	if (pah)
+	{
+		pah->Release();
+		pah = nullptr;
+	}
 
 	IArchiver::DestroyArchiver(&parc);
 

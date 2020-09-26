@@ -185,11 +185,14 @@ void COutputList::OnContextMenu(CWnd* /*pWnd*/, CPoint point)
 	{
 		CMFCPopupMenu* pPopupMenu = new CMFCPopupMenu;
 
-		if (!pPopupMenu->Create(this, point.x, point.y, (HMENU)pSumMenu->m_hMenu, FALSE, TRUE))
-			return;
-
-		((CMDIFrameWndEx*)AfxGetMainWnd())->OnShowPopupMenu(pPopupMenu);
-		UpdateDialogControls(this, FALSE);
+		if (pPopupMenu)
+		{
+			if (pPopupMenu->Create(this, point.x, point.y, (HMENU)pSumMenu->m_hMenu, FALSE, TRUE))
+			{
+				((CMDIFrameWndEx*)AfxGetMainWnd())->OnShowPopupMenu(pPopupMenu);
+				UpdateDialogControls(this, FALSE);
+			}
+		}
 	}
 
 	SetFocus();

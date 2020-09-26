@@ -736,6 +736,22 @@ void scAbortInstall(CScriptVar* c, void* userdata)
 }
 
 
+void scShowLicenseAcceptanceDlg(CScriptVar *c, void *userdata)
+{
+	if (!theApp.m_LicenseAcceptanceDlg)
+	{
+		theApp.m_LicenseAcceptanceDlg = new CLicenseAcceptanceDlg(_T(""));
+	}
+
+	INT_PTR dlg_ret = theApp.m_LicenseAcceptanceDlg->DoModal();
+
+	if (dlg_ret == IDCANCEL)
+	{
+		exit(-1);
+	}
+}
+
+
 void scShowLicenseDlg(CScriptVar *c, void *userdata)
 {
 	if (!theApp.m_LicenseDlg)

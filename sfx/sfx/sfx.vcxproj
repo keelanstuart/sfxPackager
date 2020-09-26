@@ -225,6 +225,7 @@
     <ClInclude Include="..\sfxPackager\wtfpropertygridtooltipctrl.h" />
     <ClInclude Include="..\sfxPackager\wtfvslistbox.h" />
     <ClInclude Include="HttpDownload.h" />
+    <ClInclude Include="LicenseAcceptanceDlg.h" />
     <ClInclude Include="LicenseEntryDlg.h" />
     <ClInclude Include="FinishDlg.h" />
     <ClInclude Include="HtmlCtrl.h" />
@@ -250,6 +251,7 @@
     <ClCompile Include="..\sfxPackager\wtfpropertygridtooltipctrl.cpp" />
     <ClCompile Include="..\sfxPackager\wtfvslistbox.cpp" />
     <ClCompile Include="HttpDownload.cpp" />
+    <ClCompile Include="LicenseAcceptanceDlg.cpp" />
     <ClCompile Include="LicenseEntryDlg.cpp" />
     <ClCompile Include="FinishDlg.cpp" />
     <ClCompile Include="HtmlCtrl.cpp" />

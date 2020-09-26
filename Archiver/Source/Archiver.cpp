@@ -15,7 +15,6 @@
 
 IArchiver::CREATE_RESULT IArchiver::CreateArchiver(IArchiver **ppia, IArchiveHandle *pah, COMPRESSOR_TYPE ct)
 {
-
 	if (ppia)
 	{
 		DWORD bw;
@@ -63,8 +62,11 @@ void IArchiver::DestroyArchiver(IArchiver **ppia)
 {
 	if (ppia && *ppia)
 	{
-		delete *ppia;
-		*ppia = NULL;
+		CFastLZArchiver *pflza = dynamic_cast<CFastLZArchiver *>(*ppia);
+		if (pflza)
+			delete pflza;
+
+		*ppia = nullptr;
 	}
 }
 
@@ -75,14 +77,14 @@ IExtractor::CREATE_RESULT IExtractor::CreateExtractor(IExtractor **ppie, IArchiv
 	{
 		DWORD br;
 		uint32_t magic;
-		ReadFile(pah->GetHandle(), &magic, sizeof(uint32_t), &br, NULL);
+		ReadFile(pah->GetHandle(), &magic, sizeof(uint32_t), &br, nullptr);
 
 		if (magic != IArchiver::MAGIC)
 			return CR_BADMAGIC;
 
 		*ppie = NULL;
 
-		ReadFile(pah->GetHandle(), &magic, sizeof(uint32_t), &br, NULL);
+		ReadFile(pah->GetHandle(), &magic, sizeof(uint32_t), &br, nullptr);
 
 		UINT64 flags;
 		ReadFile(pah->GetHandle(), &flags, sizeof(uint64_t), &br, NULL);
@@ -109,7 +111,10 @@ void IExtractor::DestroyExtractor(IExtractor **ppie)
 {
 	if (ppie && *ppie)
 	{
-		delete *ppie;
-		*ppie = NULL;
+		CFastLZExtractor *pflze = dynamic_cast<CFastLZExtractor *>(*ppie);
+		if (pflze)
+			delete pflze;
+
+		*ppie = nullptr;
 	}
 }
