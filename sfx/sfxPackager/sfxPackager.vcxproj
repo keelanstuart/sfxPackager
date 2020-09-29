@@ -130,12 +130,12 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="..\Bin\sfx.exe" />
     <None Include="ReadMe.txt" />
     <None Include="res\classview.bmp" />
     <None Include="res\classview_hc.bmp" />
     <None Include="res\class_view.ico" />
     <None Include="res\class_view_hc.ico" />
+    <None Include="res\exe1.bin" />
     <None Include="res\explorer.bmp" />
     <None Include="res\explorer_hc.bmp" />
     <None Include="res\fileview.bmp" />
@@ -161,6 +161,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\sfxFlags.h" />
+    <ClInclude Include="AddFolderDlg.h" />
+    <ClInclude Include="AddURLDlg.h" />
     <ClInclude Include="ChildFrm.h" />
     <ClInclude Include="CScriptEditView.h" />
     <ClInclude Include="MainFrm.h" />
@@ -186,6 +188,8 @@
     <ClInclude Include="wtfvslistbox.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AddFolderDlg.cpp" />
+    <ClCompile Include="AddURLDlg.cpp" />
     <ClCompile Include="ChildFrm.cpp" />
     <ClCompile Include="CScriptEditView.cpp" />
     <ClCompile Include="MainFrm.cpp" />

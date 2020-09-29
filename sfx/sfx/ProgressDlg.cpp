@@ -114,7 +114,19 @@ BOOL CProgressDlg::OnInitDialog()
 		m_Progress.MoveWindow(r, FALSE);
 	}
 
-	CStatic *pst = dynamic_cast<CStatic *>(GetDlgItem(IDC_PROGRESSTEXT));
+	if (m_IndividualProgress.SubclassDlgItem(IDC_INDIVIDUALPROGRESS, this))
+	{
+		m_IndividualProgress.SetRange32(0, 100);
+
+		m_IndividualProgress.GetWindowRect(r);
+		r.left += wd;
+		ScreenToClient(r);
+		m_IndividualProgress.MoveWindow(r, FALSE);
+
+		m_IndividualProgress.ShowWindow(SW_HIDE);
+	}
+
+	CWnd *pst = GetDlgItem(IDC_PROGRESSTEXT);
 	if (pst)
 	{
 		int rl = r.left;
@@ -149,6 +161,7 @@ BOOL CProgressDlg::OnInitDialog()
 		m_pDynamicLayout->AddItem(GetDlgItem(IDCANCEL)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
 		m_pDynamicLayout->AddItem(GetDlgItem(IDC_STATUS)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeHorizontalAndVertical(100, 100));
 		m_pDynamicLayout->AddItem(GetDlgItem(IDC_PROGRESS)->GetSafeHwnd(), CMFCDynamicLayout::MoveVertical(100), CMFCDynamicLayout::SizeHorizontal(100));
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_INDIVIDUALPROGRESS)->GetSafeHwnd(), CMFCDynamicLayout::MoveVertical(100), CMFCDynamicLayout::SizeHorizontal(100));
 		m_pDynamicLayout->AddItem(GetDlgItem(IDC_PROGRESSTEXT)->GetSafeHwnd(), CMFCDynamicLayout::MoveVertical(100), CMFCDynamicLayout::SizeHorizontal(100));
 		m_pDynamicLayout->AddItem(GetDlgItem(IDC_IMAGE)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeVertical(100));
 	}
@@ -386,6 +399,141 @@ void scSkip(CScriptVar *c, void *userdata)
 // ******************************************************************************
 // ******************************************************************************
 
+void FixupJSPath(const TCHAR *path, tstring &newpath)
+{
+	if (!path)
+	{
+		newpath.clear();
+		return;
+	}
+
+	tstring tmp = path;
+	path = tmp.c_str();
+
+	newpath.clear();
+
+	while (*path)
+	{
+		if (*path == _T('\\'))
+			newpath += *path;
+
+		newpath += *(path++);
+	}
+}
+
+const TCHAR *BuildFileScriptPreamble(tstring &preamble, const TCHAR *installpath, const TCHAR *filename, const TCHAR *relpath, const TCHAR *fullpath)
+{
+	tstring _installpath;
+	FixupJSPath(installpath, _installpath);
+
+	preamble = _T("var BASEPATH = \"");
+	preamble += _installpath;
+	preamble += _T("\";  /* the base install path */\n");
+
+	preamble += _T("var FILENAME = \"");
+	preamble += PathFindFileName(filename);
+	preamble += _T("\";  /* the name of the file that was just extracted */\n");
+
+	tstring _fpath;
+
+	if (PathIsRelative(relpath))
+	{
+		_fpath = installpath;
+		if (relpath && *relpath)
+		{
+			_fpath += _T("\\");
+			_fpath += relpath;
+		}
+	}
+	else
+	{
+		_fpath = relpath;
+	}
+
+	FixupJSPath(_fpath.c_str(), _fpath);
+
+	preamble += _T("var PATH = \"");
+	preamble += _fpath;
+	preamble += _T("\";  /* the output path of that file */\n");
+
+	tstring _ffull;
+	if (fullpath && *fullpath)
+	{
+		FixupJSPath(fullpath, _ffull);
+	}
+	else
+	{
+		_ffull = _fpath;
+		_ffull += _T("\\\\");
+		_ffull += filename;
+	}
+
+	preamble += _T("var FILEPATH = \"");
+	preamble += _ffull.c_str();
+	preamble += _T("\";  /* the full filename (path + name) */\n\n");
+
+	return preamble.c_str();
+}
+
+const TCHAR *BuildPreInstallScriptPreamble(tstring &preamble, const TCHAR *installpath)
+{
+	tstring _installpath;
+	FixupJSPath(installpath, _installpath);
+
+	preamble = _T("var BASEPATH = \"");
+	preamble += _installpath;
+	preamble += _T("\";  /* the base install path */\n\n");
+
+	return preamble.c_str();
+}
+
+
+const TCHAR *BuildPostInstallScriptPreamble(tstring &preamble, const TCHAR *installpath, bool cancelled, bool extract_ok)
+{
+	tstring _installpath;
+	FixupJSPath(installpath, _installpath);
+
+	preamble = _T("var BASEPATH = \"");
+	preamble += _installpath.c_str();
+	preamble += _T("\";  /* the base install path */\n\n");
+
+	preamble += _T("var CANCELLED = \"");
+	preamble += cancelled ? _T("1") : _T("0");
+	preamble += _T("\";  /* 1 if the installation was cancelled by the user, 0 if not */\n\n");
+
+	preamble += _T("var INSTALLOK = \"");
+	preamble += extract_ok ? _T("1") : _T("0");
+	preamble += _T("\";  /* 1 if the file extraction / installation was ok, 0 if not */\n\n");
+
+	return preamble.c_str();
+}
+
+
+inline bool BlankScript(const TCHAR *script)
+{
+	return (!script && !*script) ? true : false;
+}
+
+void RunScript(const TCHAR *preamble, const TCHAR *script, const TCHAR *snippet)
+{
+	if (BlankScript(script) && BlankScript(snippet))
+		return;
+
+	tstring s;
+
+	if (preamble)
+		s += preamble;
+
+	if (script)
+		s += script;
+
+	if (snippet)
+		s += snippet;
+
+	if (!IsScriptEmpty(s))
+		theApp.m_js.execute(s);
+}
+
 DWORD CProgressDlg::RunInstall()
 {
 	WaitForSingleObject(m_mutexInstallStart, INFINITE);
@@ -416,22 +564,8 @@ DWORD CProgressDlg::RunInstall()
 
 	theApp.m_js.addNative(_T("function Skip()"), scSkip, (void *)&skip);
 
-	CString installPath = theApp.m_InstallPath;
-	installPath.Replace(_T("\\"), _T("\\\\"));
-
-	if (!theApp.m_Script[CSfxApp::EScriptType::PREINSTALL].empty())
-	{
-		tstring iscr;
-
-		iscr += _T("var BASEPATH = \"");
-		iscr += (LPCTSTR)(installPath);
-		iscr += _T("\";  /* the base install path */\n\n");
-
-		iscr += theApp.m_Script[CSfxApp::EScriptType::PREINSTALL];
-
-		if (!IsScriptEmpty(iscr))
-			theApp.m_js.execute(iscr);
-	}
+	tstring preinstallPreamble;
+	RunScript(BuildPreInstallScriptPreamble(preinstallPreamble, theApp.m_InstallPath), theApp.m_Script[CSfxApp::EScriptType::PREINSTALL].c_str(), nullptr);
 
 	bool cancelled = false;
 	bool extract_ok = true;
@@ -487,66 +621,29 @@ DWORD CProgressDlg::RunInstall()
 				if (!pie->GetFileInfo(i, &fname, &fpath, NULL, &usize, &created_time, &modified_time, &prefile_snippet, &postfile_snippet))
 					continue;
 
+				PARSEDURL urlinf = {0};
+				urlinf.cbSize = sizeof(PARSEDURL);
+				bool isurl = (ParseURL(fname.c_str(), &urlinf) == S_OK);
+					
 				tstring file_scripts_preamble;
-
-				file_scripts_preamble += _T("var BASEPATH = \"");
-				file_scripts_preamble += (LPCTSTR)(installPath);
-				file_scripts_preamble += _T("\";  /* the base install path */\n\n");
-
-				CString _fpath;
-
-				if (PathIsRelative(fpath.c_str()))
-				{
-					_fpath = theApp.m_InstallPath;
-					if (!fpath.empty())
-					{
-						_fpath += _T("\\");
-						_fpath += fpath.c_str();
-					}
-				}
-				else
-				{
-					_fpath = fpath.c_str();
-				}
-
-				_fpath.Replace(_T("\\"), _T("\\\\"));
-
-				file_scripts_preamble += _T("var FILENAME = \"");
-				file_scripts_preamble += fname.c_str();
-				file_scripts_preamble += _T("\";  /* the name of the file that was just extracted */\n");
-
-				file_scripts_preamble += _T("var PATH = \"");
-				file_scripts_preamble += _fpath;
-				file_scripts_preamble += _T("\";  /* the output path of that file */\n");
-
-				tstring _ffull = _fpath;
-				_ffull += _T("\\\\");
-				_ffull += fname;
-				file_scripts_preamble += _T("var FILEPATH = \"");
-				file_scripts_preamble += _ffull.c_str();
-				file_scripts_preamble += _T("\";  /* the full filename (path + name) */\n\n");
 
 				IExtractor::EXTRACT_RESULT er = IExtractor::EXTRACT_RESULT::ER_OK;
 
 				// reset skip each iteration so that if the user calls the Skip() js function, we won't actually extract it
 				skip = false;
 
-				if (!theApp.m_Script[CSfxApp::EScriptType::PREFILE].empty() || !prefile_snippet.empty())
-				{
-					tstring pfscr;
-
-					pfscr += file_scripts_preamble;
-					pfscr += theApp.m_Script[CSfxApp::EScriptType::PREFILE];
-					pfscr += _T("\n\n");
-					pfscr += prefile_snippet;
-
-					if (!IsScriptEmpty(pfscr))
-						theApp.m_js.execute(pfscr);
-				}
+				if (!isurl)
+					RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, fname.c_str(), fpath.c_str(), nullptr), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str());
 
 				if (!skip)
+				{
 					er = pie->ExtractFile(i, &ffull, nullptr, theApp.m_TestOnlyMode);
-				else
+
+					if (er == IExtractor::ER_MUSTDOWNLOAD)
+						RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, PathFindFileName(ffull.c_str()), fpath.c_str(), ffull.c_str()), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str());
+				}
+
+				if (skip)
 					er = IExtractor::EXTRACT_RESULT::ER_SKIP;
 
 				m_Progress.SetPos((int)i + 1);
@@ -568,13 +665,10 @@ DWORD CProgressDlg::RunInstall()
 				{
 					case IExtractor::ER_MUSTDOWNLOAD:
 					{
-						_tcscat_s(relfull, PathFindFileName(ffull.c_str()));
-
 						TCHAR dir[MAX_PATH], *_dir = dir;
 						_tcscpy_s(dir, ffull.c_str());
 						while (_dir && *(_dir++)) { if (*_dir == _T('/')) *_dir = _T('\\'); }
 
-						const TCHAR *dlfn = PathFindFileName(ffull.c_str());
 						msg.Format(_T("    Downloading %s from %s ... "), relfull, fname.c_str());
 						m_Status.SetSel(-1, 0, FALSE);
 						m_Status.ReplaceSel(msg);
@@ -584,8 +678,14 @@ DWORD CProgressDlg::RunInstall()
 							PathRemoveFileSpec(dir);
 							FLZACreateDirectories(dir);
 
+							m_IndividualProgress.ShowWindow(SW_SHOW);
+
 							CHttpDownloader dl;
-							if (!dl.DownloadHttpFile(fname.c_str(), ffull.c_str(), _T("")))
+							bool dlok = dl.DownloadHttpFile(fname.c_str(), ffull.c_str(), m_CancelEvent, DownloadCallback, this);
+
+							m_IndividualProgress.ShowWindow(SW_HIDE);
+
+							if (!dlok)
 							{
 								msg.Format(_T("[download failed]\r\n"));
 								break;
@@ -643,18 +743,8 @@ DWORD CProgressDlg::RunInstall()
 				m_Status.SetSel(-1, 0, FALSE);
 				m_Status.ReplaceSel(msg);
 
-				if ((er == IExtractor::ER_OK) && (!theApp.m_Script[CSfxApp::EScriptType::POSTFILE].empty() || !postfile_snippet.empty()))
-				{
-					tstring pfscr;
-
-					pfscr += file_scripts_preamble;
-					pfscr += theApp.m_Script[CSfxApp::EScriptType::POSTFILE];
-					pfscr += _T("\n\n");
-					pfscr += postfile_snippet;
-
-					if (!IsScriptEmpty(pfscr))
-						theApp.m_js.execute(pfscr);
-				}
+				if (er == IExtractor::ER_OK)
+					RunScript(file_scripts_preamble.c_str(), theApp.m_Script[CSfxApp::EScriptType::POSTFILE].c_str(), postfile_snippet.c_str());
 			}
 
 			IExtractor::DestroyExtractor(&pie);
@@ -666,27 +756,8 @@ DWORD CProgressDlg::RunInstall()
 		CloseHandle(hfile);
 	}
 
-	if (!theApp.m_Script[CSfxApp::EScriptType::POSTINSTALL].empty())
-	{
-		tstring fscr;
-
-		fscr += _T("var BASEPATH = \"");
-		fscr += (LPCTSTR)(installPath);
-		fscr += _T("\";  /* the base install path */\n\n");
-
-		fscr += _T("var CANCELLED = \"");
-		fscr += cancelled ? _T("1") : _T("0");
-		fscr += _T("\";  /* 1 if the installation was cancelled by the user, 0 if not */\n\n");
-
-		fscr += _T("var INSTALLOK = \"");
-		fscr += extract_ok ? _T("1") : _T("0");
-		fscr += _T("\";  /* 1 if the file extraction / installation was ok, 0 if not */\n\n");
-
-		fscr += theApp.m_Script[CSfxApp::EScriptType::POSTINSTALL];
-
-		if (!IsScriptEmpty(fscr))
-			theApp.m_js.execute(fscr);
-	}
+	tstring postinstallPreamble;
+	RunScript(BuildPostInstallScriptPreamble(postinstallPreamble, theApp.m_InstallPath, cancelled, extract_ok), theApp.m_Script[CSfxApp::EScriptType::POSTINSTALL].c_str(), nullptr);
 
 	msg.Format(_T("Done.\r\n"));
 	m_Status.SetSel(-1, 0, FALSE);
@@ -725,6 +796,38 @@ DWORD CProgressDlg::RunInstall()
 	return ret;
 }
 
+
+void __cdecl CProgressDlg::DownloadCallback(uint64_t bytes_received, uint64_t bytes_expected, void *userdata)
+{
+	CProgressDlg *_this = (CProgressDlg *)userdata;
+	if (!_this)
+		return;
+
+	DWORD oldstyle = _this->m_IndividualProgress.GetStyle();
+	DWORD newstyle = oldstyle;
+
+	if (bytes_expected != CHttpDownloader::UNKNOWN_EXPECTED_SIZE)
+	{
+		newstyle &= ~(PBS_MARQUEE | PBS_SMOOTH);
+
+		if (oldstyle != newstyle)
+			SetWindowLong(_this->m_IndividualProgress.GetSafeHwnd(), GWL_STYLE, newstyle);
+
+		double r = (double)bytes_received, e = (double)bytes_expected;
+		int p = int(r / e * 100.0);
+
+		_this->m_IndividualProgress.SetPos(p);
+	}
+	else
+	{
+		newstyle |= PBS_MARQUEE | PBS_SMOOTH;
+
+		if (oldstyle != newstyle)
+			SetWindowLong(_this->m_IndividualProgress.GetSafeHwnd(), GWL_STYLE, newstyle);
+
+		_this->m_IndividualProgress.SetMarquee(true, 50);
+	}
+}
 
 UINT CProgressDlg::InstallThreadProc(LPVOID param)
 {

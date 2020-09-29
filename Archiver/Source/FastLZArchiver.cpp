@@ -78,18 +78,10 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 
 	// for download references (filenames that contain the "http[s]:\\" marker, we don't care about disk spanning, etc...
 	// there's no actual file, so just add it to the file table and mark it as a doanloadable
-	const TCHAR *pss = src_filename;
-	if (!_tcsnicmp(pss, _T("http"), 4))
-	{
-		pss += 4;
-		if (!_tcsnicmp(pss, _T("s"), 1))
-			pss++;
-
-		if (!_tcsnicmp(pss, _T("://"), 3))
-		{
-			fte.m_Flags |= SFileTableEntry::FTEFLAG_DOWNLOAD;
-		}
-	}
+	PARSEDURL urlinf = {0};
+	urlinf.cbSize = sizeof(PARSEDURL);
+	if (ParseURL(src_filename, &urlinf) == S_OK)
+		fte.m_Flags |= SFileTableEntry::FTEFLAG_DOWNLOAD;
 
 	if (!(fte.m_Flags & SFileTableEntry::FTEFLAG_DOWNLOAD))
 		PathRemoveFileSpec(dst_path);
@@ -842,8 +834,26 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 
 	if (fte.m_Flags & SFileTableEntry::FTEFLAG_DOWNLOAD)
 	{
+		if (PathIsRelative(cvtpath.c_str()))
+		{
+			_tcscpy_s(path, MAX_PATH, m_BasePath);
+
+			if (!cvtpath.empty())
+			{
+				PathAddBackslash(path);
+
+				_tcscat_s(path, MAX_PATH, cvtpath.c_str());
+			}
+
+			PathRemoveBackslash(path);
+		}
+		else
+		{
+			_tcscpy_s(path, MAX_PATH, cvtpath.c_str());
+		}
+
 		if (output_filename)
-			*output_filename = cvtpath;
+			*output_filename = path;
 
 		return IExtractor::ER_MUSTDOWNLOAD;
 	}

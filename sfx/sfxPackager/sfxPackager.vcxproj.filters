@@ -94,7 +94,9 @@
     <None Include="res\Toolbar256.bmp">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="..\Bin\sfx.exe" />
+    <None Include="res\exe1.bin">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sfxPackager.h">
@@ -169,6 +171,12 @@
     <ClInclude Include="wtfvslistbox.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AddFolderDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AddURLDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sfxPackager.cpp">
@@ -232,6 +240,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="wtfvslistbox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AddFolderDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AddURLDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -37,6 +37,7 @@ protected:
 	HANDLE m_Thread;
 
 	CProgressCtrl m_Progress;
+	CProgressCtrl m_IndividualProgress;
 	CEdit m_Status;
 	CFont m_Font;
 
@@ -44,6 +45,8 @@ protected:
 	HANDLE m_mutexInstallStart;
 
 	POINT m_ImgSize;
+
+	static void __cdecl DownloadCallback(uint64_t bytes_received, uint64_t bytes_expected, void *userdata);
 
 	DECLARE_MESSAGE_MAP()
 public:

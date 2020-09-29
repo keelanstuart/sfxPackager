@@ -710,7 +710,7 @@ void scToUpper(CScriptVar* c, void* userdata)
 {
 	tstring str = c->getParameter(_T("str"))->getString();
 
-	std::transform(str.begin(), str.end(), str.begin(), std::toupper);
+	std::transform(str.begin(), str.end(), str.begin(), _toupper);
 
 	CScriptVar* ret = c->getReturnVar();
 	if (ret)
@@ -722,7 +722,7 @@ void scToLower(CScriptVar* c, void* userdata)
 {
 	tstring str = c->getParameter(_T("str"))->getString();
 
-	std::transform(str.begin(), str.end(), str.begin(), std::tolower);
+	std::transform(str.begin(), str.end(), str.begin(), _tolower);
 
 	CScriptVar* ret = c->getReturnVar();
 	if (ret)

@@ -13,11 +13,12 @@ All other copyrighted material contained herein is noted and rights attributed t
 #include <string>
 #include <algorithm>
 #include <tchar.h>
-
-typedef std::basic_string<TCHAR> tstring;
-
-
 #include <wininet.h>
+
+/*
+WARNING: ASYNC DOWNLOADS AND WRITES APPEAR TO HAVE SOME ISSUES. USE AT YOUR OWN RISK.
+*/
+
 
 class CHttpDownloader
 {
@@ -35,9 +36,10 @@ public:
 	CHttpDownloader(int dlflags = 0);
 	~CHttpDownloader();
 
-	typedef void (__cdecl DOWNLOAD_STATUS_CALLBACK)(uint64_t bytes_received, uint64_t bytes_expected);
+	enum { UNKNOWN_EXPECTED_SIZE = -1 };
+	typedef void (__cdecl DOWNLOAD_STATUS_CALLBACK)(uint64_t bytes_received, uint64_t bytes_expected, void *userdata);
 
-	bool DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFile, const TCHAR *szDestDir, HANDLE hEvtAbort = INVALID_HANDLE_VALUE, DOWNLOAD_STATUS_CALLBACK *usercb = nullptr);
+	bool DownloadHttpFile(const TCHAR *szUrl, const TCHAR *szDestFile = nullptr, HANDLE hEvtAbort = INVALID_HANDLE_VALUE, DOWNLOAD_STATUS_CALLBACK *usercb = nullptr, void *usercb_userdata = nullptr);
 
 private:
 	static void CALLBACK wininetStatusCallback(HINTERNET hinet, DWORD_PTR context, DWORD inetstat, LPVOID statinfo, DWORD statinfolen);

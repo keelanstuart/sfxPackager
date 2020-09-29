@@ -1375,30 +1375,27 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 
 	CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
 
-	const TCHAR *pss = srcspec;
-	if (!_tcsnicmp(pss, _T("http"), 4))
+	PARSEDURL urlinf = {0};
+	urlinf.cbSize = sizeof(PARSEDURL);
+	if (ParseURL(srcspec, &urlinf) == S_OK)
 	{
-		pss += 4;
-		if (!_tcsnicmp(pss, _T("s"), 1))
-			pss++;
+		TCHAR local_dstpath[MAX_PATH], *dp = (TCHAR *)dstpath;
+		while (dp && *dp && ((*dp == _T('\\')) || (*dp == _T('/')))) dp++;
 
-		if (!_tcsnicmp(pss, _T("://"), 3))
-		{
-			TCHAR local_dstpath[MAX_PATH], *dp = local_dstpath;
-			_tcscpy_s(local_dstpath, dstpath);
-			if (_tcslen(local_dstpath) > 0)
-				PathAddBackslash(local_dstpath);
-			_tcscat(local_dstpath, dstfilename);
+		_tcscpy_s(local_dstpath, dp);
+		if (_tcslen(local_dstpath) > 0)
+			PathAddBackslash(local_dstpath);
+		_tcscat(local_dstpath, dstfilename);
 
-			while (dp && *(dp++)) { if (*dp == _T('/')) *dp = _T('\\'); }
+		dp = local_dstpath;
+		while (dp && *(dp++)) { if (*dp == _T('/')) *dp = _T('\\'); }
 
-			parc->AddFile(srcspec, local_dstpath, nullptr, nullptr, prefile_scriptsnippet, postfile_scriptsnippet);
+		parc->AddFile(srcspec, local_dstpath, nullptr, nullptr, prefile_scriptsnippet, postfile_scriptsnippet);
 
-			msg.Format(_T("    Adding download reference to \"%s\" from (%s) ...\r\n"), local_dstpath, srcspec);
-			pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+		msg.Format(_T("    Adding download reference to \"%s\" from (%s) ...\r\n"), local_dstpath, srcspec);
+		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
 
-			return true;
-		}
+		return true;
 	}
 
 	TCHAR docpath[MAX_PATH];

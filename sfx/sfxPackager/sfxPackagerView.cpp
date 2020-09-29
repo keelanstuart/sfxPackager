@@ -27,6 +27,8 @@
 #include "RepathDlg.h"
 #include "ChildFrm.h"
 #include "CScriptEditView.h"
+#include "AddFolderDlg.h"
+#include "AddURLDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -46,12 +48,16 @@ BEGIN_MESSAGE_MAP(CSfxPackagerView, CListView)
 	ON_NOTIFY_REFLECT(LVN_GETDISPINFO, &CSfxPackagerView::OnLvnGetdispinfo)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_DELETE, &CSfxPackagerView::OnUpdateEditDelete)
 	ON_COMMAND(ID_EDIT_DELETE, &CSfxPackagerView::OnEditDelete)
-	ON_COMMAND(ID_EDIT_NEWFILE, &CSfxPackagerView::OnEditNewfile)
+	ON_COMMAND(ID_EDIT_NEWFILE, &CSfxPackagerView::OnEditNewFile)
+	ON_COMMAND(ID_EDIT_NEWFOLDER, &CSfxPackagerView::OnEditNewFolder)
+	ON_COMMAND(ID_EDIT_NEWURL, &CSfxPackagerView::OnEditNewURL)
 	ON_COMMAND(ID_SELECTALL, &CSfxPackagerView::OnSelectall)
 	ON_NOTIFY_REFLECT(LVN_ITEMACTIVATE, &CSfxPackagerView::OnLvnItemActivate)
 	ON_NOTIFY_REFLECT(NM_CLICK, &CSfxPackagerView::OnNMClick)
 	ON_NOTIFY_REFLECT(LVN_KEYDOWN, &CSfxPackagerView::OnLvnKeydown)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_NEWFILE, &CSfxPackagerView::OnUpdateEditNewfile)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_NEWFOLDER, &CSfxPackagerView::OnUpdateEditNewfile)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_NEWURL, &CSfxPackagerView::OnUpdateEditNewfile)
 	ON_COMMAND(ID_EDIT_REPATHSRC, &CSfxPackagerView::OnEditRepathSource)
 	ON_WM_SETFOCUS()
 	ON_WM_SIZE()
@@ -472,9 +478,8 @@ void CSfxPackagerView::OnEditDelete()
 	RefreshProperties();
 }
 
-void CSfxPackagerView::OnEditNewfile()
+void CSfxPackagerView::OnEditNewFile()
 {
-#if 1
 	const int c_cMaxFiles = 100;
 	const int c_cbBuffSize = (c_cMaxFiles * (MAX_PATH + 1)) + 1;
 
@@ -497,36 +502,51 @@ void CSfxPackagerView::OnEditNewfile()
 	}
 
 	filename.ReleaseBuffer();
-#else
-	BROWSEINFO bi;
-	LPITEMIDLIST pidl;
-	LPMALLOC pMalloc;
-	if (SUCCEEDED(::SHGetMalloc(&pMalloc)))
+}
+
+
+void CSfxPackagerView::OnEditNewFolder()
+{
+	CAddFolderDlg dlg;
+
+	if (dlg.DoModal() == IDOK)
 	{
-		ZeroMemory(&bi, sizeof(BROWSEINFO));
-
-		bi.lpszTitle = _T("Choose files and/or folders to add to project...");
-		bi.hwndOwner = AfxGetMainWnd();
-		bi.pszDisplayName = 0;
-		bi.pidlRoot = 0;
-		bi.ulFlags = BIF_BROWSEINCLUDEFILES | BIF_STATUSTEXT | BIF_EDITBOX | BIF_NEWDIALOGSTYLE;
-		bi.lpfn = NULL;
-		bi.lParam = NULL;
-
-		pidl = SHBrowseForFolder(&bi);
-		if (pidl)
-		{
-			TCHAR szdir[MAX_PATH];
-			if (SHGetPathFromIDList(pidl, szdir))
-			{
-				SetValue(CString(szdir));
-			}
-
-			pMalloc->Free(pidl);
-			pMalloc->Release();
-		}
+		ImportLivingFolder(dlg.m_Folder);
 	}
-#endif
+}
+
+
+void CSfxPackagerView::OnEditNewURL()
+{
+	CAddURLDlg dlg;
+
+	if (dlg.DoModal() == IDOK)
+	{
+		CSfxPackagerDoc *pDoc = GetDocument();
+
+		UINT handle = pDoc->AddFile(PathFindFileName(dlg.m_URL), dlg.m_URL, _T("\\"));
+
+		CListCtrl &list = GetListCtrl();
+
+		LVINSERTMARK im;
+		ZeroMemory(&im, sizeof(LVINSERTMARK));
+		im.cbSize = sizeof(LVINSERTMARK);
+		int idx = list.GetItemCount();
+
+		if (list.GetSafeHwnd())
+		{
+			LVITEM lvi;
+			lvi.mask = LVIF_TEXT | LVIF_PARAM;
+			lvi.iItem = idx;
+			lvi.lParam = handle;
+			lvi.pszText = LPSTR_TEXTCALLBACK;
+
+			for (lvi.iSubItem = 0; lvi.iSubItem < 4; lvi.iSubItem++)
+				list.InsertItem(&lvi);
+		}
+
+		RefreshProperties();
+	}
 }
 
 

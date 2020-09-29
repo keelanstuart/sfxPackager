@@ -86,7 +86,9 @@ public:
 	afx_msg void OnLvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnUpdateEditDelete(CCmdUI *pCmdUI);
 	afx_msg void OnEditDelete();
-	afx_msg void OnEditNewfile();
+	afx_msg void OnEditNewFile();
+	afx_msg void OnEditNewFolder();
+	afx_msg void OnEditNewURL();
 	afx_msg void OnSelectall();
 	virtual void OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView);
 	afx_msg void OnLvnItemActivate(NMHDR *pNMHDR, LRESULT *pResult);

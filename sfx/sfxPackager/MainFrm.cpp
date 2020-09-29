@@ -202,6 +202,13 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	lstBasicCommands.AddTail(ID_SORTING_SORTBYTYPE);
 	lstBasicCommands.AddTail(ID_SORTING_SORTBYACCESS);
 	lstBasicCommands.AddTail(ID_SORTING_GROUPBYTYPE);
+	lstBasicCommands.AddTail(ID_EDIT_NEWFILE);
+	lstBasicCommands.AddTail(ID_EDIT_NEWFOLDER);
+	lstBasicCommands.AddTail(ID_EDIT_NEWURL);
+	lstBasicCommands.AddTail(ID_ADJUSTPOS_UP);
+	lstBasicCommands.AddTail(ID_ADJUSTPOS_DOWN);
+	lstBasicCommands.AddTail(ID_ADJUSTPOS_TOP);
+	lstBasicCommands.AddTail(ID_ADJUSTPOS_BOTTOM);
 
 	CMFCToolBar::SetBasicCommands(lstBasicCommands);
 

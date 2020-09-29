@@ -57,6 +57,7 @@
 #include <vector>
 #include <algorithm>
 #include <ios>
+#include <regex>
 
 #include <windows.h>
 #include <tchar.h>
@@ -116,6 +117,7 @@ typedef std::basic_filebuf<TCHAR, std::char_traits<TCHAR>> tfilebuf;
 typedef std::basic_ifstream<TCHAR, std::char_traits<TCHAR>> tifstream;
 typedef std::basic_ofstream<TCHAR, std::char_traits<TCHAR>> tofstream;
 typedef std::basic_fstream<TCHAR, std::char_traits<TCHAR>> tfstream;
+typedef std::basic_regex<TCHAR, std::regex_traits<TCHAR>> tregex;
 
 #include <genio.h>
 #include <PowerProps.h>
