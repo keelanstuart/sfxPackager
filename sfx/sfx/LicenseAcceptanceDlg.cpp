@@ -71,6 +71,22 @@ BOOL CLicenseAcceptanceDlg::OnInitDialog()
 		m_CtlOk.EnableWindow(false);
 	}
 
+	if (m_pDynamicLayout)
+	{
+		delete m_pDynamicLayout;
+	}
+
+	m_pDynamicLayout = new CMFCDynamicLayout();
+	if (m_pDynamicLayout)
+	{
+		m_pDynamicLayout->Create(this);
+
+		m_pDynamicLayout->AddItem(GetDlgItem(IDOK)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
+		m_pDynamicLayout->AddItem(GetDlgItem(IDCANCEL)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_CHECK_ACCEPTLICENSE)->GetSafeHwnd(), CMFCDynamicLayout::MoveVertical(100), CMFCDynamicLayout::SizeHorizontal(100));
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_BROWSER)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeHorizontalAndVertical(100, 100));
+	}
+
 	ShowWindow(SW_SHOWNORMAL);
 
 	return FALSE;  // return TRUE unless you set the focus to a control
