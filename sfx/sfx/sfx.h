@@ -34,8 +34,6 @@ class CSfxApp : public CWinApp
 public:
 	CSfxApp();
 
-	CString m_Caption;
-	CString m_InstallPath;
 	CString m_RunCommand;
 	CString m_VersionID;
 	UINT32 m_Flags;
@@ -43,7 +41,11 @@ public:
 	UINT32 m_CompressedFileCount;
 	UINT32 m_ZipParts;
 
+	CString m_Caption;
+	CString m_InstallPath;
 	bool m_TestOnlyMode;
+	bool m_bRunAutomated;
+	bool m_bEmbedded;
 
 	props::IPropertySet *m_Props;
 

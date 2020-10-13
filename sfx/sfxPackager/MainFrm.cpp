@@ -47,6 +47,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWndEx)
 	ON_UPDATE_COMMAND_UI(ID_APP_TESTSFX, &CMainFrame::OnUpdateTestSfx)
 	ON_COMMAND(ID_APP_TESTSFX, &CMainFrame::OnTestSfx)
 	ON_WM_SETTINGCHANGE()
+	ON_WM_ACTIVATE()
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -71,10 +72,20 @@ CMainFrame::~CMainFrame()
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
+	if (theApp.m_AutomatedBuild)
+		lpCreateStruct->style &= ~WS_VISIBLE;
+
 	if (CMDIFrameWndEx::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
+	if (theApp.m_AutomatedBuild)
+	{
+		DWORD ws = GetStyle();
+		SetWindowLong(GetSafeHwnd(), GWL_STYLE, ws & ~WS_VISIBLE);
+	}
+
 	BOOL bNameValid;
+
 	// set the visual manager and style based on persisted value
 	OnApplicationLook(theApp.m_nAppLook);
 
@@ -223,8 +234,9 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 {
 	if( !CMDIFrameWndEx::PreCreateWindow(cs) )
 		return FALSE;
-	// TODO: Modify the Window class or styles here by modifying
-	//  the CREATESTRUCT cs
+
+	if (theApp.m_AutomatedBuild)
+		cs.style &= ~WS_VISIBLE;
 
 	return TRUE;
 }
@@ -541,3 +553,13 @@ void CMainFrame::OnTestSfx()
 }
 
 
+void CMainFrame::OnActivate(UINT nCmdShow, CWnd *pw, BOOL b)
+{
+	if (!theApp.m_AutomatedBuild)
+		CMDIFrameWndEx::OnActivate(nCmdShow, pw, b);
+}
+
+void CMainFrame::ActivateFrame(int nCmdShow)
+{
+	CMDIFrameWndEx::ActivateFrame(theApp.m_AutomatedBuild ? SW_HIDE : nCmdShow);
+}

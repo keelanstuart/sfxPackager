@@ -549,8 +549,17 @@ DWORD CProgressDlg::RunInstall()
 	if ((theApp.m_Flags & SFX_FLAG_EXTERNALARCHIVE) && !PathFileExists(arcpath))
 	{
 		CString m;
-		m.Format(_T("The installation could not continue because the file \"%s\" could not be found. Click OK to exit."), arcpath);
-		MessageBox(m, _T("Archive Data Missing"), MB_OK);
+		m.Format(_T("The installation could not continue because the file \"%s\" could not be found."), arcpath);
+		if (!theApp.m_bRunAutomated)
+		{
+			m.Append(_T(" Click OK to exit."));
+			MessageBox(m, _T("Archive Data Missing"), MB_OK);
+		}
+		else
+		{
+			theApp.Echo(m);
+		}
+
 		m_Thread = nullptr;
 		PostQuitMessage(-1);
 		AfxEndThread(-1);
@@ -598,8 +607,7 @@ DWORD CProgressDlg::RunInstall()
 			size_t maxi = pie->GetFileCount();
 
 			msg.Format(_T("Installing %d files to %s  ...\r\n"), int(maxi), (LPCTSTR)(theApp.m_InstallPath));
-			m_Status.SetSel(-1, 0, TRUE);
-			m_Status.ReplaceSel(msg);
+			theApp.Echo(msg);
 
 			m_Progress.SetRange32(0, (int)maxi);
 
@@ -657,8 +665,7 @@ DWORD CProgressDlg::RunInstall()
 				if (er == IExtractor::ER_OK)
 				{
 					msg.Format(_T("    %s "), relfull);
-					m_Status.SetSel(-1, 0, FALSE);
-					m_Status.ReplaceSel(msg);
+					theApp.Echo(msg);
 				}
 
 				switch (er)
@@ -670,8 +677,7 @@ DWORD CProgressDlg::RunInstall()
 						while (_dir && *(_dir++)) { if (*_dir == _T('/')) *_dir = _T('\\'); }
 
 						msg.Format(_T("    Downloading %s from %s ... "), relfull, fname.c_str());
-						m_Status.SetSel(-1, 0, FALSE);
-						m_Status.ReplaceSel(msg);
+						theApp.Echo(msg);
 
 						if (!theApp.m_TestOnlyMode)
 						{
@@ -740,8 +746,7 @@ DWORD CProgressDlg::RunInstall()
 						break;
 				}
 
-				m_Status.SetSel(-1, 0, FALSE);
-				m_Status.ReplaceSel(msg);
+				theApp.Echo(msg);
 
 				if (er == IExtractor::ER_OK)
 					RunScript(file_scripts_preamble.c_str(), theApp.m_Script[CSfxApp::EScriptType::POSTFILE].c_str(), postfile_snippet.c_str());
@@ -760,15 +765,17 @@ DWORD CProgressDlg::RunInstall()
 	RunScript(BuildPostInstallScriptPreamble(postinstallPreamble, theApp.m_InstallPath, cancelled, extract_ok), theApp.m_Script[CSfxApp::EScriptType::POSTINSTALL].c_str(), nullptr);
 
 	msg.Format(_T("Done.\r\n"));
-	m_Status.SetSel(-1, 0, FALSE);
-	m_Status.ReplaceSel(msg);
+	theApp.Echo(msg);
 
 	CWnd *pok = GetDlgItem(IDOK);
 	CWnd *pcancel = GetDlgItem(IDCANCEL);
 
 	if (!extract_ok && !cancelled)
 	{
-		MessageBox(_T("One or more files in your archive could not be properly extracted.\r\nThis may be due to your user or directory permissions or disk space."), _T("Extraction Failure"), MB_OK);
+		if (!theApp.m_bRunAutomated)
+			MessageBox(_T("One or more files in your archive could not be properly extracted.\r\nThis may be due to your user or directory permissions or disk space."), _T("Extraction Failure"), MB_OK);
+		else
+			theApp.Echo(_T("One or more files in your archive could not be properly extracted.\r\nThis may be due to your user or directory permissions or disk space."));
 	}
 
 	if (pok)
@@ -792,6 +799,9 @@ DWORD CProgressDlg::RunInstall()
 
 	m_Thread = nullptr;
 	AfxEndThread(0);
+
+	if (theApp.m_bRunAutomated)
+		ExitProcess(extract_ok ? 0 : -1);
 
 	return ret;
 }

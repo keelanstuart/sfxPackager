@@ -89,7 +89,9 @@
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>del $(SolutionDir)bin\sfx.exe</Command>
+      <Command>del $(SolutionDir)bin\sfx.exe
+
+;rem $(TargetPath) /b $(SolutionDir)..\sfxPackagerSetup.sfxpp</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

@@ -70,6 +70,7 @@ protected:
 	afx_msg void OnAppCancelSfx();
 	afx_msg void OnUpdateTestSfx(CCmdUI *pCmdUI);
 	afx_msg void OnTestSfx();
+	afx_msg void OnActivate(UINT nCmdShow, CWnd *pw, BOOL b);
 
 	DECLARE_MESSAGE_MAP()
 
@@ -77,6 +78,9 @@ protected:
 	void SetDockingWindowIcons(BOOL bHiColorIcons);
 public:
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
+
+	virtual void CMainFrame::ActivateFrame(int nCmdShow = -1);
+
 };
 
 

@@ -20,6 +20,7 @@
 #include <set>
 
 #include "../../Archiver/Include/Archiver.h"
+#include "OutputWnd.h"
 
 typedef std::vector<tstring> TStringArray;
 typedef std::vector<UINT64> TSizeArray;
@@ -156,7 +157,7 @@ public:
 
 // Operations
 public:
-	bool CreateSFXPackage(const TCHAR *filename = NULL, CSfxPackagerView *pview = NULL);
+	bool CreateSFXPackage(const TCHAR *filename = nullptr, CSfxPackagerView *pview = nullptr);
 
 	static DWORD WINAPI RunCreateSFXPackage(LPVOID param);
 
@@ -172,6 +173,8 @@ public:
 	void ReadScripts(genio::IParserT *gp);
 	void ReadFiles(genio::IParserT *gp);
 	void ReadProject(genio::IParserT *gp);
+
+	void LogMessage(COutputWnd::EOutputType t, const TCHAR *msg);
 
 	virtual void Serialize(CArchive& ar);
 #ifdef SHARED_HANDLERS

@@ -37,8 +37,9 @@ public:
 	virtual int ExitInstance();
 
 // Implementation
-	UINT  m_nAppLook;
-	BOOL  m_bHiColorIcons;
+	UINT m_nAppLook;
+	BOOL m_bHiColorIcons;
+	bool m_AutomatedBuild;
 
 	props::IPropertySet *m_Props;
 

@@ -27,6 +27,9 @@
 #include "TinyJS_MathFunctions.h"
 #include "TinyJS_SfxFunctions.h"
 
+#include <fcntl.h>
+#include <io.h>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -50,6 +53,9 @@ CSfxApp::CSfxApp()
 	m_Flags = 0;
 	m_LicenseDlg = nullptr;
 	m_LicenseAcceptanceDlg = nullptr;
+	m_TestOnlyMode = false;
+	m_bRunAutomated = false;
+	m_bEmbedded = false;
 }
 
 
@@ -119,6 +125,68 @@ BOOL CSfxApp::ProcessMessageFilter(int code, LPMSG lpMsg)
 	return CWinApp::ProcessMessageFilter(code, lpMsg);
 }
 
+class CSfxPackageCommandLineInfo : public CCommandLineInfo
+{
+	bool path_last;
+public:
+	CSfxPackageCommandLineInfo()
+	{
+		path_last = false;
+	}
+
+	// plain char* version on UNICODE for source-code backwards compatibility
+	virtual void ParseParam(const TCHAR* pszParam, BOOL bFlag, BOOL bLast)
+	{
+		bool handled = false;
+
+		if (bFlag)
+		{
+			if (!_tcsicmp(pszParam, _T("auto")))
+			{
+				theApp.m_bRunAutomated = true;
+				handled = true;
+			}
+			else if (!_tcsicmp(pszParam, _T("testonly")))
+			{
+				theApp.m_TestOnlyMode = true;
+				handled = true;
+			}
+			else if (!_tcsicmp(pszParam, _T("embed")))
+			{
+				theApp.m_bEmbedded = true;
+				handled = true;
+			}
+			else if (!_tcsicmp(pszParam, _T("path")))
+			{
+				path_last = true;
+				handled = true;
+			}
+		}
+		else
+		{
+			if (path_last)
+			{
+				path_last = false;
+				theApp.m_InstallPath = pszParam;
+			}
+		}
+
+		if (!handled)
+			CCommandLineInfo::ParseParam(pszParam, bFlag, bLast);
+	}
+
+#ifdef _UNICODE
+	// convert the string and pass it back into the standard handler
+	virtual void ParseParam(const char* pszParam, BOOL bFlag, BOOL bLast)
+	{
+		TCHAR *param;
+		LOCAL_MBCS2TCS(pszParam, param);
+
+		ParseParam(param, bFlag, bLast);
+	}
+#endif
+
+};
 
 // CSfxApp initialization
 
@@ -131,8 +199,6 @@ BOOL CSfxApp::InitInstance()
 #endif
 
 	m_Props = props::IPropertySet::CreatePropertySet();
-
-	m_TestOnlyMode = false;
 
 	registerFunctions(&m_js);
 	registerMathFunctions(&m_js);
@@ -180,10 +246,6 @@ BOOL CSfxApp::InitInstance()
 	theApp.m_js.addNative(_T("function ToLower(str)"), scToLower, (void *)this);
 	theApp.m_js.addNative(_T("function ToUpper(str)"), scToUpper, (void *)this);
 
-	// Create the shell manager, in case the dialog contains
-	// any shell tree view or shell list view controls.
-	CShellManager *pShellManager = new CShellManager;
-
 	TCHAR *pCaption = _T("Self-extracting Archive");
 	HRSRC hfr = FindResource(NULL, _T("SFX_CAPTION"), _T("SFX"));
 	if (hfr)
@@ -195,6 +257,39 @@ BOOL CSfxApp::InitInstance()
 		}
 	}
 	m_Caption = pCaption;
+
+	// Create the shell manager, in case the dialog contains
+	// any shell tree view or shell list view controls.
+	CShellManager *pShellManager = new CShellManager;
+
+	CSfxPackageCommandLineInfo cmdinfo;
+	ParseCommandLine(cmdinfo);
+
+	if (m_bEmbedded)
+	{
+		m_bRunAutomated = true;
+
+		// attach if possible, alloc if attach fails.
+		if (AttachConsole( ATTACH_PARENT_PROCESS))
+		{
+			_tfreopen(_T("CONIN$"),  _T("r"), stdin);
+			_tfreopen(_T("CONOUT$"), _T("w"), stdout);
+			_tfreopen(_T("CONOUT$"), _T("w"), stderr);
+
+#if defined(UNICODE)
+			_setmode(_fileno(stdout), _O_U8TEXT);
+			_setmode(_fileno(stderr), _O_U8TEXT);
+#endif
+			SetConsoleOutputCP(CP_UTF8);
+			SetConsoleCP(CP_UTF8);
+		}
+		else
+		{
+			AllocConsole();
+		}
+
+		_tprintf(_T("\nInstalling \"%s\" ...\n\n"), (LPCTSTR)m_Caption);
+	}
 
 	TCHAR *pDefaultPath = _T("");
 	hfr = FindResource(NULL, _T("SFX_DEFAULTPATH"), _T("SFX"));
@@ -225,9 +320,8 @@ BOOL CSfxApp::InitInstance()
 		m_Script[si] = pscript;
 	}
 
-	if (_tcsstr(m_lpCmdLine, _T("-testonly")) != nullptr)
+	if (m_TestOnlyMode)
 	{
-		m_TestOnlyMode = true;
 		m_Caption += _T(" (TEST ONLY)");
 	}
 
@@ -237,15 +331,10 @@ BOOL CSfxApp::InitInstance()
 			theApp.m_js.execute(theApp.m_Script[CSfxApp::EScriptType::INITIALIZE].c_str());
 	}
 
-	bool runnow = false;
-	if (!m_TestOnlyMode && PathIsDirectory(m_lpCmdLine))
-	{
-		m_InstallPath = m_lpCmdLine;
-		runnow = true;
-	}
-
 	if (m_InstallPath.IsEmpty())
+	{
 		m_InstallPath = _T(".\\");
+	}
 	else
 	{
 		tstring tmp = m_InstallPath, _tmp;
@@ -264,6 +353,7 @@ BOOL CSfxApp::InitInstance()
 			furd = (SFixupResourceData *)LockResource(hg);
 		}
 	}
+
 	m_RunCommand = furd ? furd-> m_LaunchCmd : _T("");
 	m_Flags = furd ? furd->m_Flags : SFX_FLAG_ALLOWDESTCHG;
 	m_VersionID = furd ? furd->m_VersionID : _T("");
@@ -309,7 +399,7 @@ BOOL CSfxApp::InitInstance()
 	m_SpaceRequired.QuadPart = furd ? furd->m_SpaceRequired.QuadPart : 0;
 	m_CompressedFileCount = furd ? furd->m_CompressedFileCount : 0;
 
-	UINT dt = runnow ? DT_PROGRESS : DT_FIRST;
+	UINT dt = m_bRunAutomated ? DT_PROGRESS : DT_FIRST;
 
 	CDialog *dlg = nullptr;
 	while (dt != DT_QUIT)
@@ -412,6 +502,9 @@ void CSfxApp::Echo(const TCHAR *msg)
 		if (ppd)
 			ppd->Echo(msg);
 	}
+
+	if (theApp.m_bEmbedded)
+		_tprintf(msg);
 }
 
 bool IsScriptEmpty(const tstring &scr)

@@ -1393,7 +1393,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 		parc->AddFile(srcspec, local_dstpath, nullptr, nullptr, prefile_scriptsnippet, postfile_scriptsnippet);
 
 		msg.Format(_T("    Adding download reference to \"%s\" from (%s) ...\r\n"), local_dstpath, srcspec);
-		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+		LogMessage(COutputWnd::OT_BUILD, msg);
 
 		return true;
 	}
@@ -1492,14 +1492,14 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 						if (PathFileExists(fullfilename))
 						{
 							msg.Format(_T("    Adding \"%s\" from \"%s\" ...\r\n"), dst, fullfilename);
-							pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+							LogMessage(COutputWnd::OT_BUILD, msg);
 
 							parc->AddFile(fullfilename, dst, &uncomp, &comp, prefile_scriptsnippet, postfile_scriptsnippet);
 						}
 						else
 						{
 							msg.Format(_T("    WARNING: \"%s\" NOT FOUND!\r\n"), fullfilename);
-							pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+							LogMessage(COutputWnd::OT_BUILD, msg);
 
 							ret = false;
 							break;
@@ -1540,8 +1540,6 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 		return true;
 
 	CString msg;
-
-	CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
 
 	TCHAR docpath[MAX_PATH];
 	_tcscpy_s(docpath, GetPathName());
@@ -1631,7 +1629,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 
 	auto pcaption = (*m_Props)[CSfxPackagerDoc::EDOCPROP::CAPTION];
 	msg.Format(_T("Beginning build of \"%s\"  ----  [ %s ]\r\n\r\n    Output File: %s\r\n\r\n"), pcaption ? pcaption->AsString() : fullfilename, timebuf, fullfilename);
-	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+	LogMessage(COutputWnd::OT_BUILD, msg);
 
 	TStringArray created_archives;
 	TSizeArray created_archive_filecounts;
@@ -1725,7 +1723,10 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 
 			c++;
 			UINT pct = (c * 100) / maxc;
-			pmf->GetStatusBarWnd().PostMessage(CProgressStatusBar::WM_UPDATE_STATUS, pct, 0);
+			CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
+			if (pmf)
+				pmf->GetStatusBarWnd().PostMessage(CProgressStatusBar::WM_UPDATE_STATUS, pct, 0);
+
 			Sleep(0);
 
 			if (wildcard)
@@ -1779,7 +1780,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	else
 	{
 		msg.Format(_T("\r\nFinished build of \"%s\"  ----  [ %s ].\r\n\r\nAdded %d files, spanning %d archive(s).\r\n"), pcaption ? pcaption->AsString() : fullfilename, timebuf, parc->GetFileCount(IArchiver::IM_WHOLE), spanct);
-		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+		LogMessage(COutputWnd::OT_BUILD, msg);
 
 		double comp_pct = 0.0;
 		double uncomp_sz = (double)m_UncompressedSize.QuadPart;
@@ -1789,14 +1790,17 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 			comp_pct = 100.0 * std::max<double>(0.0, ((uncomp_sz / comp_sz) - 1.0));
 		}
 		msg.Format(_T("Uncompressed size: %1.02fMB\r\nCompressed size (including installer overhead): %1.02fMB\r\nCompression: %1.02f%%\r\n\r\n"), uncomp_sz / 1024.0f / 1024.0f, comp_sz / 1024.0f / 1024.0f, comp_pct);
-		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+		LogMessage(COutputWnd::OT_BUILD, msg);
 
 		msg.Format(_T("Elapsed time: %02d:%02d:%02d\r\n\r\n\r\n"), hours, minutes, seconds);
 	}
 
-	pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+	LogMessage(COutputWnd::OT_BUILD, msg);
 
-	pmf->GetStatusBarWnd().PostMessage(CProgressStatusBar::WM_UPDATE_STATUS, -1, 0);
+	CMainFrame *pmf = (CMainFrame *)(AfxGetApp()->m_pMainWnd);
+	if (pmf)
+		pmf->GetStatusBarWnd().PostMessage(CProgressStatusBar::WM_UPDATE_STATUS, -1, 0);
+
 	Sleep(0);
 
 	if (pah)
@@ -1809,6 +1813,20 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 
 	return ret;
 }
+
+void CSfxPackagerDoc::LogMessage(COutputWnd::EOutputType t, const TCHAR *msg)
+{
+	CMainFrame *pmf = (CMainFrame *)(theApp.m_pMainWnd);
+
+	if (pmf)
+		pmf->GetOutputWnd().AppendMessage(COutputWnd::OT_BUILD, msg);
+
+	if (theApp.m_AutomatedBuild)
+	{
+		_tprintf(msg);
+	}
+}
+
 
 bool CSfxPackagerDoc::CopyFileToTemp(CSfxPackagerView *pview, const TCHAR *srcspec, const TCHAR *dstpath, const TCHAR *dstfilename, const TCHAR *excludespec, UINT recursion)
 {
