@@ -35,6 +35,8 @@
 #include <ctime>
 #include <map>
 
+#include <stdlib.h>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -153,6 +155,13 @@ BOOL EnumResLangProc(HMODULE hMod, LPCTSTR lpszType, LPCTSTR lpszName, WORD wIDL
 	}
 
 	return TRUE;
+}
+
+void SetTimeEnvVar(const TCHAR *varname, const TCHAR *timestr, const tm *thetime)
+{
+	TCHAR tmp[32];
+	_tcsftime(tmp, 32, timestr, thetime);
+	SetEnvironmentVariable(varname, tmp);
 }
 
 bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hFile, size_t spanIdx)
@@ -1532,8 +1541,18 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 
 bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *pview)
 {
-	time_t start_op, finish_op;
-	time(&start_op);
+	// if we're suppose to, append the current date to the filename before the extension
+	std::time_t finish_op, start_op = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+	struct tm *finish_tm, *start_tm = std::localtime(&start_op);
+
+	SetTimeEnvVar(_T("month"), _T("%m"), start_tm);
+	SetTimeEnvVar(_T("monthname"), _T("%B"), start_tm);
+	SetTimeEnvVar(_T("day"), _T("%d"), start_tm);
+	SetTimeEnvVar(_T("dayname"), _T("%A"), start_tm);
+	SetTimeEnvVar(_T("year"), _T("%Y"), start_tm);
+	SetTimeEnvVar(_T("hour"), _T("%H"), start_tm);
+	SetTimeEnvVar(_T("minutes"), _T("%M"), start_tm);
+	SetTimeEnvVar(_T("seconds"), _T("%S"), start_tm);
 
 	UINT c = 0, maxc = (UINT)m_FileData.size();
 	if (!maxc)
@@ -1605,13 +1624,8 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 			}
 
 			case 1:
-				// if we're suppose to, append the current date to the filename before the extension
-				auto now = std::chrono::system_clock::now();
-				std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-				struct tm *parts = std::localtime(&now_c);
-
 				TCHAR dates[MAX_PATH];
-				_stprintf(dates, _T("_%04d%02d%02d"), 1900 + parts->tm_year, 1 + parts->tm_mon, parts->tm_mday);
+				_stprintf(dates, _T("_%04d%02d%02d"), 1900 + start_tm->tm_year, 1 + start_tm->tm_mon, start_tm->tm_mday);
 				_tcscat(fullfilename, dates);
 				break;
 		}
@@ -1622,10 +1636,7 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	m_LastBuiltInstallerFilename = fullfilename;
 
 	TCHAR timebuf[160];
-	struct tm * timeinfo;
-
-	timeinfo = localtime(&start_op);
-	_tcsftime(timebuf, 160, _T("%R:%S   %A, %e %B %Y"), timeinfo);
+	_tcsftime(timebuf, 160, _T("%R:%S   %A, %e %B %Y"), start_tm);
 
 	auto pcaption = (*m_Props)[CSfxPackagerDoc::EDOCPROP::CAPTION];
 	msg.Format(_T("Beginning build of \"%s\"  ----  [ %s ]\r\n\r\n    Output File: %s\r\n\r\n"), pcaption ? pcaption->AsString() : fullfilename, timebuf, fullfilename);
@@ -1770,8 +1781,8 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	int minutes = elapsed / 60;
 	int seconds = elapsed % 60;
 
-	timeinfo = localtime (&finish_op);
-	_tcsftime(timebuf, 160, _T("%R:%S   %A, %e %B %Y"), timeinfo);
+	finish_tm = localtime (&finish_op);
+	_tcsftime(timebuf, 160, _T("%R:%S   %A, %e %B %Y"), finish_tm);
 
 	if ((wr == WAIT_OBJECT_0) || (wr == WAIT_ABANDONED))
 	{
