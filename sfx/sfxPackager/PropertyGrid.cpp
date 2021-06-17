@@ -167,7 +167,7 @@ void CPropertyGrid::SetActiveProperties(props::IPropertySet *props, PROPERTY_DES
 	for (size_t i = 0, maxi = m_Props ? props->GetPropertyCount() : 0; i < maxi; i++)
 	{
 		props::IProperty *p = props->GetProperty(i);
-		if (p->Flags().IsSet(PROPFLAG_HIDDEN))
+		if (p->Flags().IsSet(props::IProperty::PROPFLAG(props::IProperty::HIDDEN)))
 			continue;
 
 		CWTFPropertyGridProperty *pwp = nullptr, *parent_prop = nullptr;
