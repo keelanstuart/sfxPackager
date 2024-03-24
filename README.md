@@ -1,7 +1,7 @@
 # sfxPackager
 **A light-weight, self-extracting install creation utility for Windows**
 
-_Copyright (C) 2013-2021 Keelan Stuart (keelanstuart@gmail.com)_
+_Copyright (C) 2013-2024 Keelan Stuart (keelanstuart@gmail.com)_
 
 ### Features
 * Light-weight, self-extracting install creator
