@@ -1795,6 +1795,21 @@ void CTinyJS::execute(const tstring &code)
 
 		//throw new CScriptException(msg.str());
 	}
+	catch (...)
+	{
+		tstringstream msg;
+		msg << _T("FATAL SCRIPT ERROR\n");
+
+#ifdef TINYJS_CALL_STACK
+		for (int64_t i = (int64_t)call_stack.size() - 1; i >= 0; i--)
+			msg << _T("\n") << i << _T(": ") << call_stack.at(i);
+#endif
+		msg << _T(" at ") << l->getPosition();
+		last_error = msg.str();
+
+		delete l;
+		l = oldLex;
+	}
 
 	delete l;
 	l = oldLex;
@@ -1834,6 +1849,22 @@ CScriptVarLink CTinyJS::evaluateComplex(const tstring &code)
 	{
 		tostringstream msg;
 		msg << _T("Error ") << e->text;
+
+#ifdef TINYJS_CALL_STACK
+		for (int64_t i = (int64_t)call_stack.size() - 1; i >= 0; i--)
+			msg << _T("\n") << i << _T(": ") << call_stack.at(i);
+#endif
+		msg << _T(" at ") << l->getPosition();
+
+		delete l;
+		l = oldLex;
+
+		throw new CScriptException(msg.str());
+	}
+	catch (...)
+	{
+		tostringstream msg;
+		msg << _T("FATAL SCRIPT ERROR\n");
 
 #ifdef TINYJS_CALL_STACK
 		for (int64_t i = (int64_t)call_stack.size() - 1; i >= 0; i--)
@@ -2021,7 +2052,7 @@ CScriptVarLink *CTinyJS::functionCall(bool &execute, CScriptVarLink *function, C
 			/* we just want to execute the block, but something could
 			 * have messed up and left us with the wrong ScriptLex, so
 			 * we want to be careful here... */
-			CScriptException *exception = 0;
+			CScriptException *exception = nullptr;
 			CScriptLex *oldLex = l;
 			CScriptLex *newLex = new CScriptLex(function->var->getString());
 
@@ -2036,6 +2067,10 @@ CScriptVarLink *CTinyJS::functionCall(bool &execute, CScriptVarLink *function, C
 			catch (CScriptException *e)
 			{
 				exception = e;
+			}
+			catch (...)
+			{
+
 			}
 
 			delete newLex;

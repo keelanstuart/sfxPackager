@@ -54,7 +54,7 @@ CSfxPackagerApp::CSfxPackagerApp()
 	m_Props = props::IPropertySet::CreatePropertySet();
 
 	// recommended format for string is CompanyName.ProductName.SubProduct.VersionInformation
-	SetAppID(_T("sfxPackager.3.7.1.0"));
+	SetAppID(_T("sfxPackager.3.7.3.0"));
 }
 
 CSfxPackagerApp::~CSfxPackagerApp()
@@ -88,19 +88,6 @@ public:
 		else
 			CCommandLineInfo::ParseParam(pszParam, bFlag, bLast);
 	}
-#ifdef _UNICODE
-	virtual void ParseParam(const char* pszParam, BOOL bFlag, BOOL bLast)
-	{
-		if (bFlag && !_stricmp(pszParam, "b"))
-		{
-			m_bBuild = true;
-			m_bRunAutomated = true;
-			m_bRunEmbedded = true;
-		}
-		else
-			CCommandLineInfo::ParseParam(pszParam, bFlag, bLast);
-	}
-#endif
 
 	bool m_bBuild;
 };
@@ -222,7 +209,7 @@ BOOL CSfxPackagerApp::InitInstance()
 		{
 			AllocConsole();
 		}
-		_tprintf(_T("\nsfxPackager, a light-weight install package creation utility for Windows.\nCopyright (c) 2013-2020, Keelan Stuart. All rights reserved.\n\n"));
+		_tprintf(_T("\nsfxPackager, a light-weight install package creation utility for Windows.\nCopyright (c) 2013-2024, Keelan Stuart. All rights reserved.\n\n"));
 
 		// start the package creation process for all 
 		POSITION pdtp = m_pDocManager->GetFirstDocTemplatePosition();

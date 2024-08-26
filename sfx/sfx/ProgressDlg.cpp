@@ -514,7 +514,7 @@ inline bool BlankScript(const TCHAR *script)
 	return (!script && !*script) ? true : false;
 }
 
-void RunScript(const TCHAR *preamble, const TCHAR *script, const TCHAR *snippet)
+void RunScript(const TCHAR *preamble, const TCHAR *script, const TCHAR *snippet, const TCHAR *scripttype)
 {
 	if (BlankScript(script) && BlankScript(snippet))
 		return;
@@ -531,7 +531,29 @@ void RunScript(const TCHAR *preamble, const TCHAR *script, const TCHAR *snippet)
 		s += snippet;
 
 	if (!IsScriptEmpty(s))
-		theApp.m_js.execute(s);
+	{
+		tstring err;
+		try
+		{
+			theApp.m_js.execute(s);
+		}
+		catch (CScriptException *se)
+		{
+			err = se->text;
+		}
+		catch (...)
+		{
+			err = _T("UNKNOWN FATAL SCRIPT FAILURE!");
+		}
+
+		if (!err.empty())
+		{
+			TCHAR caption[64];
+			_sntprintf(caption, 256, _T("[%s] Script Error"), scripttype);
+			MessageBox(NULL, err.c_str(), caption, MB_OK | MB_ICONERROR);
+			exit(-1);
+		}
+	}
 }
 
 DWORD CProgressDlg::RunInstall()
@@ -574,7 +596,7 @@ DWORD CProgressDlg::RunInstall()
 	theApp.m_js.addNative(_T("function Skip()"), scSkip, (void *)&skip);
 
 	tstring preinstallPreamble;
-	RunScript(BuildPreInstallScriptPreamble(preinstallPreamble, theApp.m_InstallPath), theApp.m_Script[CSfxApp::EScriptType::PREINSTALL].c_str(), nullptr);
+	RunScript(BuildPreInstallScriptPreamble(preinstallPreamble, theApp.m_InstallPath), theApp.m_Script[CSfxApp::EScriptType::PREINSTALL].c_str(), nullptr, _T("PREINSTALL"));
 
 	bool cancelled = false;
 	bool extract_ok = true;
@@ -641,14 +663,14 @@ DWORD CProgressDlg::RunInstall()
 				skip = false;
 
 				if (!isurl)
-					RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, fname.c_str(), fpath.c_str(), nullptr), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str());
+					RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, fname.c_str(), fpath.c_str(), nullptr), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str(), _T("PREFILE"));
 
 				if (!skip)
 				{
 					er = pie->ExtractFile(i, &ffull, nullptr, theApp.m_TestOnlyMode);
 
 					if (er == IExtractor::ER_MUSTDOWNLOAD)
-						RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, PathFindFileName(ffull.c_str()), fpath.c_str(), ffull.c_str()), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str());
+						RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, PathFindFileName(ffull.c_str()), fpath.c_str(), ffull.c_str()), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str(), _T("PREFILE"));
 				}
 
 				if (skip)
@@ -749,7 +771,7 @@ DWORD CProgressDlg::RunInstall()
 				theApp.Echo(msg);
 
 				if (er == IExtractor::ER_OK)
-					RunScript(file_scripts_preamble.c_str(), theApp.m_Script[CSfxApp::EScriptType::POSTFILE].c_str(), postfile_snippet.c_str());
+					RunScript(file_scripts_preamble.c_str(), theApp.m_Script[CSfxApp::EScriptType::POSTFILE].c_str(), postfile_snippet.c_str(), _T("POSTFILE"));
 			}
 
 			IExtractor::DestroyExtractor(&pie);
@@ -762,7 +784,7 @@ DWORD CProgressDlg::RunInstall()
 	}
 
 	tstring postinstallPreamble;
-	RunScript(BuildPostInstallScriptPreamble(postinstallPreamble, theApp.m_InstallPath, cancelled, extract_ok), theApp.m_Script[CSfxApp::EScriptType::POSTINSTALL].c_str(), nullptr);
+	RunScript(BuildPostInstallScriptPreamble(postinstallPreamble, theApp.m_InstallPath, cancelled, extract_ok), theApp.m_Script[CSfxApp::EScriptType::POSTINSTALL].c_str(), nullptr, _T("POSTINSTALL"));
 
 	msg.Format(_T("Done.\r\n"));
 	theApp.Echo(msg);

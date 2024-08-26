@@ -92,7 +92,7 @@ void scMessageBox(CScriptVar *c, void *userdata)
 	tstring title = c->getParameter(_T("title"))->getString();
 	tstring msg = c->getParameter(_T("msg"))->getString();
 
-	::MessageBox(NULL, msg.c_str(), title.c_str(), MB_OK);
+	::MessageBox(NULL, msg.c_str(), title.c_str(), MB_OK | MB_SETFOREGROUND | MB_TOPMOST);
 }
 
 
@@ -101,7 +101,7 @@ void scMessageBoxYesNo(CScriptVar *c, void *userdata)
 	tstring title = c->getParameter(_T("title"))->getString();
 	tstring msg = c->getParameter(_T("msg"))->getString();
 
-	bool bret = (::MessageBox(NULL, msg.c_str(), title.c_str(), MB_YESNO) == IDYES) ? 1 : 0;
+	bool bret = (::MessageBox(NULL, msg.c_str(), title.c_str(), MB_YESNO | MB_SETFOREGROUND | MB_TOPMOST) == IDYES) ? 1 : 0;
 	CScriptVar *ret = c->getReturnVar();
 	if (ret)
 		ret->setInt(bret);
@@ -582,45 +582,21 @@ void scSpawnProcess(CScriptVar *c, void *userdata)
 	BOOL created = true;
 	if (!theApp.m_TestOnlyMode)
 	{
-		STARTUPINFO si = { 0 };
-		si.cb = sizeof(si);
+		SHELLEXECUTEINFO shExInfo = {0};
+		shExInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+		shExInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+		shExInfo.hwnd = NULL;
+		shExInfo.lpVerb = TEXT("runas");    // To elevate the process
+		shExInfo.lpFile = cmd.c_str();
+		shExInfo.lpParameters = params.empty() ? NULL : params.c_str();
+		shExInfo.lpDirectory = rundir.empty() ? NULL : rundir.c_str();
+		shExInfo.nShow = SW_SHOW;
+		shExInfo.hInstApp = NULL;
 
-		PROCESS_INFORMATION pi;
-
-#if 0
-		SECURITY_ATTRIBUTES saAttr; 
-
-		saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
-		saAttr.bInheritHandle = TRUE; 
-		saAttr.lpSecurityDescriptor = NULL; 
-
-		HANDLE hChildStdOutR, hChildStdOutW;
-		HANDLE hChildStdInR, hChildStdInW;
-
-		// Create a pipe for the child process's STDOUT. 
-		CreatePipe(&hChildStdOutR, &hChildStdOutW, &saAttr, 0);
-		SetHandleInformation(hChildStdOutR, HANDLE_FLAG_INHERIT, 0);
-
-		// Create a pipe for the child process's STDIN. 
-		CreatePipe(&hChildStdInR, &hChildStdInW, &saAttr, 0);
-		SetHandleInformation(hChildStdInW, HANDLE_FLAG_INHERIT, 0);
-
-		si.hStdError = hChildStdOutW;
-		si.hStdOutput = hChildStdOutW;
-		si.hStdInput = hChildStdInR;
-		si.dwFlags |= STARTF_USESTDHANDLES;
-#endif
-
-		created = CreateProcess(nullptr, (TCHAR *)(arg.c_str()), NULL, NULL, FALSE, NULL, NULL, rundir.empty() ? NULL : rundir.c_str(), &si, &pi);
-		if (created)
+		if (ShellExecuteEx(&shExInfo))
 		{
 			if (block)
-				WaitForSingleObject(pi.hProcess, INFINITE);
-
-#if 0
-			CloseHandle(hChildStdOutW);
-			CloseHandle(hChildStdInR);
-#endif
+				WaitForSingleObject(shExInfo.hProcess, INFINITE);
 		}
 		else
 		{
