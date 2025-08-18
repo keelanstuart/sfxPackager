@@ -1,0 +1,113 @@
+<sfxpackager>
+
+<settings2>
+
+<powerprops:property_set>
+<powerprops:property id="ADCH" type="BOOLEAN">yes</powerprops:property>
+<powerprops:property id="ADMN" type="BOOLEAN">no</powerprops:property>
+<powerprops:property id="BOOT" type="BOOLEAN">no</powerprops:property>
+<powerprops:property id="CBSZ" type="ENUM">Default,Smallest,Smaller,Small,Normal,Large,Larger,Largest:1</powerprops:property>
+<powerprops:property id="CPTN" type="STRING">sfxPackager Setup</powerprops:property>
+<powerprops:property id="DDST" type="STRING">C:\Program Files\sfxPackager</powerprops:property>
+<powerprops:property id="ENEX" type="BOOLEAN">yes</powerprops:property>
+<powerprops:property id="ICON" type="STRING">D:\proj\sfxPackager\sfx\sfxPackager\res\sfxPackager.ico</powerprops:property>
+<powerprops:property id="IMAG" type="STRING">D:\proj\sfxPackagerSetup.bmp</powerprops:property>
+<powerprops:property id="LICM" type="STRING">D:\proj\sfxPackager\LICENSE.html</powerprops:property>
+<powerprops:property id="LNCH" type="STRING">setx CELERITY_SDK %CD%</powerprops:property>
+<powerprops:property id="MXSZ" type="INT">-1</powerprops:property>
+<powerprops:property id="OFSF" type="ENUM">None,Build Date,Version:2</powerprops:property>
+<powerprops:property id="OPMD" type="ENUM">Self-Extracting Executable,Executable With External Data:0</powerprops:property>
+<powerprops:property id="OUTP" type="STRING">sfxPackagerSetup.exe</powerprops:property>
+<powerprops:property id="VCPY" type="STRING">Copyright © 2013-2025, Keelan Stuart. All Rights Reserved.</powerprops:property>
+<powerprops:property id="VDSC" type="STRING">sfxPackager Setup Application</powerprops:property>
+<powerprops:property id="VERS" type="STRING">D:\proj\sfxPackager\sfx\bin\sfxPackager64.exe</powerprops:property>
+<powerprops:property id="VPRD" type="STRING">sfxPackager</powerprops:property>
+<powerprops:property id="WLCM" type="STRING">&lt;p&gt;&lt;b&gt;sfxPackager&lt;/b&gt; is a light-weight, self-extracting install creation utility for Windows that falls somewhere between PackageForTheWeb and NSIS, functionality-wise. By combining a user-friendly, drag-and-drop GUI with an integrated JavaScript interpreter, you can quickly create attractive, fully-featured installers.&lt;/p&gt;&lt;p&gt;Follow this open source project on &lt;a href=&quot;https://sourceforge.net/projects/sfxpackager&quot;&gt;Sourceforge&lt;/a&gt; or &lt;a href=&quot;https://github.com/keelanstuart/sfxPackager&quot;&gt;github&lt;/a&gt;  and post a comment if you use and like this software.&lt;/p&gt;Thanks!&lt;br&gt;&lt;br&gt;Copyright (c) 2013-2025, Keelan Stuart</powerprops:property>
+</powerprops:property_set>
+
+</settings2>
+
+<files2>
+
+<file2>
+
+<powerprops:property_set>
+<powerprops:property id="DSTP" type="STRING">\</powerprops:property>
+<powerprops:property id="EXCL" type="STRING"></powerprops:property>
+<powerprops:property id="NAME" type="STRING">README.txt</powerprops:property>
+<powerprops:property id="PRES" type="STRING"></powerprops:property>
+<powerprops:property id="SNPT" type="STRING"></powerprops:property>
+<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\README.md</powerprops:property>
+</powerprops:property_set>
+
+</file2>
+
+<file2>
+
+<powerprops:property_set>
+<powerprops:property id="DSTP" type="STRING">\</powerprops:property>
+<powerprops:property id="EXCL" type="STRING"></powerprops:property>
+<powerprops:property id="NAME" type="STRING">LICENSE.txt</powerprops:property>
+<powerprops:property id="PRES" type="STRING"></powerprops:property>
+<powerprops:property id="SNPT" type="STRING"></powerprops:property>
+<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\LICENSE</powerprops:property>
+</powerprops:property_set>
+
+</file2>
+
+<file2>
+
+<powerprops:property_set>
+<powerprops:property id="DSTP" type="STRING">\</powerprops:property>
+<powerprops:property id="EXCL" type="STRING"></powerprops:property>
+<powerprops:property id="NAME" type="STRING">sfxPackager64.exe</powerprops:property>
+<powerprops:property id="PRES" type="STRING"></powerprops:property>
+<powerprops:property id="SNPT" type="STRING">CreateStartMenuEntry();</powerprops:property>
+<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\sfx\bin\sfxPackager64.exe</powerprops:property>
+</powerprops:property_set>
+
+</file2>
+
+<file2>
+
+<powerprops:property_set>
+<powerprops:property id="DSTP" type="STRING">\</powerprops:property>
+<powerprops:property id="EXCL" type="STRING"></powerprops:property>
+<powerprops:property id="NAME" type="STRING">sfxPackagerSource.zip</powerprops:property>
+<powerprops:property id="PRES" type="STRING">CheckDownloadSource();</powerprops:property>
+<powerprops:property id="SNPT" type="STRING"></powerprops:property>
+<powerprops:property id="SRCP" type="STRING">https://github.com/keelanstuart/sfxPackager/archive/master.zip</powerprops:property>
+</powerprops:property_set>
+
+</file2>
+
+<file2>
+
+<powerprops:property_set>
+<powerprops:property id="DSTP" type="STRING">\</powerprops:property>
+<powerprops:property id="EXCL" type="STRING"></powerprops:property>
+<powerprops:property id="NAME" type="STRING">sfxPackagerEnv.bat</powerprops:property>
+<powerprops:property id="PRES" type="STRING"></powerprops:property>
+<powerprops:property id="SNPT" type="STRING"></powerprops:property>
+<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\sfxPackagerEnv.bat</powerprops:property>
+</powerprops:property_set>
+
+</file2>
+
+</files2>
+
+<scripts>
+
+<script type="initialize">SetProperty(&quot;Add User Guide Shortcut&quot;, &quot;bool&quot;, &quot;yesno&quot;, 1);SetProperty(&quot;Download Latest Source Code&quot;, &quot;bool&quot;, &quot;yesno&quot;, 0);</script>
+
+<script type="preinstall">ShowLicenseAcceptanceDlg();CreateDirectoryTree(&quot;%APPDATA%/Microsoft/Windows/Start Menu/Programs/sfxPackager&quot;);Echo(&quot;Created Start Menu folder...\n&quot;);</script>
+
+<script type="prefile">function CheckDownloadSource(){	if (GetProperty(&quot;Download Latest Source Code&quot;) == 0)	{		Skip();	}}</script>
+
+<script type="postfile">function CreateStartMenuEntry(){	CreateShortcut(&quot;%APPDATA%/Microsoft/Windows/Start Menu/Programs/sfxPackager/sfxPackager.lnk&quot;, FILEPATH, &quot;&quot;, BASEPATH, &quot;sfxPackager (64-bit) install creation utility&quot;, 1, FILEPATH, 0);	Echo(&quot;Created Start Menu shortcut...\n&quot;);}</script>
+
+<script type="postinstall">if ((INSTALLOK == 1) &amp;&amp; (GetProperty(&quot;Add User Guide Shortcut&quot;) == 1)){	Echo(&quot;Adding shortcut to user's guide...\n&quot;);	CreateShortcut(&quot;%APPDATA%/Microsoft/Windows/Start Menu/Programs/sfxPackager/sfxPackager On-line Help.lnk&quot;, &quot;https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub&quot;, &quot;&quot;, &quot;&quot;, &quot;sfxPackager On-Line Help&quot;, 1, &quot;&quot;, 0);}</script>
+
+</scripts>
+
+</sfxpackager>
