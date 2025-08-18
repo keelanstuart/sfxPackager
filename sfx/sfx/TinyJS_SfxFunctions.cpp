@@ -47,6 +47,15 @@ HRESULT CreateShortcut(const TCHAR *targetFile, const TCHAR *targetArgs, const T
 				wchar_t *fn;
 				LOCAL_TCS2WCS(linkFile, fn);
 
+				wchar_t *crpath = _wcsdup(fn);
+				for (wchar_t *c = crpath; c && (*c != L'\0'); c++)
+					if (*c == L'/')
+						*c = L'\\';
+				PathRemoveFileSpec(crpath);
+				PathRemoveBackslash(crpath);
+				FLZACreateDirectories(crpath);
+				free(crpath);
+
 				hr = pf->Save(fn, TRUE);
 				pf->Release();
 			}
@@ -297,11 +306,16 @@ void scCreateShortcut(CScriptVar *c, void *userdata)
 
 	int64_t iconidx = c->getParameter(_T("iconidx"))->getInt();
 
+	HRESULT hr = -1;
 	if (!theApp.m_TestOnlyMode)
 	{
-		CreateShortcut(targ.c_str(), args.c_str(), file.c_str(), desc.c_str(),
+		 hr = CreateShortcut(targ.c_str(), args.c_str(), file.c_str(), desc.c_str(),
 					   (int)showmode, rundir.c_str(), icon.c_str(), (int)iconidx);
 	}
+
+	CScriptVar *pret = c->getReturnVar();
+	if (pret)
+		pret->setInt(!hr ? 1 : 0);
 }
 
 
