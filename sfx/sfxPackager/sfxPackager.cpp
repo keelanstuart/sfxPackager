@@ -1,5 +1,5 @@
 /*
-	Copyright © 2013-2020, Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
+	Copyright © 2013-2025, Keelan Stuart (hereafter referenced as AUTHOR). All Rights Reserved.
 	Permission to use, copy, modify, and distribute this software is hereby granted, without fee and without a signed licensing agreement,
 	provided that the above copyright notice appears in all copies, modifications, and distributions.
 	Furthermore, AUTHOR assumes no responsibility for any damages caused either directly or indirectly by the use of this software, nor vouches for
@@ -209,7 +209,7 @@ BOOL CSfxPackagerApp::InitInstance()
 		{
 			AllocConsole();
 		}
-		_tprintf(_T("\nsfxPackager, a light-weight install package creation utility for Windows.\nCopyright (c) 2013-2024, Keelan Stuart. All rights reserved.\n\n"));
+		_tprintf(_T("\nsfxPackager, a light-weight install package creation utility for Windows.\nCopyright (c) 2013-2025, Keelan Stuart. All rights reserved.\n\n"));
 
 		// start the package creation process for all 
 		POSITION pdtp = m_pDocManager->GetFirstDocTemplatePosition();

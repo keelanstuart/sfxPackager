@@ -194,7 +194,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="ReadMe.txt" />
     <None Include="res\bitmap1.bmp" />
     <None Include="res\license.htm">
       <DeploymentContent>true</DeploymentContent>
