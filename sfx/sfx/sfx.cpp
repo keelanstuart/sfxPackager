@@ -471,6 +471,28 @@ BOOL CSfxApp::InitInstance()
 	return FALSE;
 }
 
+void CSfxApp::CaptureWindowPos(CWnd *pw)
+{
+	if (!pw || !pw->GetSafeHwnd())
+		return;
+
+	CRect r;
+	pw->GetWindowRect(r);
+
+	if (!m_Rect.has_value())
+		m_Rect = std::make_optional(r);
+	else
+		*m_Rect = r;
+}
+
+void CSfxApp::ApplyWindowPos(CWnd *pw)
+{
+	if (!pw || !pw->GetSafeHwnd() || !m_Rect.has_value())
+		return;
+
+	pw->MoveWindow(*m_Rect);
+}
+
 BOOL CSfxApp::ExitInstance()
 {
 	if (m_Props)

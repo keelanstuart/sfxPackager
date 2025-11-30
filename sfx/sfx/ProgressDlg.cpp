@@ -174,6 +174,8 @@ BOOL CProgressDlg::OnInitDialog()
 
 	SetWindowText(theApp.m_Caption);
 
+	theApp.ApplyWindowPos(this);
+
 	ShowWindow(SW_SHOWNORMAL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -227,6 +229,8 @@ HCURSOR CProgressDlg::OnQueryDragIcon()
 
 void CProgressDlg::OnCancel()
 {
+	theApp.CaptureWindowPos(this);
+
 	if (m_Thread == NULL)
 	{
 		CDialogEx::OnCancel();
@@ -272,6 +276,8 @@ void CProgressDlg::OnOK()
 		if (!t.Compare(_T("Close")))
 			ExitProcess(0);
 	}
+
+	theApp.CaptureWindowPos(this);
 
 	CDialogEx::OnOK();
 }

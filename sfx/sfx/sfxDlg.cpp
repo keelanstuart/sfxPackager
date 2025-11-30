@@ -150,6 +150,8 @@ BOOL CSfxDlg::OnInitDialog()
 
 	SetWindowText(theApp.m_Caption);
 
+	theApp.ApplyWindowPos(this);
+
 	ShowWindow(SW_SHOWNORMAL);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
@@ -211,6 +213,8 @@ void CSfxDlg::OnBnClickedOk()
 		theApp.m_InstallPath = expath.c_str();
 	}
 
+	theApp.CaptureWindowPos(this);
+
 	if (!PathFileExists(theApp.m_InstallPath))
 	{
 		CString s;
@@ -250,4 +254,12 @@ void CSfxDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 
 	CDialogEx::OnSysCommand(nID, lParam);
+}
+
+
+void CSfxDlg::OnCancel()
+{
+	theApp.CaptureWindowPos(this);
+
+	CDialogEx::OnCancel();
 }

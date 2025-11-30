@@ -23,6 +23,7 @@
 #include "TinyJS.h"
 #include "LicenseEntryDlg.h"
 #include "LicenseAcceptanceDlg.h"
+#include <optional>
 
 
 // CSfxApp:
@@ -46,6 +47,11 @@ public:
 	bool m_TestOnlyMode;
 	bool m_bRunAutomated;
 	bool m_bEmbedded;
+
+	std::optional<CRect> m_Rect = std::nullopt;
+	void CaptureWindowPos(CWnd *pw);
+	void ApplyWindowPos(CWnd *pw);
+
 
 	props::IPropertySet *m_Props;
 

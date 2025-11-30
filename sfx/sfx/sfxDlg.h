@@ -44,4 +44,5 @@ protected:
 public:
 	afx_msg void OnBnClickedOk();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+    virtual void OnCancel();
 };

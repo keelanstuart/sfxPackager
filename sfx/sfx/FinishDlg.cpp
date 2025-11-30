@@ -133,7 +133,8 @@ BOOL CFinishDlg::OnInitDialog()
 	}
 
 	SetWindowText(theApp.m_Caption);
-
+	
+	theApp.ApplyWindowPos(this);
 	ShowWindow(SW_SHOWNORMAL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -244,12 +245,16 @@ void CFinishDlg::OnOK()
 		}
 	}
 
+	theApp.CaptureWindowPos(this);
+
 	CDialogEx::OnOK();
 }
 
 
 void CFinishDlg::OnCancel()
 {
+	theApp.CaptureWindowPos(this);
+
 	CDialogEx::OnCancel();
 }
 

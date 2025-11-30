@@ -120,6 +120,8 @@ BOOL CWelcomeDlg::OnInitDialog()
 
 	SetWindowText(theApp.m_Caption);
 
+	theApp.ApplyWindowPos(this);
+
 	ShowWindow(SW_SHOWNORMAL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -160,4 +162,20 @@ void CWelcomeDlg::OnPaint()
 HCURSOR CWelcomeDlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
+}
+
+
+void CWelcomeDlg::OnOK()
+{
+	theApp.CaptureWindowPos(this);
+
+	CDialogEx::OnOK();
+}
+
+
+void CWelcomeDlg::OnCancel()
+{
+	theApp.CaptureWindowPos(this);
+
+	CDialogEx::OnCancel();
 }

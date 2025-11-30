@@ -38,4 +38,6 @@ public:
 	virtual BOOL OnInitDialog();
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
+    virtual void OnOK();
+    virtual void OnCancel();
 };
