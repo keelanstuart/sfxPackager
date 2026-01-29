@@ -17,7 +17,7 @@ _Copyright (C) 2013-2025 Keelan Stuart (keelanstuart@gmail.com)_
 * Unicode used throughout
 * 64-bit; very large archives are no problem, though for self-contained installers, a limit of 4GB is implied (but not enforced!)
 
-View the [user's guide](https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub?start=false&loop=false&delayms=30000) to get started!
+Watch the [tutorials on YouTube](https://www.youtube.com/playlist?list=PLaed72lE3UjgzdL1qOys-vxemSUOeGJWf) or view the [user's guide](https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub?start=false&loop=false&delayms=30000) to get started!
 
 --------------------------
 The user's guide can be of great help in deeper understanding of install creation, but for simple operation, just
