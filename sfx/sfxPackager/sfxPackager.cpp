@@ -54,7 +54,7 @@ CSfxPackagerApp::CSfxPackagerApp()
 	m_Props = props::IPropertySet::CreatePropertySet();
 
 	// recommended format for string is CompanyName.ProductName.SubProduct.VersionInformation
-	SetAppID(_T("sfxPackager.3.7.3.0"));
+	SetAppID(_T("sfxPackager.3.7.6.0"));
 }
 
 CSfxPackagerApp::~CSfxPackagerApp()
