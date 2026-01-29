@@ -179,22 +179,181 @@ void scRenameFile(CScriptVar *c, void *userdata)
 }
 
 
-void scDeleteFile(CScriptVar *c, void *userdata)
+bool HasWildcards(const tstring &s)
+{
+	return (s.find(_T('*')) != tstring::npos) || (s.find(_T('?')) != tstring::npos);
+}
+
+
+void SplitDirAndPattern(const tstring &in, tstring &outDir, tstring &outPattern)
+{
+	// Handles both \ and /
+	size_t p1 = in.find_last_of(_T('\\'));
+	size_t p2 = in.find_last_of(_T('/'));
+	size_t p  = (p1 == tstring::npos) ? p2 : (p2 == tstring::npos ? p1 : (p1 > p2 ? p1 : p2));
+
+	if (p == tstring::npos)
+	{
+		outDir = _T(".");
+		outPattern = in;
+	}
+	else
+	{
+		outDir = in.substr(0, p);
+		outPattern = in.substr(p + 1);
+		if (outDir.empty()) outDir = _T(".");
+	}
+}
+
+
+tstring JoinPath(const tstring &a, const tstring &b)
+{
+	if (a.empty())
+		return b;
+
+	TCHAR last = a.back();
+	if (last == _T('\\') || last == _T('/'))
+		return a + b;
+
+	return a + _T("\\") + b;
+}
+
+
+bool DeleteOneFile(const tstring &path)
+{
+	// Clear read-only to avoid failures.
+	DWORD attr = GetFileAttributes(path.c_str());
+	if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_READONLY))
+	{
+		SetFileAttributes(path.c_str(), attr & ~FILE_ATTRIBUTE_READONLY);
+	}
+	return ::DeleteFile(path.c_str()) != 0;
+}
+
+
+// Deletes all files matching wildcard (in the specified directory only).
+// Returns true if *every* matching file deleted successfully (or no matches).
+bool DeleteWildcardFiles(const tstring &wildcardPath)
+{
+	tstring dir, pattern;
+	SplitDirAndPattern(wildcardPath, dir, pattern);
+
+	tstring findSpec = JoinPath(dir, pattern);
+
+	WIN32_FIND_DATA ffd{};
+	HANDLE hFind = FindFirstFile(findSpec.c_str(), &ffd);
+	if (hFind == INVALID_HANDLE_VALUE)
+	{
+		// No matches (or directory doesn't exist). Treat "no matches" as success.
+		return true;
+	}
+
+	bool allOk = true;
+
+	do
+	{
+		// Skip directories here; wildcard deletion is for files.
+		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			continue;
+
+		tstring filePath = JoinPath(dir, ffd.cFileName);
+		if (!DeleteOneFile(filePath))
+			allOk = false;
+
+	}
+	while (FindNextFile(hFind, &ffd));
+
+	FindClose(hFind);
+	return allOk;
+}
+
+
+void scDeleteFile(CScriptVar* c, void* userdata)
+{
+    tstring path = c->getParameter(_T("path"))->getString(), _path;
+    ReplaceEnvironmentVariables(path, _path);
+    ReplaceRegistryKeys(_path, path);
+
+    BOOL ok = TRUE;
+
+    if (!theApp.m_TestOnlyMode)
+    {
+        if (HasWildcards(path))
+            ok = DeleteWildcardFiles(path) ? TRUE : FALSE;
+        else
+            ok = DeleteOneFile(path) ? TRUE : FALSE;
+    }
+
+    if (CScriptVar* ret = c->getReturnVar())
+        ret->setInt(ok ? 1 : 0);
+}
+
+
+bool DeleteDirectoryRecursive(const tstring &dirPath)
+{
+	// Enumerate everything under dirPath\*
+	tstring spec = JoinPath(dirPath, _T("*"));
+
+	WIN32_FIND_DATA ffd{};
+	HANDLE hFind = FindFirstFile(spec.c_str(), &ffd);
+	if (hFind == INVALID_HANDLE_VALUE)
+	{
+		// If it doesn't exist, treat as success.
+		return true;
+	}
+
+	bool allOk = true;
+
+	do
+	{
+		const TCHAR *name = ffd.cFileName;
+		if (_tcscmp(name, _T(".")) == 0 || _tcscmp(name, _T("..")) == 0)
+			continue;
+
+		tstring full = JoinPath(dirPath, name);
+
+		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			if (!DeleteDirectoryRecursive(full))
+				allOk = false;
+		}
+		else
+		{
+			if (!DeleteOneFile(full))
+				allOk = false;
+		}
+
+	}
+	while (FindNextFile(hFind, &ffd));
+
+	FindClose(hFind);
+
+	// Remove read-only on the directory itself if needed.
+	DWORD attr = GetFileAttributes(dirPath.c_str());
+	if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_READONLY))
+	{
+		SetFileAttributes(dirPath.c_str(), attr & ~FILE_ATTRIBUTE_READONLY);
+	}
+
+	if (!::RemoveDirectory(dirPath.c_str()))
+		allOk = false;
+
+	return allOk;
+}
+
+
+void scDeleteDirectory(CScriptVar *c, void *userdata)
 {
 	tstring path = c->getParameter(_T("path"))->getString(), _path;
 	ReplaceEnvironmentVariables(path, _path);
 	ReplaceRegistryKeys(_path, path);
 
-
-	BOOL delete_result = TRUE;
+	BOOL ok = TRUE;
 	if (!theApp.m_TestOnlyMode)
-	{
-		delete_result = DeleteFile(path.c_str());
-	}
+		ok = DeleteDirectoryRecursive(path) ? TRUE : FALSE;
 
-	CScriptVar *ret = c->getReturnVar();
-	if (ret)
-		ret->setInt(delete_result ? 1 : 0);
+	if (CScriptVar *ret = c->getReturnVar())
+		ret->setInt(ok ? 1 : 0);
 }
 
 

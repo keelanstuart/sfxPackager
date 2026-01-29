@@ -98,15 +98,9 @@
 
 <scripts>
 
-<script type="initialize">SetProperty(&quot;Add User Guide Shortcut&quot;, &quot;bool&quot;, &quot;yesno&quot;, 1);
-SetProperty(&quot;Download Latest Source Code&quot;, &quot;bool&quot;, &quot;yesno&quot;, 0);
-</script>
+<script type="initialize">SetProperty(&quot;Add User Guide Shortcut&quot;, &quot;bool&quot;, &quot;yesno&quot;, 1);SetProperty(&quot;Download Latest Source Code&quot;, &quot;bool&quot;, &quot;yesno&quot;, 0);</script>
 
-<script type="preinstall">ShowLicenseAcceptanceDlg();
-
-CreateDirectoryTree(&quot;%APPDATA%/Microsoft/Windows/Start Menu/Programs/sfxPackager&quot;);
-Echo(&quot;Created Start Menu folder...\n&quot;);
-</script>
+<script type="preinstall">ShowLicenseAcceptanceDlg();DeleteDirectory(BASEPATH);DeleteDirectory(&quot;%APPDATA%/Microsoft/Windows/Start Menu/Programs/sfxPackager&quot;);CreateDirectoryTree(&quot;%APPDATA%/Microsoft/Windows/Start Menu/Programs/sfxPackager&quot;);Echo(&quot;Created Start Menu folder...\n&quot;);</script>
 
 <script type="prefile">function CheckDownloadSource()
 {

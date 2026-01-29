@@ -209,6 +209,7 @@ BOOL CSfxApp::InitInstance()
 	theApp.m_js.addNative(_T("function CreateDirectoryTree(path)"), scCreateDirectoryTree, (void *)this);
 	theApp.m_js.addNative(_T("function CreateShortcut(file, target, args, rundir, desc, showmode, icon, iconidx)"), scCreateShortcut, (void *)this);
 	theApp.m_js.addNative(_T("function CreateSymbolicLink(linkname, targetname)"), scCreateSymbolicLink, (void *)this);
+	theApp.m_js.addNative(_T("function DeleteDirectory(path)"), scDeleteDirectory, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteFile(path)"), scDeleteFile, (void *)this);
 	theApp.m_js.addNative(_T("function DeleteRegistryKey(root, key, subkey)"), scDeleteRegistryKey, (void *)this);
 	theApp.m_js.addNative(_T("function DownloadFile(url, file)"), scDownloadFile, (void *)this);

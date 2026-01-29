@@ -1488,7 +1488,7 @@ bool CSfxPackagerDoc::AddFileToArchive(CSfxPackagerView *pview, IArchiver *parc,
 				}
 				else if (PathMatchSpec(fd.cFileName, filespec))
 				{
-					if (!ShouldExclude(fd.cFileName, excludespec))
+					if (!ShouldExclude(fd.cFileName, excludespec) && !ShouldExclude(fullfilename, excludespec))
 					{
 						if (!PathIsNetworkPath(dstpath) && *dstpath == _T('\\'))
 							dstpath++;

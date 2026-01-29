@@ -7,6 +7,7 @@ extern void scMessageBoxYesNo(CScriptVar *c, void *userdata);
 extern void scCreateDirectoryTree(CScriptVar *c, void *userdata);
 extern void scCopyFile(CScriptVar *c, void *userdata);
 extern void scRenameFile(CScriptVar *c, void *userdata);
+extern void scDeleteDirectory(CScriptVar *c, void *userdata);
 extern void scDeleteFile(CScriptVar *c, void *userdata);
 extern void scFileExists(CScriptVar *c, void *userdata);
 extern void scFilenameHasExtension(CScriptVar *c, void *userdata);
