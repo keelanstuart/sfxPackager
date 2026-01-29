@@ -18,7 +18,7 @@
 <powerprops:property id="OFSF" type="ENUM">None,Build Date,Version:2</powerprops:property>
 <powerprops:property id="OPMD" type="ENUM">Self-Extracting Executable,Executable With External Data:0</powerprops:property>
 <powerprops:property id="OUTP" type="STRING">sfxPackagerSetup.exe</powerprops:property>
-<powerprops:property id="VCPY" type="STRING">Copyright © 2013-2025, Keelan Stuart. All Rights Reserved.</powerprops:property>
+<powerprops:property id="VCPY" type="STRING">Copyright © 2013-2026, Keelan Stuart. All Rights Reserved.</powerprops:property>
 <powerprops:property id="VDSC" type="STRING">sfxPackager Setup Application</powerprops:property>
 <powerprops:property id="VERS" type="STRING">D:\proj\sfxPackager\sfx\bin\sfxPackager64.exe</powerprops:property>
 <powerprops:property id="VPRD" type="STRING">sfxPackager</powerprops:property>
