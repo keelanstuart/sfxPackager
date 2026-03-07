@@ -18,6 +18,14 @@
 #include "PropertyGrid.h"
 
 
+class CCustomBrowseEdit : public CMFCEditBrowseCtrl
+{
+protected:
+	virtual void OnBrowse() override;
+	virtual void OnAfterUpdate() override;
+};
+
+
 // CSfxDlg dialog
 class CSfxDlg : public CDialogEx
 {
@@ -33,6 +41,7 @@ protected:
 
 // Implementation
 protected:
+	CCustomBrowseEdit m_BrowseEdit;
 	HICON m_hIcon;
 	CPropertyGrid m_PropGrid;
 

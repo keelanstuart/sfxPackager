@@ -26,8 +26,25 @@
 
 // CSfxDlg dialog
 
+void CCustomBrowseEdit::OnBrowse()
+{
+	CFolderPickerDialog dlg(
+		nullptr,
+		OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST,
+		this,
+		0);
 
+	if (dlg.DoModal() == IDOK)
+	{
+		CString folder = dlg.GetPathName();
+		SetWindowText(folder);
+	}
+}
 
+void CCustomBrowseEdit::OnAfterUpdate()
+{
+	__super::OnAfterUpdate();
+}
 
 CSfxDlg::CSfxDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CSfxDlg::IDD, pParent)
@@ -38,6 +55,7 @@ CSfxDlg::CSfxDlg(CWnd* pParent /*=NULL*/)
 void CSfxDlg::DoDataExchange(CDataExchange* pDX)
 {
 	DDX_Control(pDX, IDC_OPTIONS, m_PropGrid);
+	DDX_Control(pDX, IDC_EDIT_INSTALLPATH, m_BrowseEdit);
 
 	CDialogEx::DoDataExchange(pDX);
 }
@@ -89,17 +107,16 @@ BOOL CSfxDlg::OnInitDialog()
 		pt->MoveWindow(rt, FALSE);
 	}
 
-	CWnd *pe = GetDlgItem(IDC_EDIT_INSTALLPATH);
-	if (pe)
+	if (m_BrowseEdit.GetSafeHwnd())
 	{
 		CRect re;
-		pe->GetWindowRect(re);
+		m_BrowseEdit.GetWindowRect(re);
 		re.left += wd;
 		ScreenToClient(re);
-		pe->MoveWindow(re, FALSE);
+		m_BrowseEdit.MoveWindow(re, FALSE);
 
-		pe->SetWindowText(theApp.m_InstallPath);
-		pe->EnableWindow(theApp.m_Flags & SFX_FLAG_ALLOWDESTCHG);
+		m_BrowseEdit.SetWindowText(theApp.m_InstallPath);
+		m_BrowseEdit.EnableWindow(theApp.m_Flags & SFX_FLAG_ALLOWDESTCHG);
 	}
 
 	CWnd *pot = GetDlgItem(IDC_OPTIONSTEXT);
@@ -200,11 +217,10 @@ extern bool FLZACreateDirectories(const TCHAR *dir);
 
 void CSfxDlg::OnBnClickedOk()
 {
-	CWnd *pe = GetDlgItem(IDC_EDIT_INSTALLPATH);
-	if (pe)
+	if (m_BrowseEdit.GetSafeHwnd())
 	{
 		CString tmppath;
-		pe->GetWindowText(tmppath);
+		m_BrowseEdit.GetWindowText(tmppath);
 
 		tstring _expath, expath = (LPCTSTR)tmppath;
 		ReplaceEnvironmentVariables(expath, _expath);
