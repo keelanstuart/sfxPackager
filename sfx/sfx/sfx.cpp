@@ -397,8 +397,18 @@ BOOL CSfxApp::InitInstance()
 		}
 	}
 
-	m_SpaceRequired.QuadPart = furd ? furd->m_SpaceRequired.QuadPart : 0;
-	m_CompressedFileCount = furd ? furd->m_CompressedFileCount : 0;
+	if (furd)
+	{
+		m_SpaceRequired.QuadPart = furd->m_SpaceRequired.QuadPart;
+		m_CompressedFileCount = furd->m_CompressedFileCount;
+		m_ArchiveInternalOffset = furd->m_ArchiveOffset;
+	}
+	else
+	{
+		m_SpaceRequired.QuadPart = 0;
+		m_CompressedFileCount = 0;
+		m_ArchiveInternalOffset.QuadPart = 0;
+	}
 
 	UINT dt = m_bRunAutomated ? DT_PROGRESS : DT_FIRST;
 

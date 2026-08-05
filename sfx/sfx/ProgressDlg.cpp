@@ -611,16 +611,17 @@ DWORD CProgressDlg::RunInstall()
 	if (hfile != INVALID_HANDLE_VALUE)
 	{
 		LARGE_INTEGER arcofs = {0};
-		DWORD br;
 
 		CUnpackArchiveHandle *pah = nullptr;
 
 		if (!(theApp.m_Flags & SFX_FLAG_EXTERNALARCHIVE))
 		{
-			SetFilePointer(hfile, -(LONG)(sizeof(LONGLONG)), NULL, FILE_END);
-			ReadFile(hfile, &(arcofs.QuadPart), sizeof(LONGLONG), &br, NULL);
+			//DWORD br;
+			//SetFilePointer(hfile, -(LONG)(sizeof(LONGLONG)), NULL, FILE_END);
+			//ReadFile(hfile, &(arcofs.QuadPart), sizeof(LONGLONG), &br, NULL);
 
 			pah = new CSfxHandle(hfile);
+			arcofs = theApp.m_ArchiveInternalOffset;	// use the offset we stored in the furd!
 		}
 		else
 		{

@@ -132,6 +132,20 @@ BOOL CFinishDlg::OnInitDialog()
 		}
 	}
 
+	if (m_pDynamicLayout)
+	{
+		delete m_pDynamicLayout;
+	}
+
+	m_pDynamicLayout = new CMFCDynamicLayout();
+	if (m_pDynamicLayout)
+	{
+		m_pDynamicLayout->Create(this);
+
+		m_pDynamicLayout->AddItem(GetDlgItem(IDOK)->GetSafeHwnd(), CMFCDynamicLayout::MoveHorizontalAndVertical(100, 100), CMFCDynamicLayout::SizeNone());
+		m_pDynamicLayout->AddItem(GetDlgItem(IDC_IMAGE)->GetSafeHwnd(), CMFCDynamicLayout::MoveNone(), CMFCDynamicLayout::SizeVertical(100));
+	}
+
 	SetWindowText(theApp.m_Caption);
 	
 	theApp.ApplyWindowPos(this);

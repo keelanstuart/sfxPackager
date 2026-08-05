@@ -38,9 +38,10 @@ public:
 	CString m_RunCommand;
 	CString m_VersionID;
 	UINT32 m_Flags;
-	LARGE_INTEGER m_SpaceRequired;
+	LARGE_INTEGER m_SpaceRequired = {0};
 	UINT32 m_CompressedFileCount;
 	UINT32 m_ZipParts;
+	LARGE_INTEGER m_ArchiveInternalOffset = {0};
 
 	CString m_Caption;
 	CString m_InstallPath;

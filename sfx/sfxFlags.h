@@ -32,6 +32,7 @@ struct sFixupResourceData
 {
 	char m_Ident[16];
 
+	LARGE_INTEGER m_ArchiveOffset;
 	TCHAR m_LaunchCmd[MAX_PATH];
 	TCHAR m_VersionID[MAX_PATH];
 	UINT32 m_Flags;

@@ -633,7 +633,7 @@ bool FixupSfxExecutable(CSfxPackagerDoc *pDoc, const TCHAR *filename, const TCHA
 	if (hf == INVALID_HANDLE_VALUE)
 		return false;
 
-	LARGE_INTEGER ofs;
+	LARGE_INTEGER ofs, fixup_ofs;
 	DWORD cb;
 	int64_t archive_mode = 0;
 	auto parcmode = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::OUTPUT_MODE];
@@ -654,6 +654,8 @@ bool FixupSfxExecutable(CSfxPackagerDoc *pDoc, const TCHAR *filename, const TCHA
 			ofs.LowPart = GetFileSize(hf, (LPDWORD)&ofs.HighPart);
 			break;
 	}
+
+	fixup_ofs = ofs;
 
 	BYTE *pdata = (BYTE *)malloc(ofs.QuadPart);
 	if (pdata)
@@ -735,6 +737,12 @@ bool FixupSfxExecutable(CSfxPackagerDoc *pDoc, const TCHAR *filename, const TCHA
 			furd->m_SpaceRequired = pDoc->m_UncompressedSize;
 
 			furd->m_CompressedFileCount = filecount;
+
+			// I know it's writing the offset into the file twice, but who cares?
+			// I didn't have to change the archiver this way... 
+			// The extractor exe will read this in from the resource, allowing us to sign the exe because
+			// the internal offset is no longer only at the end (where the signing action happens)
+			furd->m_ArchiveOffset = fixup_ofs;
 
 			WriteFile(hf, furd, sizeof(SFixupResourceData), &cb, NULL);
 		}
