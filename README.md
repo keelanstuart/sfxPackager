@@ -2,7 +2,7 @@
 
 **A lightweight, scriptable installer and self-extracting package creator for Windows.**
 
-Copyright © 2013–2026 Keelan Stuart
+Copyright © 2013-2026 Keelan Stuart
 
 sfxPackager is a Windows installer creation tool designed around a simple idea: **building an installer shouldn't be harder than building the application it installs.**
 
