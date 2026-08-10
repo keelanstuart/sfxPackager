@@ -18,7 +18,7 @@ That combination lets sfxPackager stay simple without being simplistic.
 
 Build your project once and rebuild it whenever your application changes. Files, installation paths, properties, scripts, license information, custom content, and other package settings remain part of the project rather than becoming another collection of build steps you have to reproduce.
 
-<table>
+<table style="border-collapse: collapse; border: none; outline: none;">
   <tr>
     <td align="center">
       <img src="Samples/example_welcome1.png" width="420"><br>
