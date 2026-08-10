@@ -43,7 +43,7 @@ Build your project once and rebuild it whenever your application changes. Files,
 
 ## Features
 
-* **Self-contained installers** - Create compact Windows executables containing everything needed to install your application.
+* **Self-contained installers** - Create compact Windows executables containing everything needed to install your application. By compact, I mean the installer .exe overhead is a mere 3.16 MB... and FastLZ payload compression strikes a perfect balance of size and speed concerns; sfxPackager is very efficient in time and space domains.
 
 * **Project-based workflow** - Configure an installer once, then rebuild it as your application changes.
 
