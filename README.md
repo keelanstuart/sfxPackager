@@ -18,25 +18,35 @@ That combination lets sfxPackager stay simple without being simplistic.
 
 Build your project once and rebuild it whenever your application changes. Files, installation paths, properties, scripts, license information, custom content, and other package settings remain part of the project rather than becoming another collection of build steps you have to reproduce.
 
-<table style="border-collapse: collapse; border: none; outline: none;">
+<table>
   <tr>
-    <td align="center">
-      <img src="Samples/example_welcome1.png" width="420"><br>
-      <sub><b>Custom HTML welcome content</b></sub>
+    <td rowspan="3" width="65%" valign="middle" align="center">
+      <img src="Samples/example_packager2.png"
+           width="100%"
+           alt="sfxPackager project editor">
+      <sub><b>sfxPackager project editor</b></sub>
     </td>
-    <td align="center">
-      <img src="Samples/example_options1.png" width="420"><br>
-      <sub><b>Script-defined install options</b></sub>
+    <td width="35%" valign="middle" align="center">
+      <img src="Samples/example_welcome1.png"
+           width="95%"
+           alt="Custom HTML installer welcome screen">
+      <sub><b>Custom HTML installer welcome screen</b></sub>
     </td>
   </tr>
   <tr>
-    <td align="center">
-      <img src="Samples/example_license1.png" width="420"><br>
-      <sub><b>License acceptance</b></sub>
+    <td valign="middle" align="center">
+      <img src="Samples/example_options1.png"
+           width="95%"
+           alt="Script-defined installer options">
+      <sub><b>Script-defined installer options</b></sub>
     </td>
-    <td align="center">
-      <img src="Samples/example_progress1.png" width="420"><br>
-      <sub><b>Installation progress</b></sub>
+  </tr>
+  <tr>
+    <td valign="middle" align="center">
+      <img src="Samples/example_license1.png"
+           width="95%"
+           alt="License acceptance dialog">
+      <sub><b>License acceptance dialog</b></sub>
     </td>
   </tr>
 </table>
