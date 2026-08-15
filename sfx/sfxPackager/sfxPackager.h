@@ -40,6 +40,7 @@ public:
 	UINT m_nAppLook;
 	BOOL m_bHiColorIcons;
 	bool m_AutomatedBuild;
+	tstring m_PasswordOverride;
 
 	props::IPropertySet *m_Props;
 

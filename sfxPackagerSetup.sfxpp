@@ -10,19 +10,19 @@
 <powerprops:property id="CPTN" type="STRING">sfxPackager Setup</powerprops:property>
 <powerprops:property id="DDST" type="STRING">C:\Program Files\sfxPackager</powerprops:property>
 <powerprops:property id="ENEX" type="BOOLEAN">yes</powerprops:property>
-<powerprops:property id="ICON" type="STRING">D:\proj\sfxPackager\sfx\sfxPackager\res\sfxPackager.ico</powerprops:property>
-<powerprops:property id="IMAG" type="STRING">D:\proj\sfxPackagerSetup.bmp</powerprops:property>
-<powerprops:property id="LICM" type="STRING">D:\proj\sfxPackager\LICENSE.html</powerprops:property>
+<powerprops:property id="ICON" type="STRING">.\sfx\sfxPackager\res\sfxPackager.ico</powerprops:property>
+<powerprops:property id="IMAG" type="STRING">.\sfxPackagerSetup.bmp</powerprops:property>
+<powerprops:property id="LICM" type="STRING">.\LICENSE.html</powerprops:property>
 <powerprops:property id="LNCH" type="STRING">sfxPackager64.exe</powerprops:property>
-<powerprops:property id="MXSZ" type="INT">-1</powerprops:property>
 <powerprops:property id="OFSF" type="ENUM">None,Build Date,Version:2</powerprops:property>
 <powerprops:property id="OPMD" type="ENUM">Self-Extracting Executable,Executable With External Data:0</powerprops:property>
 <powerprops:property id="OUTP" type="STRING">sfxPackagerSetup.exe</powerprops:property>
+<powerprops:property id="PASS" type="STRING"></powerprops:property>
 <powerprops:property id="VCPY" type="STRING">Copyright © 2013-2026, Keelan Stuart. All Rights Reserved.</powerprops:property>
 <powerprops:property id="VDSC" type="STRING">sfxPackager Setup Application</powerprops:property>
-<powerprops:property id="VERS" type="STRING">D:\proj\sfxPackager\sfx\bin\sfxPackager64.exe</powerprops:property>
+<powerprops:property id="VERS" type="STRING">.\sfx\bin\sfxPackager64.exe</powerprops:property>
 <powerprops:property id="VPRD" type="STRING">sfxPackager</powerprops:property>
-<powerprops:property id="WLCM" type="STRING">D:\proj\sfxPackager\WELCOME.html</powerprops:property>
+<powerprops:property id="WLCM" type="STRING">.\WELCOME.html</powerprops:property>
 </powerprops:property_set>
 
 </settings2>
@@ -37,7 +37,7 @@
 <powerprops:property id="NAME" type="STRING">README.txt</powerprops:property>
 <powerprops:property id="PRES" type="STRING"></powerprops:property>
 <powerprops:property id="SNPT" type="STRING"></powerprops:property>
-<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\README.md</powerprops:property>
+<powerprops:property id="SRCP" type="STRING">README.md</powerprops:property>
 </powerprops:property_set>
 
 </file2>
@@ -50,7 +50,7 @@
 <powerprops:property id="NAME" type="STRING">LICENSE.txt</powerprops:property>
 <powerprops:property id="PRES" type="STRING"></powerprops:property>
 <powerprops:property id="SNPT" type="STRING"></powerprops:property>
-<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\LICENSE</powerprops:property>
+<powerprops:property id="SRCP" type="STRING">LICENSE</powerprops:property>
 </powerprops:property_set>
 
 </file2>
@@ -63,7 +63,7 @@
 <powerprops:property id="NAME" type="STRING">THIRD-PARTY-LICENCES.txt</powerprops:property>
 <powerprops:property id="PRES" type="STRING"></powerprops:property>
 <powerprops:property id="SNPT" type="STRING"></powerprops:property>
-<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\third-party-licenses.txt</powerprops:property>
+<powerprops:property id="SRCP" type="STRING">third-party-licenses.txt</powerprops:property>
 </powerprops:property_set>
 
 </file2>
@@ -76,7 +76,7 @@
 <powerprops:property id="NAME" type="STRING">sfxPackager64.exe</powerprops:property>
 <powerprops:property id="PRES" type="STRING"></powerprops:property>
 <powerprops:property id="SNPT" type="STRING">CreateStartMenuEntry(&quot;sfxPackager.lnk&quot;, &quot;sfxPackager (64-bit) install creation utility&quot;);</powerprops:property>
-<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\sfx\bin\sfxPackager64.exe</powerprops:property>
+<powerprops:property id="SRCP" type="STRING">sfx\bin\sfxPackager64.exe</powerprops:property>
 </powerprops:property_set>
 
 </file2>
@@ -89,7 +89,7 @@
 <powerprops:property id="NAME" type="STRING">sfxPackagerEnv.bat</powerprops:property>
 <powerprops:property id="PRES" type="STRING"></powerprops:property>
 <powerprops:property id="SNPT" type="STRING"></powerprops:property>
-<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\sfxPackagerEnv.bat</powerprops:property>
+<powerprops:property id="SRCP" type="STRING">sfxPackagerEnv.bat</powerprops:property>
 </powerprops:property_set>
 
 </file2>
@@ -112,10 +112,10 @@
 <powerprops:property_set>
 <powerprops:property id="DSTP" type="STRING">\</powerprops:property>
 <powerprops:property id="EXCL" type="STRING"></powerprops:property>
-<powerprops:property id="NAME" type="STRING">sfxPackager_Users_Guide_v3.8.pdf</powerprops:property>
+<powerprops:property id="NAME" type="STRING">sfxPackager_Users_Guide.pdf</powerprops:property>
 <powerprops:property id="PRES" type="STRING"></powerprops:property>
 <powerprops:property id="SNPT" type="STRING">CreateStartMenuEntry(&quot;sfxPackager_Users_Guide.lnk&quot;, &quot;sfxPackager User's Guide&quot;);</powerprops:property>
-<powerprops:property id="SRCP" type="STRING">D:\proj\sfxPackager\sfxPackager_Users_Guide_v3.8.pdf</powerprops:property>
+<powerprops:property id="SRCP" type="STRING">sfxPackager_Users_Guide.pdf</powerprops:property>
 </powerprops:property_set>
 
 </file2>

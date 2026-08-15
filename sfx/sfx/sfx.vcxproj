@@ -164,7 +164,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>GENIO_STATIC;POWERPROPS_STATIC;_CRT_SECURE_NO_WARNINGS;WIN32;_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <SupportJustMyCode>true</SupportJustMyCode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ConformanceMode>false</ConformanceMode>
@@ -228,6 +228,7 @@
     <ClInclude Include="LicenseEntryDlg.h" />
     <ClInclude Include="FinishDlg.h" />
     <ClInclude Include="HtmlCtrl.h" />
+    <ClInclude Include="PasswordDlg.h" />
     <ClInclude Include="ProgressDlg.h" />
     <ClInclude Include="PropertyGrid.h" />
     <ClInclude Include="Resource.h" />
@@ -254,6 +255,7 @@
     <ClCompile Include="LicenseEntryDlg.cpp" />
     <ClCompile Include="FinishDlg.cpp" />
     <ClCompile Include="HtmlCtrl.cpp" />
+    <ClCompile Include="PasswordDlg.cpp" />
     <ClCompile Include="ProgressDlg.cpp" />
     <ClCompile Include="PropertyGrid.cpp" />
     <ClCompile Include="sfx.cpp" />

@@ -9,6 +9,7 @@
 // Microsoft Foundation Classes product.
 
 #include "stdafx.h"
+
 #include <afxcontrolbarutil.h>
 #include <afxglobals.h>
 #include "wtfpropertygridtooltipctrl.h"

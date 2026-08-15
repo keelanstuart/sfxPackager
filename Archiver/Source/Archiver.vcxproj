@@ -93,9 +93,11 @@
     <ClCompile Include="fastlz.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="chacha20.hpp" />
     <ClInclude Include="FastLZArchiver.h" />
     <ClInclude Include="fastlz.h" />
     <ClInclude Include="$(ProjectDir)/../Include/Archiver.h" />
+    <ClInclude Include="picosha2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

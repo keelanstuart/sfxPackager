@@ -698,7 +698,7 @@ void CWTFColorBar::ContextToSize(BOOL bSquareButtons, BOOL bCenterButtons)
 
 	if (bSquareButtons)
 	{
-		m_BoxSize.cx = m_BoxSize.cy = min(m_BoxSize.cx, m_BoxSize.cy);
+		m_BoxSize.cx = m_BoxSize.cy = std::min<LONG>(m_BoxSize.cx, m_BoxSize.cy);
 		m_nRowHeight = m_BoxSize.cy * 3 / 2;
 	}
 

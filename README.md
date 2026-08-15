@@ -1,89 +1,104 @@
 # sfxPackager
-**A light-weight, self-extracting install creation utility for Windows**
 
-_Copyright (C) 2013-2026 Keelan Stuart (keelanstuart@gmail.com)_
+**A lightweight, scriptable installer and self-extracting package creator for Windows.**
 
-### Features
-* Light-weight, self-extracting install creator
-* Project-based; create your install project once, then re-build when your files have changed without any modifications
-* Easy drag'n'drop user experience
-* Integrated JavaScript system, featuring built-in code editor, with extensive installer-related API to help get the job done
-* Robust property system that you can initialize in scripts, allow the user to modify in your configuration dialog, and then check during install
-* Recognizes and replaces environment variables and registry keys in paths
-* Custom HTML content displayable in your welcome (and license) dialog - either in-line or from a file you specify
-* Embed URLs as the file source to pull content from the web, rather than storing it statically in your package
-* Disk spanning, allowing installs to be partitioned into discretely-size chunks for easy distribution with multiple media sources
-* Tools to facilitate License validation
-* Unicode used throughout
-* 64-bit; very large archives are no problem, though for self-contained installers, a limit of 4GB is implied (but not enforced!)
+Copyright © 2013-2026 Keelan Stuart
 
-Watch the [tutorials on YouTube](https://www.youtube.com/playlist?list=PLaed72lE3UjgzdL1qOys-vxemSUOeGJWf) or view the [user's guide](https://docs.google.com/presentation/d/e/2PACX-1vRAVGjiJbSYUrOWB8jEzqG7hMwVbZqvCiAbVmOeL25hoEmN909H-BtGjEawmTMZLta5qHfhGydWDqQd/pub?start=false&loop=false&delayms=30000) to get started!
+sfxPackager is a Windows installer creation tool designed around a simple idea: **building an installer shouldn't be harder than building the application it installs.**
 
---------------------------
-The user's guide can be of great help in deeper understanding of install creation, but for simple operation, just
-drag your files from Windows explorer onto the file list in your sfxpp project. The files will show up there. 
-If you included a folder, you will be prompted as to whether you desire a live file system or a fixed one... 
-meaning: do you want the directory to be re-examined when your project is built and any new files included?
-Conversely, do you want the currently existing files only, meaning that if you add files in the future they will 
-not be automatically included? I took this idea, notionally, from the venerable (and discontinued)
-PackageForTheWeb from InstallShield.
+Create a project, add your files, configure your package visually, and build. When you need more than the basics, sfxPackager includes an integrated JavaScript environment and installer API that let you customize installation behavior without giving up the simplicity of the project-based workflow.
 
-More complicated operations can be done with the integrated JavaScript-ish capability. You can write scripts
-that run during initialization, per file, and at successful completion. A brief overview of the functions available is
-in the guide.
+The result is a **compact, self-contained Windows installer** that doesn't require your users to install a separate runtime, bootstrapper, or packaging framework.
 
-I'll be happy to answer any questions.
+## Why sfxPackager?
 
---------------------------
-Special thanks to...
+For straightforward applications, creating an installer can be almost entirely point-and-click. For complicated ones, the scripting system is there when you need it.
 
-***
+That combination lets sfxPackager stay simple without being simplistic.
 
-Ariya Hidayat, who wrote the awesome FastLZ de-/compressor code. The license in that source is separate, but identical to the MIT license that sfxPackager is released under.
+Build your project once and rebuild it whenever your application changes. Files, installation paths, properties, scripts, license information, custom content, and other package settings remain part of the project rather than becoming another collection of build steps you have to reproduce.
 
-FastLZ - lightning-fast lossless compression library
-Portions Copyright (C) 2005-2007 Ariya Hidayat (ariya@kde.org)
+<table>
+  <tr>
+    <td rowspan="3" width="65%" valign="middle" align="center">
+      <img src="Samples/example_packager2.png"
+           width="100%"
+           alt="sfxPackager project editor">
+      <sub><b>sfxPackager project editor</b></sub>
+    </td>
+    <td width="35%" valign="middle" align="center">
+      <img src="Samples/example_welcome1.png"
+           width="95%"
+           alt="Custom HTML installer welcome screen">
+      <sub><b>Custom HTML installer welcome screen</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td valign="middle" align="center">
+      <img src="Samples/example_options1.png"
+           width="95%"
+           alt="Script-defined installer options">
+      <sub><b>Script-defined installer options</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td valign="middle" align="center">
+      <img src="Samples/example_license1.png"
+           width="95%"
+           alt="License acceptance dialog">
+      <sub><b>License acceptance dialog</b></sub>
+    </td>
+  </tr>
+</table>
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## Features
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+* **Self-contained installers** - Create compact Windows executables containing everything needed to install your application. By compact, I mean the installer .exe overhead is a mere 3.16 MB... and FastLZ payload compression strikes a perfect balance of size and speed concerns; sfxPackager is very efficient in time and space domains.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+* **Project-based workflow** - Configure an installer once, then rebuild it as your application changes.
 
-***
+* **Build-system friendly** - Add directories dynamically at build time and invoke sfxPackager from the command line, allowing an .sfxpp project to become the final packaging step in your application's build.
 
-Gordon Williams, who wrote the original tiny-js (https://github.com/gfwilliams/tiny-js) ...
-... I did modify this version to support TCHAR (compile-time MBCS v. Unicode support), etc.
+* **Integrated JavaScript scripting** - JavaScript hooks for initialization, pre-install, pre-file, post-file, and post-install let you customize installation behavior from beginning to end. Scripts can manipulate files and the Registry, launch processes, create shortcuts, download content, perform license validation, and more.
 
-tiny-js - Extremely simple (~2000 line) JavaScript interpreter
-Portions Copyright (c) 2019 Gordon Williams
+* **"TEST ONLY" mode** - Run the complete installation process without making filesystem changes, making it easy to verify destinations and script behavior before deploying.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+* **Drag-and-drop packaging** - Add and organize files without maintaining complicated packaging scripts or manifests.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+* **Script-defined installer options** - Define custom properties in your initialization script and sfxPackager automatically exposes them to users in the configuration dialog; retrieve their values later during installation.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+* **Dynamic paths** - Use Windows environment variables and Registry values when constructing installation paths.
+
+* **Custom HTML content** - Supply your own welcome, license, and informational content either inline or from external files.
+
+* **Remote package content** - Use URLs as file sources to download content at installation time rather than embedding everything in the package.
+
+* **Code-signing compatible** - Generated installers are designed to support Windows Authenticode signing without interfering with embedded package data.
+
+* **License validation support** - Built-in facilities help applications incorporate custom licensing and validation workflows.
+
+* **Unicode throughout** - Designed for modern Windows applications and filenames.
+
+* **Large package support** - Handle archives larger than 4 GB using external package data; fully self-contained installers support packages up to 4 GB.
+
+* **Disk spanning** - Large installations can also be divided into explicitly sized package segments for distribution across multiple files or media.
+
+## Getting Started
+
+The easiest way to learn sfxPackager is to see it in action.
+
+**[Watch the sfxPackager tutorial series on YouTube](https://www.youtube.com/playlist?list=PLaed72lE3UjgzdL1qOys-vxemSUOeGJWf)**
+
+The tutorials walk through creating real packages and demonstrate both the basic workflow and the more advanced capabilities available through scripting.
+
+For a more complete reference:
+
+**[Read the sfxPackager User's Guide](sfxPackager_Users_Guide_v4.0.pdf)**
+
+## Philosophy
+
+sfxPackager is intended to occupy the space between two extremes: installer systems that are easy to use but difficult to customize, and overly-complicated installer frameworks that effectively require you to become an installer engineer.
+
+**Start visually. Script what needs scripting. Build a small, self-contained installer.**
+
+That's it.

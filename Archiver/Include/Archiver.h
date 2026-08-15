@@ -104,10 +104,10 @@ public:
 		SMALLEST,		// 4k,   7
 	} EBufferSize;
 
-	enum { MAGIC = 'MAGI' };
+	enum { MAGIC = '!SEK' };
 
 	// Creates and destroys the archiver
-	static CREATE_RESULT CreateArchiver(IArchiver **ppia, IArchiveHandle *pah, COMPRESSOR_TYPE ct);
+	static CREATE_RESULT CreateArchiver(IArchiver **ppia, IArchiveHandle *pah, COMPRESSOR_TYPE ct, const TCHAR *password, uint64_t salt);
 	static void DestroyArchiver(IArchiver **ppia);
 
 	// This is the maximum number of bytes that will be written to the stream before the Span method is called
@@ -142,6 +142,8 @@ public:
 
 		CR_COMPRESSORUNK,
 
+		CR_BADPASSWORD,
+
 		CR_UNKNOWN_ERROR
 	};
 
@@ -170,7 +172,7 @@ public:
 	};
 
 	// Creates and destroys the extractor
-	static CREATE_RESULT CreateExtractor(IExtractor **ppie, IArchiveHandle *pah);
+	static CREATE_RESULT CreateExtractor(IExtractor **ppie, IArchiveHandle *pah, const TCHAR *password);
 	static void DestroyExtractor(IExtractor **ppie);
 
 	// Returns the number of files that are in the archive

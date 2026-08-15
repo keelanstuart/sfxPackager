@@ -9,6 +9,7 @@
 // Microsoft Foundation Classes product.
 
 #include "stdafx.h"
+
 #include <afxcontrolbarutil.h>
 #include "wtfvslistbox.h"
 #include <afxacceleratorkey.h>
@@ -387,7 +388,7 @@ void CVSListBoxBaseEx::AdjustLayout()
 		dc.SelectObject(pOldFont);
 	}
 
-	m_rectCaption.bottom = m_rectCaption.top + max(tm.tmHeight * 4 / 3, m_sizeButton.cy);
+	m_rectCaption.bottom = m_rectCaption.top + std::max<LONG>(tm.tmHeight * 4 / 3, m_sizeButton.cy);
 
 	int x = rectClient.right - 1 - m_sizeButton.cx;
 	for (POSITION pos = m_lstButtons.GetTailPosition(); pos != NULL;)

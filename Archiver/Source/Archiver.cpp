@@ -13,7 +13,7 @@
 #include "FastLZArchiver.h"
 
 
-IArchiver::CREATE_RESULT IArchiver::CreateArchiver(IArchiver **ppia, IArchiveHandle *pah, COMPRESSOR_TYPE ct)
+IArchiver::CREATE_RESULT IArchiver::CreateArchiver(IArchiver **ppia, IArchiveHandle *pah, COMPRESSOR_TYPE ct, const TCHAR *password, uint64_t salt)
 {
 	if (ppia)
 	{
@@ -37,13 +37,16 @@ IArchiver::CREATE_RESULT IArchiver::CreateArchiver(IArchiver **ppia, IArchiveHan
 
 		WriteFile(pah->GetHandle(), &comp_magic, sizeof(uint32_t), &bw, NULL);
 
-		uint64_t flags = 0;
-		WriteFile(pah->GetHandle(), &flags, sizeof(uint64_t), &bw, NULL);
+		uint32_t flags = 0;
+		if (password)
+			flags |= EF_ENCRYPTED;
+
+		WriteFile(pah->GetHandle(), &flags, sizeof(uint32_t), &bw, NULL);
 
 		switch (ct)
 		{
 			case CT_FASTLZ:
-				*ppia = new CFastLZArchiver(pah);
+				*ppia = new CFastLZArchiver(pah, flags, password, salt);
 				break;
 
 			case CT_STOREONLY:
@@ -71,7 +74,7 @@ void IArchiver::DestroyArchiver(IArchiver **ppia)
 }
 
 
-IExtractor::CREATE_RESULT IExtractor::CreateExtractor(IExtractor **ppie, IArchiveHandle *pah)
+IExtractor::CREATE_RESULT IExtractor::CreateExtractor(IExtractor **ppie, IArchiveHandle *pah, const TCHAR *password)
 {
 	if (ppie)
 	{
@@ -82,17 +85,23 @@ IExtractor::CREATE_RESULT IExtractor::CreateExtractor(IExtractor **ppie, IArchiv
 		if (magic != IArchiver::MAGIC)
 			return CR_BADMAGIC;
 
-		*ppie = NULL;
+		*ppie = nullptr;
 
+		// magic is now the archiver's magic number
 		ReadFile(pah->GetHandle(), &magic, sizeof(uint32_t), &br, nullptr);
 
-		UINT64 flags;
-		ReadFile(pah->GetHandle(), &flags, sizeof(uint64_t), &br, NULL);
+		UINT32 flags;
+		ReadFile(pah->GetHandle(), &flags, sizeof(uint32_t), &br, NULL);
 
 		switch (magic)
 		{
 			case CFastLZArchiver::MAGIC_FASTLZ:
-				*ppie = new CFastLZExtractor(pah, flags);
+				*ppie = new CFastLZExtractor(pah, flags, password);
+				if (*ppie && ((CFastLZExtractor *)(*ppie))->DecryptionFailed())
+				{
+					DestroyExtractor(&*ppie);
+					return CR_BADPASSWORD;
+				}
 				break;
 
 			default:

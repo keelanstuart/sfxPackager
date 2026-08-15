@@ -16,10 +16,40 @@
 #include <filesystem>
 
 #include "fastlz.h"
+#include "picosha2.h"
+#include "chacha20.hpp"
+
+
+#define VERIFIER_BUF_LENGTH		64
+
+void MakeKey(const TCHAR *password, uint64_t salt, uint8_t *key)
+{
+	picosha2::hash256_one_by_one hasher;
+
+	hasher.process((uint8_t *)password, (uint8_t *)password + (_tcslen(password) * sizeof(TCHAR)));
+
+	const uint8_t *sb = (const uint8_t *)&salt;
+
+	hasher.process(sb, sb + sizeof(salt));
+
+	hasher.finish();
+	hasher.get_hash_bytes(key, key + ENCRYPTION_KEY_LENGTH);
+}
+
+void Crypt(uint8_t *buffer, size_t buffer_len, const uint8_t *key, uint64_t nonce)
+{
+	if (!buffer || !buffer_len || !key)
+		return;
+
+	Chacha20 chacha(key, (const uint8_t *)&nonce);
+
+	chacha.crypt(buffer, buffer_len);
+}
+
 
 #pragma warning( disable : 4800 )	// 'BOOL': forcing value to bool 'true' or 'false' (performance warning)
 
-CFastLZArchiver::CFastLZArchiver(IArchiveHandle *pah)
+CFastLZArchiver::CFastLZArchiver(IArchiveHandle *pah, uint32_t flags, const TCHAR *password, uint64_t salt)
 {
 	m_LastFileTableItemCount = 0;
 	m_LastFileTableSize = 0;
@@ -32,11 +62,31 @@ CFastLZArchiver::CFastLZArchiver(IArchiveHandle *pah)
 
 	m_BlockSize = IArchiver::BUFFER_SIZE::DEFAULT;
 
+	m_Flags = flags;
+
 	DWORD bw;
 
 	// temporary file table offset
 	uint64_t fto_place_holder = 0;
 	WriteFile(m_pah->GetHandle(), &fto_place_holder, sizeof(uint64_t), &bw, NULL);
+
+	WriteFile(m_pah->GetHandle(), &salt, sizeof(uint64_t), &bw, NULL);
+
+	TCHAR verifier_buf[VERIFIER_BUF_LENGTH];
+	for (size_t i = 0; i < VERIFIER_BUF_LENGTH; i++)
+		verifier_buf[i] = (char)i | ((char)(VERIFIER_BUF_LENGTH - i) << 8);
+
+	if (m_Flags & EF_ENCRYPTED)
+	{
+		MakeKey(password, salt, m_EncryptionKey);
+
+		_tcscpy_s(verifier_buf, password);
+
+		// encrypt the password buffer
+		Crypt((uint8_t *)verifier_buf, sizeof(TCHAR) * VERIFIER_BUF_LENGTH, m_EncryptionKey, -1);
+	}
+
+	WriteFile(m_pah->GetHandle(), verifier_buf, sizeof(TCHAR) * VERIFIER_BUF_LENGTH, &bw, NULL);
 }
 
 
@@ -135,6 +185,11 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 					fte.m_CompressedSize += b.m_Header.m_SizeU;
 				}
 
+				if (m_Flags & EF_ENCRYPTED)
+				{
+					b.CryptData(m_EncryptionKey, fte.m_UncompressedSize);
+				}
+
 				b.WriteCompressedData(m_pah->GetHandle());
 
 				// spanning logic
@@ -142,10 +197,12 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 				{
 					// if we're spanning, then we need to add this entry to the file table now and do some cleanup
 					m_FileTable.push_back(fte);
+					m_FileTable.back().m_Flags |= SFileTableEntry::FTEFLAG_CONTINUED;
 
 					// reset the block count and compressed size (because this should technically be a new data stream)
 					fte.m_BlockCount = 0;
 					fte.m_CompressedSize = 0;
+					m_FileTable.clear();
 
 					// have the stream handle spanning behind the scenes
 					m_pah->Span();
@@ -157,8 +214,8 @@ CFastLZArchiver::ADD_RESULT CFastLZArchiver::AddFile(const TCHAR *src_filename, 
 					uint32_t comp_magic = CFastLZArchiver::MAGIC_FASTLZ;
 					WriteFile(m_pah->GetHandle(), &comp_magic, sizeof(uint32_t), &bw, NULL);
 
-					uint64_t flags = 0;
-					WriteFile(m_pah->GetHandle(), &flags, sizeof(uint64_t), &bw, NULL);
+					uint32_t flags = 0;
+					WriteFile(m_pah->GetHandle(), &flags, sizeof(uint32_t), &bw, NULL);
 
 					// after the span, we should expect that offset will be different
 					m_InitialOffset = m_pah->GetOffset();
@@ -213,7 +270,7 @@ CFastLZArchiver::FINALIZE_RESULT CFastLZArchiver::Finalize()
 	WriteFile(m_pah->GetHandle(), &file_table_ofs, sizeof(file_table_ofs), &bw, NULL);
 
 	// store the initial offset in the stream (file header)
-	m_InitialOffset -= (sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint64_t));
+	m_InitialOffset -= (sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t));
 	SetFilePointer(m_pah->GetHandle(), 0, NULL, FILE_END);
 	WriteFile(m_pah->GetHandle(), &m_InitialOffset, sizeof(m_InitialOffset), &bw, NULL);
 
@@ -257,7 +314,7 @@ bool CFastLZArchiver::WriteFileTable()
 	for (TFileTable::const_iterator it = m_FileTable.begin(), last_it = m_FileTable.end(); it != last_it; it++)
 	{
 		// write each entry in the file table
-		ret &= it->Write(m_pah->GetHandle());
+		ret &= it->Write(m_pah->GetHandle(), m_Flags & EF_ENCRYPTED ? m_EncryptionKey : nullptr);
 	}
 
 	return ret;
@@ -273,7 +330,7 @@ void CFastLZArchiver::ClearFileTable()
 }
 
 
-bool sFileTableEntry::Write(HANDLE hOut) const
+bool sFileTableEntry::Write(HANDLE hOut, const uint8_t *key) const
 {
 	bool ret = true;
 
@@ -286,6 +343,9 @@ bool sFileTableEntry::Write(HANDLE hOut) const
 	ret &= (bool)WriteFile(hOut, &sz, sizeof(sz), &wb, NULL);
 	if (sz)
 	{
+		if (key)
+			Crypt((uint8_t *)m_Filename.data(), sz * sizeof(TCHAR), key, sz);
+
 		ret &= (bool)WriteFile(hOut, m_Filename.c_str(), sizeof(TCHAR) * sz, &wb, NULL);
 	}
 
@@ -293,6 +353,9 @@ bool sFileTableEntry::Write(HANDLE hOut) const
 	ret &= (bool)WriteFile(hOut, &sz, sizeof(sz), &wb, NULL);
 	if (sz)
 	{
+		if (key)
+			Crypt((uint8_t *)m_Path.data(), sz * sizeof(TCHAR), key, sz);
+
 		ret &= (bool)WriteFile(hOut, m_Path.c_str(), sizeof(TCHAR) * sz, &wb, NULL);
 	}
 
@@ -310,6 +373,9 @@ bool sFileTableEntry::Write(HANDLE hOut) const
 	ret &= (bool)WriteFile(hOut, &sz, sizeof(sz), &wb, NULL);
 	if (sz)
 	{
+		if (key)
+			Crypt((uint8_t *)m_PreFileScriptSnippet.data(), sz * sizeof(TCHAR), key, sz);
+
 		ret &= (bool)WriteFile(hOut, m_PreFileScriptSnippet.c_str(), sizeof(TCHAR) * sz, &wb, NULL);
 	}
 
@@ -317,13 +383,16 @@ bool sFileTableEntry::Write(HANDLE hOut) const
 	ret &= (bool)WriteFile(hOut, &sz, sizeof(sz), &wb, NULL);
 	if (sz)
 	{
+		if (key)
+			Crypt((uint8_t *)m_PostFileScriptSnippet.data(), sz * sizeof(TCHAR), key, sz);
+
 		ret &= (bool)WriteFile(hOut, m_PostFileScriptSnippet.c_str(), sizeof(TCHAR) * sz, &wb, NULL);
 	}
 
 	return ret;
 }
 
-bool sFileTableEntry::Read(HANDLE hIn)
+bool sFileTableEntry::Read(HANDLE hIn, const uint8_t *key)
 {
 	bool ret = true;
 
@@ -337,6 +406,9 @@ bool sFileTableEntry::Read(HANDLE hIn)
 	{
 		m_Filename.resize(sz, _T('#'));
 		ret &= (bool)ReadFile(hIn, (TCHAR *)(m_Filename.data()), sizeof(TCHAR) * sz, &rb, NULL);
+
+		if (key)
+			Crypt((uint8_t *)m_Filename.data(), sz * sizeof(TCHAR), key, sz);
 	}
 	else
 	{
@@ -348,6 +420,9 @@ bool sFileTableEntry::Read(HANDLE hIn)
 	{
 		m_Path.resize(sz, _T('#'));
 		ret &= (bool)ReadFile(hIn, (TCHAR *)(m_Path.data()), sizeof(TCHAR) * sz, &rb, NULL);
+
+		if (key)
+			Crypt((uint8_t *)m_Path.data(), sz * sizeof(TCHAR), key, sz);
 	}
 	else
 	{
@@ -369,6 +444,9 @@ bool sFileTableEntry::Read(HANDLE hIn)
 	{
 		m_PreFileScriptSnippet.resize(sz, _T('#'));
 		ret &= (bool)ReadFile(hIn, (TCHAR *)(m_PreFileScriptSnippet.data()), sizeof(TCHAR) * sz, &rb, NULL);
+
+		if (key)
+			Crypt((uint8_t *)m_PreFileScriptSnippet.data(), sz * sizeof(TCHAR), key, sz);
 	}
 	else
 	{
@@ -380,6 +458,9 @@ bool sFileTableEntry::Read(HANDLE hIn)
 	{
 		m_PostFileScriptSnippet.resize(sz, _T('#'));
 		ret &= (bool)ReadFile(hIn, (TCHAR *)(m_PostFileScriptSnippet.data()), sizeof(TCHAR) * sz, &rb, NULL);
+
+		if (key)
+			Crypt((uint8_t *)m_PostFileScriptSnippet.data(), sz * sizeof(TCHAR), key, sz);
 	}
 	else
 	{
@@ -395,7 +476,7 @@ size_t sFileTableEntry::Size() const
 	size_t ret = (m_Filename.size() + m_Path.size() + m_PreFileScriptSnippet.size() + m_PostFileScriptSnippet.size()) * sizeof(TCHAR);
 
 	ret +=
-		sizeof(uint64_t) + /* m_Flags */ 
+		sizeof(uint32_t) + /* m_Flags */ 
 		sizeof(uint64_t) + /* m_UncompressedSize */ 
 		sizeof(uint64_t) + /* m_CompressedSize */ 
 		sizeof(uint32_t) + /* m_Crc */ 
@@ -534,7 +615,15 @@ bool sFileBlock::WriteUncompressedData(HANDLE hOut)
 }
 
 
-CFastLZExtractor::CFastLZExtractor(IArchiveHandle *pah, UINT64 flags)
+bool sFileBlock::CryptData(const uint8_t *key, uint64_t nonce)
+{
+	Crypt((m_Header.m_SizeC != -1) ? m_BufC : m_BufU, (m_Header.m_SizeC != -1) ? m_Header.m_SizeC : m_Header.m_SizeU, key, nonce);
+
+	return true;
+}
+
+
+CFastLZExtractor::CFastLZExtractor(IArchiveHandle *pah, uint32_t flags, const TCHAR *password)
 {
 	m_pah = pah;
 
@@ -545,6 +634,35 @@ CFastLZExtractor::CFastLZExtractor(IArchiveHandle *pah, UINT64 flags)
 	ReadFile(m_pah->GetHandle(), &ftofs, sizeof(uint64_t), &br, NULL);
 
 	uint64_t dataofs = m_pah->GetOffset();
+
+	m_Flags = flags;
+
+	uint64_t salt;
+	ReadFile(m_pah->GetHandle(), &salt, sizeof(uint64_t), &br, NULL);
+
+	TCHAR verifier_buf[VERIFIER_BUF_LENGTH];
+	ReadFile(m_pah->GetHandle(), verifier_buf, sizeof(TCHAR) * VERIFIER_BUF_LENGTH, &br, NULL);
+
+	if (m_Flags & EF_ENCRYPTED)
+	{
+		if (!password)
+		{
+			m_Flags |= EF_FAILED_DECRYPTION;
+			return;
+		}
+
+		MakeKey(password, salt, m_EncryptionKey);
+
+		// read the encrypted password buffer... then decrypt it
+		Crypt((uint8_t *)verifier_buf, sizeof(TCHAR) * VERIFIER_BUF_LENGTH, m_EncryptionKey, -1);
+
+		// if the password given and the decrypted version aren't the same, mark a failure and return
+		if (_tcsncmp(verifier_buf, password, VERIFIER_BUF_LENGTH))
+		{
+			m_Flags |= EF_FAILED_DECRYPTION;
+			return;
+		}
+	}
 
 	p.QuadPart = ftofs;
 	SetFilePointerEx(m_pah->GetHandle(), p, NULL, FILE_BEGIN);
@@ -911,10 +1029,18 @@ IExtractor::EXTRACT_RESULT CFastLZExtractor::ExtractFile(size_t file_idx, tstrin
 		for (UINT32 i = 0; i < fte.m_BlockCount; i++)
 		{
 			b.ReadCompressedData(m_pah->GetHandle());
+			if (m_Flags & EF_ENCRYPTED)
+				b.CryptData(m_EncryptionKey, fte.m_UncompressedSize);
+
 			b.DecompressData();
 			if (!test_only)
+			{
 				b.WriteUncompressedData(hf);
+			}
 		}
+
+		if (fte.m_Flags & SFileTableEntry::FTEFLAG_CONTINUED)
+			ret = IExtractor::ER_SPAN;
 
 		if (!test_only)
 		{
@@ -953,7 +1079,7 @@ bool CFastLZExtractor::ReadFileTable()
 	for (size_t i = 0; i < ftec; i++)
 	{
 		// read each entry from the file table
-		ret &= fte.Read(m_pah->GetHandle());
+		ret &= fte.Read(m_pah->GetHandle(), (m_Flags & EF_ENCRYPTED) ? m_EncryptionKey : nullptr);
 
 		m_FileTable.push_back(fte);
 	}

@@ -179,24 +179,24 @@ void CSfxPackagerView::OnUpdate(CView* /*pSender*/, LPARAM /*lHint*/, CObject* /
 			GetClientRect(r);
 			int ninth = r.Width() / 9;
 
-			hdi.pszText = _T("Filename");
+			hdi.pszText = (TCHAR *)_T("Filename");
 			hdi.cxy = ninth * 2;
 			list.InsertColumn(0, hdi.pszText, LVCFMT_LEFT);
 			phc->SetItem(0, &hdi);
 			list.SetColumnWidth(0, hdi.cxy);
 
-			hdi.pszText = _T("Source");
+			hdi.pszText = (TCHAR *)_T("Source");
 			hdi.cxy = ninth * 3;
 			list.InsertColumn(1, hdi.pszText, LVCFMT_LEFT);
 			phc->SetItem(1, &hdi);
 			list.SetColumnWidth(1, hdi.cxy);
 
-			hdi.pszText = _T("Destination");
+			hdi.pszText = (TCHAR *)_T("Destination");
 			list.InsertColumn(2, hdi.pszText, LVCFMT_LEFT);
 			phc->SetItem(2, &hdi);
 			list.SetColumnWidth(2, hdi.cxy);
 
-			hdi.pszText = _T("Exclude");
+			hdi.pszText = (TCHAR *)_T("Exclude");
 			hdi.cxy = ninth;
 			list.InsertColumn(3, hdi.pszText, LVCFMT_LEFT);
 			phc->SetItem(3, &hdi);

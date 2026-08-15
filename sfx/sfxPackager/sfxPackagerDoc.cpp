@@ -95,6 +95,25 @@ bool GetFileVersion(const TCHAR *filename, int &major, int &minor, int &release,
 	return ret;
 }
 
+#if 0
+wchar_t *FindWStringInMemory(const BYTE *mem, const wchar_t *str, size_t memlen)
+{
+	if (!mem || !str || !memlen)
+		return nullptr;
+
+	size_t strbytes = wcslen(str) * sizeof(wchar_t);
+	if (!strbytes || (strbytes > memlen))
+		return nullptr;
+
+	for (size_t i = 0; i <= memlen - strbytes; i++)
+	{
+		if (!memcmp(mem + i, str, strbytes))
+			return (wchar_t *)(mem + i);
+	}
+
+	return nullptr;
+}
+#else
 wchar_t *FindWStringInMemory(const BYTE *mem, const wchar_t *str, size_t memlen)
 {
 	if (!mem || !str || !memlen)
@@ -112,6 +131,7 @@ wchar_t *FindWStringInMemory(const BYTE *mem, const wchar_t *str, size_t memlen)
 
 	return nullptr;
 }
+#endif
 
 #pragma pack(push, 1)
 typedef struct
@@ -162,6 +182,17 @@ void SetTimeEnvVar(const TCHAR *varname, const TCHAR *timestr, const tm *thetime
 	TCHAR tmp[32];
 	_tcsftime(tmp, 32, timestr, thetime);
 	SetEnvironmentVariable(varname, tmp);
+}
+
+void Scramble(tstring &s)
+{
+	uint8_t x = SCRAMBLER;
+	for (tstring::iterator it = s.begin(); it != s.end(); it++)
+	{
+		if (*it)
+			*it ^= (0x80 | x);
+		x ^= ~SCRAMBLER;
+	}
 }
 
 bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hFile, size_t spanIdx)
@@ -366,7 +397,7 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 				if (PathFileExists(iconpath))
 				{
 					HANDLE hicobin = CreateFile(iconpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-					if (hicobin)
+					if (hicobin != INVALID_HANDLE_VALUE)
 					{
 						DWORD fsz = GetFileSize(hicobin, NULL);
 						BYTE *pbin = (BYTE *)malloc(fsz);
@@ -436,7 +467,7 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 				if (PathFileExists(imgpath))
 				{
 					HANDLE himgbin = CreateFile(imgpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-					if (himgbin)
+					if (himgbin != INVALID_HANDLE_VALUE)
 					{
 						DWORD fsz = GetFileSize(himgbin, NULL);
 						BYTE *pbin = (BYTE *)malloc(fsz);
@@ -469,7 +500,7 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 			CString spanstr;
 			spanstr.Format(_T(" (part %d)"), spanIdx + 1);
 			CString caption;
-			caption.Format(_T("%s%s"), pcaption->AsString(), spanIdx ? spanstr : _T(""));
+			caption.Format(_T("%s%s"), pcaption->AsString(), spanIdx ? spanstr : (TCHAR *)_T(""));
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_CAPTION"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), (void *)((LPCTSTR)caption), (caption.GetLength() + 1) * sizeof(TCHAR));
 
 			auto pdefpath = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::DEFAULT_DESTINATION];
@@ -502,7 +533,7 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 				if (PathFileExists(welcomepath))
 				{
 					HANDLE hhtmlfile = CreateFile(welcomepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-					if (hhtmlfile)
+					if (hhtmlfile != INVALID_HANDLE_VALUE)
 					{
 						DWORD fsz = GetFileSize(hhtmlfile, NULL);
 						shtml = (char *)malloc(fsz + 1);
@@ -554,7 +585,7 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 				if (PathFileExists(licensepath))
 				{
 					HANDLE hhtmlfile = CreateFile(licensepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-					if (hhtmlfile)
+					if (hhtmlfile != INVALID_HANDLE_VALUE)
 					{
 						DWORD fsz = GetFileSize(hhtmlfile, NULL);
 						shtml = (char *)malloc(fsz + 1);
@@ -582,6 +613,39 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 				}
 			}
 
+#if 0
+			tstring tmp_script;
+
+			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::INITIALIZE];
+			Scramble(tmp_script);
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INITIALIZE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)(tmp_script.c_str()),
+									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
+
+			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREINSTALL];
+			Scramble(tmp_script);
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PREINSTALL"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)(tmp_script.c_str()),
+									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
+
+			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREFILE];
+			Scramble(tmp_script);
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PREFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)(tmp_script.c_str()),
+									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
+
+			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTFILE];
+			Scramble(tmp_script);
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_POSTFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)(tmp_script.c_str()),
+									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
+
+			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTINSTALL];
+			Scramble(tmp_script);
+			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_POSTINSTALL"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+									 (void *)(tmp_script.c_str()),
+									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
+#else
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INITIALIZE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
 									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::INITIALIZE]),
 									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::INITIALIZE].GetLength() + 1) * sizeof(TCHAR));
@@ -601,6 +665,7 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_POSTINSTALL"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
 									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTINSTALL]),
 									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTINSTALL].GetLength() + 1) * sizeof(TCHAR));
+#endif
 
 			SFixupResourceData furd;
 			ZeroMemory(&furd, sizeof(SFixupResourceData));
@@ -628,6 +693,10 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 bool FixupSfxExecutable(CSfxPackagerDoc *pDoc, const TCHAR *filename, const TCHAR *launchcmd, bool span, UINT32 filecount)
 {
 	bool bresult = true;
+
+	TCHAR docpath[MAX_PATH];
+	_tcscpy_s(docpath, pDoc->GetPathName());
+	PathRemoveFileSpec(docpath);
 
 	HANDLE hf = CreateFile(filename, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
 	if (hf == INVALID_HANDLE_VALUE)
@@ -697,10 +766,22 @@ bool FixupSfxExecutable(CSfxPackagerDoc *pDoc, const TCHAR *filename, const TCHA
 			auto pversion = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::VERSION];
 			if (pversion)
 				vers = pversion->AsString();
-			if (PathFileExists(vers))
+
+			TCHAR version[MAX_PATH * 2];
+
+			if (PathIsRelative(vers))
+			{
+				PathCombine(version, docpath, vers);
+			}
+			else
+			{
+				_tcscpy_s(version, vers);
+			}
+
+			if (PathFileExists(version))
 			{
 				int major, minor, release, build;
-				if (GetFileVersion(vers, major, minor, release, build))
+				if (GetFileVersion(version, major, minor, release, build))
 				{
 					vers.Format(_T("Version %d.%d.%d.%d"), major, minor, release, build);
 				}
@@ -732,6 +813,10 @@ bool FixupSfxExecutable(CSfxPackagerDoc *pDoc, const TCHAR *filename, const TCHA
 			auto parcmode = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::OUTPUT_MODE];
 			if (parcmode && (parcmode->AsInt() == 1))
 				flags |= SFX_FLAG_EXTERNALARCHIVE;
+
+			auto ppassword = (*(pDoc->m_Props))[CSfxPackagerDoc::EDOCPROP::PASSWORD];
+			if (!theApp.m_PasswordOverride.empty() || (ppassword && ppassword->AsString() && (*(ppassword->AsString()) != _T('\0'))))
+				flags |= SFX_FLAG_ENCRYPTED;
 
 			furd->m_Flags = flags;
 			furd->m_SpaceRequired = pDoc->m_UncompressedSize;
@@ -984,10 +1069,13 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 			p->SetAspect(props::IProperty::PROPERTY_ASPECT::PA_FILENAME);
 		}
 
+#if 0
+		// TODO: FIX SPANNING... MAYBE?
 		if ((p = m_Props->CreateProperty(_T("Settings\\Maximum Size (MB)"), EDOCPROP::MAXIMUM_SIZE_MB)) != nullptr)
 		{
 			p->SetInt(-1);
 		}
+#endif
 
 		if ((p = m_Props->CreateProperty(_T("Settings\\Output File Suffix"), EDOCPROP::OUTPUT_FILE_SUFFIX_MODE)) != nullptr)
 		{
@@ -1022,6 +1110,11 @@ CSfxPackagerDoc::CSfxPackagerDoc()
 		{
 			p->SetEnumStrings(_T("Default,Smallest,Smaller,Small,Normal,Large,Larger,Largest"));
 			p->SetEnumVal(0);
+		}
+
+		if ((p = m_Props->CreateProperty(_T("Settings\\Password"), EDOCPROP::PASSWORD)) != nullptr)
+		{
+			p->SetString(_T(""));
 		}
 
 		if ((p = m_Props->CreateProperty(_T("Appearance\\Caption"), EDOCPROP::CAPTION)) != nullptr)
@@ -1191,6 +1284,9 @@ const TCHAR *CSfxPackagerDoc::GetPropertyDescription(props::FOURCHARCODE propert
 		case EDOCPROP::VERSION_PRODUCTNAME:
 			return _T("Sets the Product Name field in the installer executable version info, as visible from the Properties->Details tab in Windows Explorer");
 
+		case EDOCPROP::PASSWORD:
+			return _T("An optional password to encrypt the archive with using SHA-256. If you enter one, the user will be prompted to enter it in the extraction process.");
+
 
 		case EFILEPROP::FILENAME:
 			return _T("The name of the file that will be installed (note: this can be different than the name of the source file)");
@@ -1330,7 +1426,7 @@ DWORD CSfxPackagerDoc::RunCreateSFXPackage(LPVOID param)
 DWORD GetFileSizeByName(const TCHAR *filename)
 {
 	HANDLE h = CreateFile(filename, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-	if (!h)
+	if (h == INVALID_HANDLE_VALUE)
 		return 0;
 
 	DWORD ret = GetFileSize(h, NULL);
@@ -1565,6 +1661,8 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 	SetTimeEnvVar(_T("minutes"), _T("%M"), start_tm);
 	SetTimeEnvVar(_T("seconds"), _T("%S"), start_tm);
 
+	uint64_t salt = GetTickCount64();
+
 	UINT c = 0, maxc = (UINT)m_FileData.size();
 	if (!maxc)
 		return true;
@@ -1606,11 +1704,19 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 		{
 			case 2:
 			{
-				auto pvers = (*m_Props)[CSfxPackagerDoc::EDOCPROP::VERSION];
-				if (pvers && PathFileExists(pvers->AsString()))
+				CString vers;
+				auto pver = (*(m_Props))[CSfxPackagerDoc::EDOCPROP::VERSION];
+				if (pver)
+					vers = pver->AsString();
+
+				TCHAR version[MAX_PATH * 2];
+
+				if (PathIsRelative(vers))
 				{
+					PathCombine(version, docpath, vers);
+
 					int major, minor, release, build;
-					if (GetFileVersion(pvers->AsString(), major, minor, release, build))
+					if (GetFileVersion(version, major, minor, release, build))
 					{
 						_tcscat(fullfilename, _T("_"));
 
@@ -1686,7 +1792,14 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 			}
 		}
 
-		ret = (IArchiver::CreateArchiver(&parc, pah, IArchiver::CT_FASTLZ) == IArchiver::CR_OK);
+		auto ppassword = (*m_Props)[CSfxPackagerDoc::EDOCPROP::PASSWORD];
+		tstring password;
+		if (ppassword)
+			password = ppassword->AsString();
+		if (!theApp.m_PasswordOverride.empty())
+			password = theApp.m_PasswordOverride.c_str();
+
+		ret = (IArchiver::CreateArchiver(&parc, pah, IArchiver::CT_FASTLZ, password.empty() ? nullptr : password.c_str(), salt) == IArchiver::CR_OK);
 
 		if (pah)
 			pah->SetArchiver(parc);
@@ -1694,9 +1807,12 @@ bool CSfxPackagerDoc::CreateSFXPackage(const TCHAR *filename, CSfxPackagerView *
 		auto pblocksize = (*m_Props)[CSfxPackagerDoc::EDOCPROP::COMPRESSION_BLOCKSIZE];
 		parc->SetCompressionBlockSize((IArchiver::EBufferSize)pblocksize->AsInt());
 
+#if 0
+		// TODO: FIX SPANNING... MAYBE?
 		auto pmaxsize = (*m_Props)[CSfxPackagerDoc::EDOCPROP::MAXIMUM_SIZE_MB];
 		int64_t maxsz = pmaxsize ? pmaxsize->AsInt() : -1;
 		parc->SetMaximumSize((maxsz > 0) ? (maxsz MB) : UINT64_MAX);
+#endif
 
 		m_UncompressedSize.QuadPart = 0;
 
@@ -2282,8 +2398,11 @@ void CSfxPackagerDoc::ReadSettings(genio::IParserT *gp)
 				(*m_Props)[EDOCPROP::LAUNCH_COMMAND]->SetString(value.c_str());
 			else if (!_tcsicmp(name.c_str(), _T("explore")))
 				(*m_Props)[EDOCPROP::ENABLE_EXPLORE_CHECKBOX]->SetBool(!_tcsicmp(value.c_str(), _T("true")) ? true : false);
+#if 0
+			// TODO: FIX SPANNING... MAYBE?
 			else if (!_tcsicmp(name.c_str(), _T("maxsize")))
-				(*m_Props)[EDOCPROP::MAXIMUM_SIZE_MB]->SetInt(_tstoi(value.c_str()));
+				(*m_Props)[EDOCPROP::MAXIMUM_SIZE_MB]->SetInt((int64_t)_tstoi(value.c_str()));
+#endif
 			else if (!_tcsicmp(name.c_str(), _T("defaultpath")))
 				(*m_Props)[EDOCPROP::DEFAULT_DESTINATION]->SetString(value.c_str());
 			else if (!_tcsicmp(name.c_str(), _T("versionid")))
@@ -2294,6 +2413,8 @@ void CSfxPackagerDoc::ReadSettings(genio::IParserT *gp)
 				(*m_Props)[EDOCPROP::REQUIRE_REBOOT]->SetBool(!_tcsicmp(value.c_str(), _T("true")) ? true : false);
 			else if (!_tcsicmp(name.c_str(), _T("allowdestchg")))
 				(*m_Props)[EDOCPROP::ALLOW_DESTINATION_CHANGE]->SetBool(!_tcsicmp(value.c_str(), _T("true")) ? true : false);
+			else if (!_tcsicmp(name.c_str(), _T("password")))
+				(*m_Props)[EDOCPROP::PASSWORD]->SetString(value.c_str());
 		}
 	}
 }
@@ -2645,6 +2766,10 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 
 							tstring s = settings_start;
 							m_Props->DeserializeFromXMLString(s);
+
+							// TODO: FIX SPANNING... MAYBE?
+							// Remove this line when it's working
+							m_Props->DeletePropertyById(EDOCPROP::MAXIMUM_SIZE_MB);
 						}
 
 						if (files_start)

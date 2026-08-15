@@ -20,16 +20,17 @@
 
 typedef std::basic_string<TCHAR> tstring;
 
-struct sFileTableEntry
+using SFileTableEntry = struct sFileTableEntry
 {
 	enum
 	{
-		FTEFLAG_SPANNED			= 0x0000000000000001,		// a spanned file will be partially in multiple files
-		FTEFLAG_DOWNLOAD		= 0x0000000000000002,		// an empty file that is just a download reference
-		FTEFLAG_BLOCKSIZEMASK	= 0x000000000000001C,		// a mask of 3 bits (0-7) that indicates the size of the block
+		FTEFLAG_SPANNED			= 0x00000001,		// a spanned file will be partially in multiple files
+		FTEFLAG_DOWNLOAD		= 0x00000002,		// an empty file that is just a download reference
+		FTEFLAG_BLOCKSIZEMASK	= 0x0000001C,		// a mask of 3 bits (0-7) that indicates the size of the block
+		FTEFLAG_CONTINUED		= 0x00000020,		// continued in the next span
 	};
 
-	#define FTEFLAG_BLOCKSIZESHIFT		2					// mask off the bytes with BLOCKSIZEMASK, then shift right by this amount
+	#define FTEFLAG_BLOCKSIZESHIFT		2			// mask off the bytes with BLOCKSIZEMASK, then shift right by this amount
 
 	uint32_t m_Flags;
 	uint64_t m_UncompressedSize;
@@ -54,19 +55,19 @@ struct sFileTableEntry
 	}
 
 	// Store the entry on disk
-	bool Write(HANDLE hOut) const;
+	bool Write(HANDLE hOut, const uint8_t *key) const;
 
 	// Restore the entry from disk
-	bool Read(HANDLE hIn);
+	bool Read(HANDLE hIn, const uint8_t *key);
 
 	// Return the size of the entry on disk
 	size_t Size() const;
 };
 
-typedef struct sFileTableEntry SFileTableEntry;
+using TFileTable = std::deque<SFileTableEntry>;
 
-typedef std::deque<SFileTableEntry> TFileTable;
 
+#define ENCRYPTION_KEY_LENGTH			32
 
 struct sFileBlock
 {
@@ -83,7 +84,7 @@ struct sFileBlock
 	{
 		sFileBlockHeader() { m_Flags = 0; m_SizeC = m_SizeU = 0; }
 
-		uint64_t m_Flags;							// flags
+		uint32_t m_Flags;							// flags
 		uint32_t m_SizeC;							// compressed size
 		uint32_t m_SizeU;							// uncompressed size
 	} m_Header;
@@ -97,15 +98,20 @@ struct sFileBlock
 	bool DecompressData();
 	bool WriteCompressedData(HANDLE hOut);
 	bool WriteUncompressedData(HANDLE hOut);
+
+	bool CryptData(const uint8_t *key, uint64_t nonce);
 };
 
 typedef sFileBlock SFileBlock;
 
 
+#define EF_ENCRYPTED			0x0001
+#define EF_FAILED_DECRYPTION	0x0002
+
 class CFastLZArchiver : public IArchiver
 {
 public:
-	CFastLZArchiver(IArchiveHandle *pah);
+	CFastLZArchiver(IArchiveHandle *pah, uint32_t flags, const TCHAR *password, uint64_t salt);
 
 	virtual ~CFastLZArchiver();
 
@@ -138,15 +144,21 @@ protected:
 	IArchiveHandle *m_pah;
 	uint64_t m_InitialOffset;
 
+	uint32_t m_Flags;
+
 	uint64_t m_MaxSize;
 
 	IArchiver::EBufferSize m_BlockSize;
+
+	uint8_t m_EncryptionKey[ENCRYPTION_KEY_LENGTH];
 };
 
 class CFastLZExtractor : public IExtractor
 {
+
 public:
-	CFastLZExtractor(IArchiveHandle *pah, UINT64 flags);
+
+	CFastLZExtractor(IArchiveHandle *pah, uint32_t flags, const TCHAR *password);
 
 	virtual ~CFastLZExtractor();
 
@@ -158,12 +170,19 @@ public:
 
 	virtual void SetBaseOutputPath(const TCHAR *path);
 
+	bool DecryptionFailed() { return (m_Flags & EF_FAILED_DECRYPTION); }
+
 protected:
 
 	bool ReadFileTable();
 
 	TFileTable m_FileTable;
 	uint64_t m_CachedFilePosition;
+
+	uint32_t m_Flags;
+
+	// encryption items
+	uint8_t m_EncryptionKey[ENCRYPTION_KEY_LENGTH];
 
 	IArchiveHandle *m_pah;
 

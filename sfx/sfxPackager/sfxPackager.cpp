@@ -54,7 +54,7 @@ CSfxPackagerApp::CSfxPackagerApp()
 	m_Props = props::IPropertySet::CreatePropertySet();
 
 	// recommended format for string is CompanyName.ProductName.SubProduct.VersionInformation
-	SetAppID(_T("sfxPackager.3.7.6.0"));
+	SetAppID(_T("sfxPackager.4.0.0.0"));
 }
 
 CSfxPackagerApp::~CSfxPackagerApp()
@@ -74,21 +74,41 @@ public:
 	CSfxPackagerCommandLineInfo()
 	{
 		m_bBuild = false;
+		m_bExpectPassword = false;
 	}
 
 	// plain char* version on UNICODE for source-code backwards compatibility
 	virtual void ParseParam(const TCHAR* pszParam, BOOL bFlag, BOOL bLast)
 	{
+		if (m_bExpectPassword)
+		{
+			if (bLast)
+			{
+				_tprintf(_T("\nMissing project in your command line.\n\n"));
+				theApp.ExitInstance();
+				return;
+			}
+
+			theApp.m_PasswordOverride = pszParam;
+			m_bExpectPassword = false;
+			return;
+		}
+
 		if (bFlag && !_tcsicmp(pszParam, _T("b")))
 		{
 			m_bBuild = true;
 			m_bRunAutomated = true;
 			m_bRunEmbedded = true;
 		}
+		else if (bFlag && !_tcsicmp(pszParam, _T("p")))
+		{
+			m_bExpectPassword = true;
+		}
 		else
 			CCommandLineInfo::ParseParam(pszParam, bFlag, bLast);
 	}
 
+	bool m_bExpectPassword;
 	bool m_bBuild;
 };
 
@@ -165,6 +185,9 @@ BOOL CSfxPackagerApp::InitInstance()
 	if (cmdInfo.m_nShellCommand == cmdInfo.FileNew)
 		cmdInfo.m_nShellCommand = cmdInfo.FileNothing;
 
+	if ((cmdInfo.m_nShellCommand == cmdInfo.FileNothing) || !cmdInfo.m_bBuild)
+		theApp.m_PasswordOverride.clear();
+
 	if (cmdInfo.m_bBuild)
 		m_AutomatedBuild = true;
 
@@ -209,7 +232,7 @@ BOOL CSfxPackagerApp::InitInstance()
 		{
 			AllocConsole();
 		}
-		_tprintf(_T("\nsfxPackager, a light-weight install package creation utility for Windows.\nCopyright (c) 2013-2025, Keelan Stuart. All rights reserved.\n\n"));
+		_tprintf(_T("\nsfxPackager, a light-weight install package creation utility for Windows.\nCopyright (c) 2013-2026, Keelan Stuart. All rights reserved.\n\n"));
 
 		// start the package creation process for all 
 		POSITION pdtp = m_pDocManager->GetFirstDocTemplatePosition();

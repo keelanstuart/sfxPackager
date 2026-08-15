@@ -17,6 +17,7 @@
 #include "ProgressDlg.h"
 #include "afxdialogex.h"
 #include "LicenseEntryDlg.h"
+#include "PasswordDlg.h"
 #include <vector>
 #include <istream>
 #include <chrono>
@@ -616,10 +617,6 @@ DWORD CProgressDlg::RunInstall()
 
 		if (!(theApp.m_Flags & SFX_FLAG_EXTERNALARCHIVE))
 		{
-			//DWORD br;
-			//SetFilePointer(hfile, -(LONG)(sizeof(LONGLONG)), NULL, FILE_END);
-			//ReadFile(hfile, &(arcofs.QuadPart), sizeof(LONGLONG), &br, NULL);
-
 			pah = new CSfxHandle(hfile);
 			arcofs = theApp.m_ArchiveInternalOffset;	// use the offset we stored in the furd!
 		}
@@ -631,154 +628,185 @@ DWORD CProgressDlg::RunInstall()
 		SetFilePointerEx(hfile, arcofs, NULL, FILE_BEGIN);
 
 		IExtractor *pie = NULL;
-		if (pah && (IExtractor::CreateExtractor(&pie, pah) == IExtractor::CR_OK))
+		if (pah)
 		{
-			size_t maxi = pie->GetFileCount();
-
-			msg.Format(_T("Installing %d files to %s  ...\r\n"), int(maxi), (LPCTSTR)(theApp.m_InstallPath));
-			theApp.Echo(msg);
-
-			m_Progress.SetRange32(0, (int)maxi);
-
-			pie->SetBaseOutputPath((LPCTSTR)(theApp.m_InstallPath));
-
-			for (size_t i = 0; (i < maxi) && !cancelled; i++)
+			if (theApp.m_Flags & SFX_FLAG_ENCRYPTED)
 			{
-				if (WaitForSingleObject(m_CancelEvent, 0) != WAIT_TIMEOUT)
+				CPasswordDlg pd(nullptr);
+				if (pd.DoModal() == IDCANCEL)
+					ExitProcess(-10);
+			}
+
+			const TCHAR *password = theApp.m_Password.IsEmpty() ? nullptr : (LPCTSTR)(theApp.m_Password);
+
+			auto ext_result = IExtractor::CreateExtractor(&pie, pah, password);
+
+			switch (ext_result)
+			{
+				case IExtractor::CR_BADPASSWORD:
+					MessageBox(_T("The password entered is incorrect; unable to proceed. This installer will now close."), _T("Password Incorrect"), MB_OK);
+					ExitProcess(-11);
+					break;
+
+				case IExtractor::CR_OK:
 				{
-					msg.Format(_T("Operation cancelled.\r\n"));
-					cancelled = true;
-					extract_ok = false;
-					continue;
-				}
+					size_t maxi = pie->GetFileCount();
 
-				tstring fname, fpath, prefile_snippet, postfile_snippet, ffull;
-				uint64_t usize;
-				FILETIME created_time, modified_time;
-				if (!pie->GetFileInfo(i, &fname, &fpath, NULL, &usize, &created_time, &modified_time, &prefile_snippet, &postfile_snippet))
-					continue;
-
-				PARSEDURL urlinf = {0};
-				urlinf.cbSize = sizeof(PARSEDURL);
-				bool isurl = (ParseURL(fname.c_str(), &urlinf) == S_OK);
-					
-				tstring file_scripts_preamble;
-
-				IExtractor::EXTRACT_RESULT er = IExtractor::EXTRACT_RESULT::ER_OK;
-
-				// reset skip each iteration so that if the user calls the Skip() js function, we won't actually extract it
-				skip = false;
-
-				if (!isurl)
-					RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, fname.c_str(), fpath.c_str(), nullptr), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str(), _T("PREFILE"));
-
-				if (!skip)
-				{
-					er = pie->ExtractFile(i, &ffull, nullptr, theApp.m_TestOnlyMode);
-
-					if (er == IExtractor::ER_MUSTDOWNLOAD)
-						RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, PathFindFileName(ffull.c_str()), fpath.c_str(), ffull.c_str()), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str(), _T("PREFILE"));
-				}
-
-				if (skip)
-					er = IExtractor::EXTRACT_RESULT::ER_SKIP;
-
-				m_Progress.SetPos((int)i + 1);
-
-				TCHAR relfull[MAX_PATH];
-				if (!PathRelativePathTo(relfull, theApp.m_InstallPath, FILE_ATTRIBUTE_DIRECTORY, ffull.c_str(), 0))
-					_tcscpy_s(relfull, MAX_PATH, ffull.c_str());
-				if (!_tcslen(relfull))
-					_tcscpy_s(relfull, MAX_PATH, fname.c_str());
-
-				if (er == IExtractor::ER_OK)
-				{
-					msg.Format(_T("    %s "), relfull);
+					msg.Format(_T("Installing %d files to %s  ...\r\n"), int(maxi), (LPCTSTR)(theApp.m_InstallPath));
 					theApp.Echo(msg);
-				}
 
-				switch (er)
-				{
-					case IExtractor::ER_MUSTDOWNLOAD:
+					m_Progress.SetRange32(0, (int)maxi);
+
+					pie->SetBaseOutputPath((LPCTSTR)(theApp.m_InstallPath));
+
+					for (size_t i = 0; (i < maxi) && !cancelled; i++)
 					{
-						TCHAR dir[MAX_PATH], *_dir = dir;
-						_tcscpy_s(dir, ffull.c_str());
-						while (_dir && *(_dir++)) { if (*_dir == _T('/')) *_dir = _T('\\'); }
-
-						msg.Format(_T("    Downloading %s from %s ... "), relfull, fname.c_str());
-						theApp.Echo(msg);
-
-						if (!theApp.m_TestOnlyMode)
+						if (WaitForSingleObject(m_CancelEvent, 0) != WAIT_TIMEOUT)
 						{
-							PathRemoveFileSpec(dir);
-							FLZACreateDirectories(dir);
+							msg.Format(_T("Operation cancelled.\r\n"));
+							cancelled = true;
+							extract_ok = false;
+							continue;
+						}
 
-							m_IndividualProgress.ShowWindow(SW_SHOW);
+						tstring fname, fpath, prefile_snippet, postfile_snippet, ffull;
+						uint64_t usize;
+						FILETIME created_time, modified_time;
+						if (!pie->GetFileInfo(i, &fname, &fpath, NULL, &usize, &created_time, &modified_time, &prefile_snippet, &postfile_snippet))
+							continue;
 
-							CHttpDownloader dl;
-							bool dlok = dl.DownloadHttpFile(fname.c_str(), ffull.c_str(), m_CancelEvent, DownloadCallback, this);
+						PARSEDURL urlinf = {0};
+						urlinf.cbSize = sizeof(PARSEDURL);
+						bool isurl = (ParseURL(fname.c_str(), &urlinf) == S_OK);
 
-							m_IndividualProgress.ShowWindow(SW_HIDE);
+						tstring file_scripts_preamble;
 
-							if (!dlok)
+						IExtractor::EXTRACT_RESULT er = IExtractor::EXTRACT_RESULT::ER_OK;
+
+						// reset skip each iteration so that if the user calls the Skip() js function, we won't actually extract it
+						skip = false;
+
+						if (!isurl)
+							RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, fname.c_str(), fpath.c_str(), nullptr), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str(), _T("PREFILE"));
+
+						if (!skip)
+						{
+							er = IExtractor::ER_SPAN;
+							while (er == IExtractor::ER_SPAN)
 							{
-								msg.Format(_T("[download failed]\r\n"));
+								er = pie->ExtractFile(i, &ffull, nullptr, theApp.m_TestOnlyMode);
+
+								if ((er == IExtractor::ER_SPAN) && !pah->Span())
+								{
+									// report error
+								}
+							}
+
+							if (er == IExtractor::ER_MUSTDOWNLOAD)
+								RunScript(BuildFileScriptPreamble(file_scripts_preamble, theApp.m_InstallPath, PathFindFileName(ffull.c_str()), fpath.c_str(), ffull.c_str()), theApp.m_Script[CSfxApp::EScriptType::PREFILE].c_str(), prefile_snippet.c_str(), _T("PREFILE"));
+						}
+
+						if (skip)
+							er = IExtractor::EXTRACT_RESULT::ER_SKIP;
+
+						m_Progress.SetPos((int)i + 1);
+
+						TCHAR relfull[MAX_PATH];
+						if (!PathRelativePathTo(relfull, theApp.m_InstallPath, FILE_ATTRIBUTE_DIRECTORY, ffull.c_str(), 0))
+							_tcscpy_s(relfull, MAX_PATH, ffull.c_str());
+						if (!_tcslen(relfull))
+							_tcscpy_s(relfull, MAX_PATH, fname.c_str());
+
+						if (er == IExtractor::ER_OK)
+						{
+							msg.Format(_T("    %s "), relfull);
+							theApp.Echo(msg);
+						}
+
+						switch (er)
+						{
+							case IExtractor::ER_MUSTDOWNLOAD:
+							{
+								TCHAR dir[MAX_PATH], *_dir = dir;
+								_tcscpy_s(dir, ffull.c_str());
+								while (_dir && *(_dir++)) { if (*_dir == _T('/')) *_dir = _T('\\'); }
+
+								msg.Format(_T("    Downloading %s from %s ... "), relfull, fname.c_str());
+								theApp.Echo(msg);
+
+								if (!theApp.m_TestOnlyMode)
+								{
+									PathRemoveFileSpec(dir);
+									FLZACreateDirectories(dir);
+
+									m_IndividualProgress.ShowWindow(SW_SHOW);
+
+									CHttpDownloader dl;
+									bool dlok = dl.DownloadHttpFile(fname.c_str(), ffull.c_str(), m_CancelEvent, DownloadCallback, this);
+
+									m_IndividualProgress.ShowWindow(SW_HIDE);
+
+									if (!dlok)
+									{
+										msg.Format(_T("[download failed]\r\n"));
+										break;
+									}
+								}
+
+								HANDLE dlfh = CreateFile(ffull.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, NULL);
+								if (dlfh == INVALID_HANDLE_VALUE)
+								{
+									msg.Format(_T("[file error]\r\n"));
+									break;
+								}
+
+								LARGE_INTEGER fsz;
+								GetFileSizeEx(dlfh, &fsz);
+								usize = fsz.QuadPart;
+								CloseHandle(dlfh);
+
+								std::replace(ffull.begin(), ffull.end(), _T('\\'), _T('/'));
+
+								fname = PathFindFileName(ffull.c_str());
+								fpath = ffull;
+								size_t sp = fpath.find_last_of(_T('/'));
+								if (sp < fpath.length())
+								{
+									tstring::const_iterator pit = fpath.cbegin() + sp;
+									fpath.erase(pit, fpath.cend());
+								}
+								else
+									fpath = _T("./");
+
+								er = IExtractor::ER_OK;
+							}
+
+							case IExtractor::ER_OK:
+							{
+								std::replace(ffull.begin(), ffull.end(), _T('\\'), _T('/'));
+								std::replace(fpath.begin(), fpath.end(), _T('\\'), _T('/'));
+
+								msg.Format(_T("(%" PRId64 "KB) [ok]\r\n"), std::max<uint64_t>(1, usize / 1024));
+
 								break;
 							}
+
+							case IExtractor::ER_SKIP:
+								msg.Format(_T("    %s [skipped]\r\n"), relfull);
+								break;
+
+							default:
+								msg.Format(_T("    %s [failed]\r\n"), relfull);
+								extract_ok = false;
+								break;
 						}
 
-						HANDLE dlfh = CreateFile(ffull.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, NULL);
-						if (dlfh == INVALID_HANDLE_VALUE)
-						{
-							msg.Format(_T("[file error]\r\n"));
-							break;
-						}
+						theApp.Echo(msg);
 
-						LARGE_INTEGER fsz;
-						GetFileSizeEx(dlfh, &fsz);
-						usize = fsz.QuadPart;
-						CloseHandle(dlfh);
-
-						std::replace(ffull.begin(), ffull.end(), _T('\\'), _T('/'));
-
-						fname = PathFindFileName(ffull.c_str());
-						fpath = ffull;
-						size_t sp = fpath.find_last_of(_T('/'));
-						if (sp < fpath.length())
-						{
-							tstring::const_iterator pit = fpath.cbegin() + sp;
-							fpath.erase(pit, fpath.cend());
-						}
-						else
-							fpath = _T("./");
-
-						er = IExtractor::ER_OK;
+						if (er == IExtractor::ER_OK)
+							RunScript(file_scripts_preamble.c_str(), theApp.m_Script[CSfxApp::EScriptType::POSTFILE].c_str(), postfile_snippet.c_str(), _T("POSTFILE"));
 					}
-
-					case IExtractor::ER_OK:
-					{
-						std::replace(ffull.begin(), ffull.end(), _T('\\'), _T('/'));
-						std::replace(fpath.begin(), fpath.end(), _T('\\'), _T('/'));
-
-						msg.Format(_T("(%" PRId64 "KB) [ok]\r\n"), std::max<uint64_t>(1, usize / 1024));
-
-						break;
-					}
-
-					case IExtractor::ER_SKIP:
-						msg.Format(_T("    %s [skipped]\r\n"), relfull);
-						break;
-
-					default:
-						msg.Format(_T("    %s [failed]\r\n"), relfull);
-						extract_ok = false;
-						break;
 				}
-
-				theApp.Echo(msg);
-
-				if (er == IExtractor::ER_OK)
-					RunScript(file_scripts_preamble.c_str(), theApp.m_Script[CSfxApp::EScriptType::POSTFILE].c_str(), postfile_snippet.c_str(), _T("POSTFILE"));
 			}
 
 			IExtractor::DestroyExtractor(&pie);

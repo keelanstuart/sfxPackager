@@ -79,7 +79,7 @@ protected:
 public:
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 
-	virtual void CMainFrame::ActivateFrame(int nCmdShow = -1);
+	virtual void ActivateFrame(int nCmdShow = -1);
 
 };
 

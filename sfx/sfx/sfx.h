@@ -37,6 +37,7 @@ public:
 
 	CString m_RunCommand;
 	CString m_VersionID;
+	CString m_Password;
 	UINT32 m_Flags;
 	LARGE_INTEGER m_SpaceRequired = {0};
 	UINT32 m_CompressedFileCount;

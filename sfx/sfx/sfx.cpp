@@ -20,6 +20,7 @@
 #include "WelcomeDlg.h"
 #include "ProgressDlg.h"
 #include "FinishDlg.h"
+#include "PasswordDlg.h"
 
 #include "../sfxFlags.h"
 
@@ -29,6 +30,8 @@
 
 #include <fcntl.h>
 #include <io.h>
+#include <bit>
+#include <cstdint>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -188,6 +191,18 @@ public:
 
 };
 
+
+void Scramble(tstring &s)
+{
+	uint8_t x = SCRAMBLER;
+	for (tstring::iterator it = s.begin(); it != s.end(); it++)
+	{
+		if (*it)
+			*it ^= (0x80 | x);
+		x ^= ~SCRAMBLER;
+	}
+}
+
 // CSfxApp initialization
 
 BOOL CSfxApp::InitInstance()
@@ -307,18 +322,20 @@ BOOL CSfxApp::InitInstance()
 	TCHAR *script_res_name[EScriptType::NUMTYPES] = {_T("SFX_SCRIPT_INITIALIZE"), _T("SFX_SCRIPT_PREINSTALL"), _T("SFX_SCRIPT_PREFILE"), _T("SFX_SCRIPT_POSTFILE"), _T("SFX_SCRIPT_POSTINSTALL")};
 	for (int si = 0, max_si = EScriptType::NUMTYPES; si < max_si; si++)
 	{
-		TCHAR *pscript = _T("");
 		hfr = FindResource(NULL, script_res_name[si], _T("SFX"));
 		if (hfr)
 		{
+			DWORD ressz = SizeofResource(NULL, hfr);
 			HGLOBAL hg = LoadResource(NULL, hfr);
 			if (hg)
 			{
-				pscript = (TCHAR *)LockResource(hg);
+				TCHAR *pscript = (TCHAR *)LockResource(hg);
+
+				m_Script[si].resize(ressz / sizeof(TCHAR));
+				memcpy(m_Script[si].data(), pscript, ressz);
+				//Scramble(m_Script[si]);
 			}
 		}
-
-		m_Script[si] = pscript;
 	}
 
 	if (m_TestOnlyMode)
@@ -423,7 +440,7 @@ BOOL CSfxApp::InitInstance()
 
 		HWND hwnd = dlg->GetSafeHwnd();
 
-#ifdef _DEBUG
+#if defined (_DEBUG)
 		// Crash if we don't reset this... not sure when / why this changed (update to VC?), but it definitely did!
 		_AFX_THREAD_STATE* pState = AfxGetThreadState();
 		pState->m_nDisablePumpCount = 0;
@@ -455,7 +472,7 @@ BOOL CSfxApp::InitInstance()
 
 		RemoveQuitMessage(hwnd);
 
-#if defined (DEBUG)
+#if defined (_DEBUG)
 		pState->m_nDisablePumpCount = 0;
 #endif
 

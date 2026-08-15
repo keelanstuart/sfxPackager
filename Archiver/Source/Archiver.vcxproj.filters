@@ -38,5 +38,11 @@
     <ClInclude Include="$(ProjectDir)/../Include/Archiver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="chacha20.hpp">
+      <Filter>Header Files\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="picosha2.h">
+      <Filter>Header Files\Private</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

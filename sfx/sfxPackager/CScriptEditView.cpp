@@ -119,7 +119,7 @@ void CScriptEditView::OnInitialUpdate()
 		m_reScriptEditor.SetSel(0, -1);
 		int cbi = m_cbScriptSelect.GetCurSel();
 		CString *s = (CString *)m_cbScriptSelect.GetItemData(cbi);
-		m_reScriptEditor.ReplaceSel(s ? *s : _T(""));
+		m_reScriptEditor.ReplaceSel(s ? *s : (TCHAR *)_T(""));
 	}
 
 	if (doc && m_reScriptEditor.GetSafeHwnd() && m_cbScriptSelect.GetSafeHwnd())
@@ -239,7 +239,7 @@ void CScriptEditView::OnScriptSelected()
 
 	int cbi = m_cbScriptSelect.GetCurSel();
 	s = (CString *)m_cbScriptSelect.GetItemData(cbi);
-	m_reScriptEditor.ReplaceSel(s ? *s : _T(""));
+	m_reScriptEditor.ReplaceSel(s ? *s : (TCHAR *)_T(""));
 
 	m_LastSel = cbi;
 

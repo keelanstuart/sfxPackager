@@ -569,7 +569,7 @@ void CPropertyGrid::OnPropertyChanged(CWTFPropertyGridProperty* pProp)
 						memset(&t, 0, sizeof(struct tm));
 						_stscanf_s((LPCTSTR)propstr, _T("%04d/%02d/%02d"), &t.tm_year, &t.tm_mon, &t.tm_mday);
 						t.tm_mon--;
-						p->SetInt(mktime(&t));
+						p->SetInt((int64_t)mktime(&t));
 						break;
 					}
 
@@ -579,12 +579,15 @@ void CPropertyGrid::OnPropertyChanged(CWTFPropertyGridProperty* pProp)
 						struct tm t;
 						memset(&t, 0, sizeof(struct tm));
 						_stscanf_s((LPCTSTR)propstr, _T("%02d:%02d:%02d"), &t.tm_hour, &t.tm_min, &t.tm_sec);
-						p->SetInt(mktime(&t));
+						p->SetInt(static_cast<int64_t>(mktime(&t)));
 						break;
 					}
 
 					default:
-						p->SetInt(var.llVal);
+						if (var.vt == VT_I4)
+							p->SetInt((int64_t)(var.lVal));
+						else if (var.vt == VT_I8)
+							p->SetInt(var.llVal);
 						break;
 				}
 				break;

@@ -9,6 +9,7 @@
 // Microsoft Foundation Classes product.
 
 #include "stdafx.h"
+
 #include <afxcontrolbarutil.h>
 #include "wtfpropertygridctrl.h"
 
@@ -57,7 +58,15 @@ IMPLEMENT_DYNAMIC(CWTFPropertyGridProperty, CObject)
 #define AFX_FORMAT_FLOAT  _T("%f")
 #define AFX_FORMAT_DOUBLE _T("%lf")
 
-CWTFPropertyGridProperty::CWTFPropertyGridProperty(const CString& strName, const COleVariant& varValue, LPCTSTR lpszDescr, DWORD_PTR dwData, LPCTSTR lpszEditMask, LPCTSTR lpszEditTemplate, LPCTSTR lpszValidChars) : m_strName(strName), m_varValue(varValue), m_varValueOrig(varValue), m_strDescr(lpszDescr == NULL ? _T("") : lpszDescr), m_strEditMask(lpszEditMask == NULL ? _T("") : lpszEditMask), m_strEditTempl(lpszEditTemplate == NULL ? _T("") : lpszEditTemplate), m_strValidChars(lpszValidChars == NULL ? _T("") : lpszValidChars), m_dwData(dwData)
+CWTFPropertyGridProperty::CWTFPropertyGridProperty(const CString& strName, const COleVariant& varValue, LPCTSTR lpszDescr, DWORD_PTR dwData, LPCTSTR lpszEditMask, LPCTSTR lpszEditTemplate, LPCTSTR lpszValidChars) :
+	m_strName(strName),
+	m_varValue(varValue),
+	m_varValueOrig(varValue),
+	m_strDescr(lpszDescr == NULL ? _T("") : lpszDescr),
+	m_strEditMask(lpszEditMask == NULL ? _T("") : lpszEditMask),
+	m_strEditTempl(lpszEditTemplate == NULL ? _T("") : lpszEditTemplate),
+	m_strValidChars(lpszValidChars == NULL ? _T("") : lpszValidChars),
+	m_dwData(dwData)
 {
 	m_bGroup = FALSE;
 	m_bIsValueList = FALSE;
@@ -71,7 +80,10 @@ CWTFPropertyGridProperty::CWTFPropertyGridProperty(const CString& strName, const
 	}
 }
 
-CWTFPropertyGridProperty::CWTFPropertyGridProperty(const CString& strGroupName, DWORD_PTR dwData, BOOL bIsValueList) : m_strName(strGroupName), m_dwData(dwData), m_bIsValueList(bIsValueList)
+CWTFPropertyGridProperty::CWTFPropertyGridProperty(const CString& strGroupName, DWORD_PTR dwData, BOOL bIsValueList) :
+	m_strName(strGroupName),
+	m_dwData(dwData),
+	m_bIsValueList(bIsValueList)
 {
 	m_bGroup = TRUE;
 
@@ -85,28 +97,28 @@ void CWTFPropertyGridProperty::SetFlags()
 
 	switch (m_varValue.vt)
 	{
-	case VT_BSTR:
-	case VT_R4:
-	case VT_R8:
-	case VT_UI1:
-	case VT_I2:
-	case VT_I4:
-	case VT_I8:
-	case VT_INT:
-	case VT_UINT:
-	case VT_UI2:
-	case VT_UI4:
-		break;
+		case VT_BSTR:
+		case VT_R4:
+		case VT_R8:
+		case VT_UI1:
+		case VT_I2:
+		case VT_I4:
+		case VT_I8:
+		case VT_INT:
+		case VT_UINT:
+		case VT_UI2:
+		case VT_UI4:
+			break;
 
-	case VT_DATE:
-		break;
+		case VT_DATE:
+			break;
 
-	case VT_BOOL:
-		m_dwFlags = AFX_PROP_HAS_LIST;
-		break;
+		case VT_BOOL:
+			m_dwFlags = AFX_PROP_HAS_LIST;
+			break;
 
-	default:
-		break;
+		default:
+			break;
 	}
 }
 
@@ -330,6 +342,11 @@ BOOL CWTFPropertyGridCtrl::DeleteProperty(CWTFPropertyGridProperty*& pProp, BOOL
 
 	if (bAdjustLayout)
 	{
+		if (m_bAlphabeticMode)
+		{
+			ReposProperties();
+		}
+
 		AdjustLayout();
 		return TRUE;
 	}
@@ -537,8 +554,10 @@ void CWTFPropertyGridProperty::EnableSpinControl(BOOL bEnable, int nMin, int nMa
 	case VT_UINT:
 	case VT_I2:
 	case VT_I4:
+	case VT_I8:
 	case VT_UI2:
 	case VT_UI4:
+	case VT_UI8:
 		break;
 
 	default:
@@ -585,15 +604,19 @@ void CWTFPropertyGridProperty::SetName(LPCTSTR lpszName, BOOL bRedraw)
 	}
 }
 
-void CWTFPropertyGridProperty::SetValue(const COleVariant& varValue)
+void CWTFPropertyGridProperty::UpdateValue(const COleVariant& varValue)
 {
 	ASSERT_VALID(this);
 
-	if (m_varValue.vt != VT_EMPTY && m_varValue.vt != varValue.vt)
-	{
-		ASSERT(FALSE);
+	if (m_varValue == varValue)
 		return;
-	}
+
+	SetValue(varValue);
+}
+
+void CWTFPropertyGridProperty::SetValue(const COleVariant& varValue)
+{
+	ASSERT_VALID(this);
 
 	BOOL bInPlaceEdit = m_bInPlaceEdit;
 	if (bInPlaceEdit)
@@ -864,7 +887,6 @@ CString CWTFPropertyGridProperty::FormatProperty()
 
 	if (m_bIsValueList)
 	{
-#if 1
 		for (POSITION pos = m_lstSubItems.GetHeadPosition(); pos != NULL;)
 		{
 			CWTFPropertyGridProperty* pProp = m_lstSubItems.GetNext(pos);
@@ -878,9 +900,6 @@ CString CWTFPropertyGridProperty::FormatProperty()
 				strVal += _T(' ');
 			}
 		}
-#else
-		strVal = _T("");
-#endif
 
 		return strVal;
 	}
@@ -896,6 +915,7 @@ CString CWTFPropertyGridProperty::FormatProperty()
 		break;
 
 	case VT_I4:
+	case VT_I8:
 	case VT_INT:
 		strVal.Format(AFX_FORMAT_LONG, (long)var.lVal);
 		break;
@@ -911,14 +931,15 @@ CString CWTFPropertyGridProperty::FormatProperty()
 		strVal.Format(AFX_FORMAT_USHORT, var.uiVal);
 		break;
 
-	case VT_UINT:
 	case VT_UI4:
+	case VT_UI8:
+	case VT_UINT:
 		strVal.Format(AFX_FORMAT_ULONG, var.ulVal);
 		break;
 
 	case VT_R4:
 	{
-		strVal.Format(AFX_FORMAT_FLOAT, (float)var.fltVal);
+		strVal.Format(_T("%0.4f") /* AFX_FORMAT_FLOAT */, (float)var.fltVal);
 
 		// trim insignificant 0's from the end of the string
 		int d = strVal.Find(_T('.')) + 1;
@@ -1016,7 +1037,7 @@ void CWTFPropertyGridProperty::OnDrawName(CDC* pDC, CRect rect)
 		CRect rectFocus = rect;
 		rectFocus.top = rectFocus.CenterPoint().y - nTextHeight / 2;
 		rectFocus.bottom = rectFocus.top + nTextHeight;
-		rectFocus.right = min(rect.right, rectFocus.left + pDC->GetTextExtent(m_strName).cx);
+		rectFocus.right = std::min<LONG>(rect.right, rectFocus.left + pDC->GetTextExtent(m_strName).cx);
 		rectFocus.InflateRect(2, 0);
 
 		COLORREF clrShadow = m_pWndList->m_bControlBarColors ? GetGlobalData()->clrBarShadow : GetGlobalData()->clrBtnShadow;
@@ -1107,7 +1128,7 @@ void CWTFPropertyGridProperty::OnDrawExpandBox(CDC* pDC, CRect rect)
 		nMaxBoxSize = (int)(.5 + nMaxBoxSize * GetGlobalData()->GetRibbonImageScale());
 	}
 
-	int nBoxSize = min (nMaxBoxSize, rect.Width ());
+	int nBoxSize = std::min<int>(nMaxBoxSize, rect.Width ());
 
 	rect = CRect(ptCenter, CSize(1, 1));
 	rect.InflateRect(nBoxSize / 2, nBoxSize / 2);
@@ -1218,8 +1239,9 @@ BOOL CWTFPropertyGridProperty::TextToVar(const CString& strText)
 		m_varValue = (short) _ttoi(strVal);
 		return TRUE;
 
-	case VT_INT:
 	case VT_I4:
+	case VT_I8:
+	case VT_INT:
 		m_varValue = _ttol(strVal);
 		return TRUE;
 
@@ -1227,8 +1249,9 @@ BOOL CWTFPropertyGridProperty::TextToVar(const CString& strText)
 		m_varValue.uiVal = unsigned short(_ttoi(strVal));
 		return TRUE;
 
-	case VT_UINT:
 	case VT_UI4:
+	case VT_UI8:
+	case VT_UINT:
 #ifdef _UNICODE
 		m_varValue.ulVal = wcstoul(strText, NULL, 10);
 #else
@@ -1304,6 +1327,7 @@ BOOL CWTFPropertyGridProperty::IsValueChanged() const
 		return(short)var.iVal != (short)var1.iVal;
 
 	case VT_I4:
+	case VT_I8:
 	case VT_INT:
 		return(long)var.lVal != (long)var1.lVal;
 
@@ -1313,8 +1337,9 @@ BOOL CWTFPropertyGridProperty::IsValueChanged() const
 	case VT_UI2:
 		return var.uiVal != var1.uiVal;
 
-	case VT_UINT:
 	case VT_UI4:
+	case VT_UI8:
+	case VT_UINT:
 		return var.ulVal != var1.ulVal;
 
 	case VT_R4:
@@ -1460,8 +1485,10 @@ CWnd* CWTFPropertyGridProperty::CreateInPlaceEdit(CRect rectEdit, BOOL& bDefault
 	case VT_INT:
 	case VT_UINT:
 	case VT_I4:
+	case VT_I8:
 	case VT_UI2:
 	case VT_UI4:
+	case VT_UI8:
 	case VT_BOOL:
 		break;
 
@@ -1741,8 +1768,10 @@ BOOL CWTFPropertyGridProperty::OnSetCursor() const
 	case VT_INT:
 	case VT_UINT:
 	case VT_I4:
+	case VT_I8:
 	case VT_UI2:
 	case VT_UI4:
+	case VT_UI8:
 		SetCursor(AfxGetApp()->LoadStandardCursor(IDC_IBEAM));
 		return TRUE;
 	}
@@ -1777,8 +1806,10 @@ BOOL CWTFPropertyGridProperty::PushChar(UINT nChar)
 	case VT_INT:
 	case VT_UINT:
 	case VT_I4:
+	case VT_I8:
 	case VT_UI2:
 	case VT_UI4:
+	case VT_UI8:
 		if (m_bEnabled && m_bAllowEdit)
 		{
 			m_pWndInPlace->SetWindowText(_T(""));
@@ -1889,10 +1920,12 @@ HBRUSH CWTFPropertyGridProperty::OnCtlColor(CDC* pDC, UINT /*nCtlColor*/)
 	case VT_UI1:
 	case VT_I2:
 	case VT_I4:
+	case VT_I8:
 	case VT_INT:
 	case VT_UINT:
 	case VT_UI2:
 	case VT_UI4:
+	case VT_UI8:
 	case VT_BOOL:
 		if (!m_bEnabled || !m_bAllowEdit)
 		{
@@ -2113,7 +2146,7 @@ IMPLEMENT_DYNAMIC(CWTFPropertyGridColorProperty, CWTFPropertyGridProperty)
 
 CWTFPropertyGridColorProperty::CWTFPropertyGridColorProperty(const CString& strName, const COLORREF& color, CPalette* pPalette, LPCTSTR lpszDescr, DWORD_PTR dwData) : CWTFPropertyGridProperty(strName, COleVariant(), lpszDescr, dwData), m_Color(color), m_ColorOrig(color)
 {
-	//CMFCColorBar::InitColors(pPalette, m_Colors);
+	CWTFColorBar::InitColors(pPalette, m_Colors);
 
 	m_varValue = (LONG) color;
 	m_varValueOrig = (LONG) color;
@@ -2266,6 +2299,9 @@ CString CWTFPropertyGridColorProperty::FormatProperty()
 void CWTFPropertyGridColorProperty::SetColor(COLORREF color)
 {
 	ASSERT_VALID(this);
+
+	if ((m_Color == color) && (m_varValue == (LONG)color))
+		return;
 
 	m_Color = color;
 	m_varValue = (LONG) color;
@@ -2477,6 +2513,9 @@ void CWTFPropertyGridFontProperty::OnClickButton(CPoint /*point*/)
 	if (dlg.DoModal() == IDOK)
 	{
 		dlg.GetCurrentFont(&m_lf);
+
+		m_lf.lfHeight = MulDiv(72, -m_lf.lfHeight, 96);
+
 		m_Color = dlg.GetColor();
 
 		if (memcmp(&lfPrev, &m_lf, sizeof(lfPrev) - sizeof(lfPrev.lfFaceName)) || _tcscmp( lfPrev.lfFaceName, m_lf.lfFaceName) || nColorPrev != m_Color)
@@ -2512,15 +2551,7 @@ CString CWTFPropertyGridFontProperty::FormatProperty()
 	CString str;
 	CWindowDC dc(m_pWndList);
 
-	int nLogY = dc.GetDeviceCaps(LOGPIXELSY);
-	if (nLogY != 0)
-	{
-		str.Format( _T("%Ts(%i)"), m_lf.lfFaceName, MulDiv(72, -m_lf.lfHeight, nLogY));
-	}
-	else
-	{
-		str = m_lf.lfFaceName;
-	}
+	str.Format( _T("%Ts(%i)"), m_lf.lfFaceName, m_lf.lfHeight);
 
 	return str;
 }
@@ -2557,9 +2588,9 @@ CWTFPropertyGridCtrl::CWTFPropertyGridCtrl()
 	m_rectTrackHeader.SetRectEmpty();
 	m_rectTrackDescr.SetRectEmpty();
 	m_nRowHeight = 0;
-	m_nRowVerticalPadding = 10;
+	m_nRowVerticalPadding = 12;
 	m_nHeaderHeight = 0;
-	m_nSubItemIndent = 0;
+	m_nSubItemIndent = 5;
 	m_nVertScrollOffset = 0;
 	m_nVertScrollTotal = 0;
 	m_nVertScrollPage = 0;
@@ -2681,12 +2712,12 @@ void CWTFPropertyGridCtrl::Init()
 	HDITEM hdItem;
 	hdItem.mask = HDI_TEXT | HDI_FORMAT;
 	hdItem.fmt = HDF_LEFT;
-	hdItem.pszText = _T("Property");
+	hdItem.pszText = (TCHAR *)_T("Property");
 	hdItem.cchTextMax = 100;
 
 	GetHeaderCtrl().InsertItem(0, &hdItem);
 
-	hdItem.pszText = _T("Value");
+	hdItem.pszText = (TCHAR *)_T("Value");
 	hdItem.cchTextMax = 100;
 
 	GetHeaderCtrl().InsertItem(1, &hdItem);
@@ -2769,8 +2800,8 @@ void CWTFPropertyGridCtrl::AdjustLayout()
 
 	if (m_bDescriptionArea && m_nDescrHeight != -1 && rectClient.Height() > 0)
 	{
-		m_nDescrHeight = max(m_nDescrHeight, m_nRowHeight);
-		m_nDescrHeight = min(m_nDescrHeight, rectClient.Height() - m_nRowHeight);
+		m_nDescrHeight = std::max<int>(m_nDescrHeight, m_nRowHeight);
+		m_nDescrHeight = std::min<int>(m_nDescrHeight, rectClient.Height() - m_nRowHeight);
 		m_rectList.bottom -= m_nDescrHeight;
 	}
 
@@ -2924,7 +2955,11 @@ void CWTFPropertyGridCtrl::OnDraw(CDC* pDCSrc)
 	CMemDC memDC(*pDCSrc, this);
 	CDC* pDC = &memDC.GetDC();
 
-	m_clrGray = RGB(128, 128, 128);//visualManager->GetPropertyGridGroupColor(this);
+#if 0
+	m_clrGray = visualManager->GetPropertyGridGroupColor(this);
+#else
+	m_clrGray = RGB(128, 128, 128);
+#endif
 
 	CRect rectClient;
 	GetClientRect(rectClient);
@@ -3070,7 +3105,7 @@ BOOL CWTFPropertyGridCtrl::OnDrawProperty(CDC* pDC, CWTFPropertyGridProperty* pP
 
 				if (!pProp->IsGroup())
 				{
-					rectLeft.right = min(nXCenter, rectLeft.left);
+					rectLeft.right = std::min<LONG>((LONG)nXCenter, rectLeft.left);
 				}
 
 				if (pProp->m_bIsValueList)
@@ -3079,7 +3114,7 @@ BOOL CWTFPropertyGridCtrl::OnDrawProperty(CDC* pDC, CWTFPropertyGridProperty* pP
 				}
 
 				rectLeft.left = m_rectList.left;
-				rectLeft.bottom = min(rectLeft.bottom, m_rectList.bottom);
+				rectLeft.bottom = std::min<LONG>(rectLeft.bottom, m_rectList.bottom);
 
 				if (rectLeft.left < rectLeft.right)
 				{
@@ -3124,7 +3159,7 @@ BOOL CWTFPropertyGridCtrl::OnDrawProperty(CDC* pDC, CWTFPropertyGridProperty* pP
 
 				CRgn rgnClipExpand;
 				CRect rectExpandClip = rectExpand;
-				rectExpandClip.bottom = min(rectExpandClip.bottom, m_rectList.bottom);
+				rectExpandClip.bottom = std::min<LONG>(rectExpandClip.bottom, m_rectList.bottom);
 
 				rgnClipExpand.CreateRectRgnIndirect(&rectExpandClip);
 				pDC->SelectClipRgn(&rgnClipExpand);
@@ -3151,7 +3186,7 @@ BOOL CWTFPropertyGridCtrl::OnDrawProperty(CDC* pDC, CWTFPropertyGridProperty* pP
 			{
 				CRgn rgnClipName;
 				CRect rectNameClip = rectName;
-				rectNameClip.bottom = min(rectNameClip.bottom, m_rectList.bottom);
+				rectNameClip.bottom = std::min<LONG>(rectNameClip.bottom, m_rectList.bottom);
 
 				rgnClipName.CreateRectRgnIndirect(&rectNameClip);
 				pDC->SelectClipRgn(&rgnClipName);
@@ -3175,7 +3210,7 @@ BOOL CWTFPropertyGridCtrl::OnDrawProperty(CDC* pDC, CWTFPropertyGridProperty* pP
 
 			CRgn rgnClipVal;
 			CRect rectValClip = rectValue;
-			rectValClip.bottom = min(rectValClip.bottom, m_rectList.bottom);
+			rectValClip.bottom = std::min<LONG>(rectValClip.bottom, m_rectList.bottom);
 
 			rgnClipVal.CreateRectRgnIndirect(&rectValClip);
 			pDC->SelectClipRgn(&rgnClipVal);
@@ -3243,7 +3278,7 @@ void CWTFPropertyGridCtrl::OnHeaderItemChanged(NMHDR* pNMHDR, LRESULT* pResult)
 		CRect rectClient;
 		GetClientRect(rectClient);
 
-		m_nLeftColumnWidth = min(max(m_nRowHeight, hdItem.cxy - 2), rectClient.Width() - ::GetSystemMetrics(SM_CXHSCROLL) - 5);
+		m_nLeftColumnWidth = std::min<int>(std::max<int>(m_nRowHeight, hdItem.cxy - 2), rectClient.Width() - ::GetSystemMetrics(SM_CXHSCROLL) - 5);
 
 		ReposProperties();
 
@@ -3305,7 +3340,7 @@ void CWTFPropertyGridCtrl::OnHeaderTrack(NMHDR* pNMHDR, LRESULT* pResult)
 	NMHEADER* pHeader = (NMHEADER*) pNMHDR;
 	ENSURE(pHeader != NULL);
 
-	pHeader->pitem->cxy = min(pHeader->pitem->cxy, m_rectList.Width());
+	pHeader->pitem->cxy = std::min<int>(pHeader->pitem->cxy, m_rectList.Width());
 
 	TrackHeader(pHeader->pitem->cxy);
 	*pResult = 0;
@@ -3358,7 +3393,7 @@ void CWTFPropertyGridCtrl::TrackHeader(int nOffset)
 			CRect rectClient;
 			GetClientRect(rectClient);
 
-			m_nLeftColumnWidth = min(max(m_nRowHeight, nOffset), rectClient.Width() - ::GetSystemMetrics(SM_CXHSCROLL) - 5);
+			m_nLeftColumnWidth = std::min<int>(std::max<int>(m_nRowHeight, nOffset), rectClient.Width() - ::GetSystemMetrics(SM_CXHSCROLL) - 5);
 
 			HDITEM hdItem;
 			hdItem.mask = HDI_WIDTH ;
@@ -3394,8 +3429,8 @@ void CWTFPropertyGridCtrl::TrackDescr(int nOffset)
 		CRect rectClient;
 		GetClientRect(rectClient);
 
-		nOffset = max(nOffset, rectClient.top + m_nRowHeight + m_nHeaderHeight);
-		nOffset = min(nOffset, rectClient.bottom - m_nRowHeight);
+		nOffset = std::max<LONG>((LONG)nOffset, rectClient.top + m_nRowHeight + m_nHeaderHeight);
+		nOffset = std::min<LONG>((LONG)nOffset, rectClient.bottom - m_nRowHeight);
 
 		m_rectTrackDescr = rectClient;
 		m_rectTrackDescr.top = nOffset - 1;
@@ -3689,7 +3724,7 @@ void CWTFPropertyGridCtrl::SetCurSel(CWTFPropertyGridProperty* pProp, BOOL bRedr
 				}
 			}
 
-			rectOld.right = max(rectButton.right, rectOld.right);
+			rectOld.right = std::max<LONG>(rectButton.right, rectOld.right);
 			InvalidateRect(rectButton);
 			InvalidateRect(rectOld);
 		}
@@ -3716,7 +3751,7 @@ void CWTFPropertyGridCtrl::SetCurSel(CWTFPropertyGridProperty* pProp, BOOL bRedr
 				}
 			}
 
-			rect.right = max(pProp->m_rectButton.right, rect.right);
+			rect.right = std::max<LONG>(pProp->m_rectButton.right, rect.right);
 			InvalidateRect(rect);
 			InvalidateRect(pProp->m_rectButton);
 		}
@@ -4003,6 +4038,10 @@ BOOL CWTFPropertyGridCtrl::PreTranslateMessage(MSG* pMsg)
 	switch (pMsg->message)
 	{
 	case WM_KEYDOWN:
+		m_ToolTip.RelayEvent(pMsg);
+		m_IPToolTip.Hide();
+		break;
+
 	case WM_SYSKEYDOWN:
 	case WM_LBUTTONDOWN:
 	case WM_RBUTTONDOWN:
@@ -4106,8 +4145,9 @@ BOOL CWTFPropertyGridCtrl::PreTranslateMessage(MSG* pMsg)
 				break;
 
 			case VK_ESCAPE:
-				EndEditItem(FALSE);
-				SetFocus();
+				//EndEditItem(FALSE);
+				//SetFocus();
+				return TRUE;
 				break;
 
 			case VK_DOWN:
@@ -4120,6 +4160,14 @@ BOOL CWTFPropertyGridCtrl::PreTranslateMessage(MSG* pMsg)
 					}
 				}
 				else if (::IsWindow(m_pSel->m_pWndInPlace->GetSafeHwnd()))
+				{
+					m_pSel->m_pWndInPlace->SendMessage(WM_KEYDOWN, pMsg->wParam, pMsg->lParam);
+					return TRUE;
+				}
+				break;
+
+			case VK_DELETE:
+				if (::IsWindow(m_pSel->m_pWndInPlace->GetSafeHwnd()))
 				{
 					m_pSel->m_pWndInPlace->SendMessage(WM_KEYDOWN, pMsg->wParam, pMsg->lParam);
 					return TRUE;
@@ -4335,7 +4383,7 @@ void CWTFPropertyGridCtrl::SetScrollSizes()
 			m_nVertScrollTotal = 0;
 		}
 
-		m_nVertScrollOffset = min(m_nVertScrollOffset, m_nVertScrollTotal);
+		m_nVertScrollOffset = std::min<int>(m_nVertScrollOffset, m_nVertScrollTotal);
 	}
 
 	SCROLLINFO si;
@@ -4444,7 +4492,7 @@ void CWTFPropertyGridCtrl::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrol
 		return;
 	}
 
-	m_nVertScrollOffset = min(max(0, m_nVertScrollOffset), m_nVertScrollTotal - m_nVertScrollPage + 1);
+	m_nVertScrollOffset = std::min<int>(std::max<int>(0, m_nVertScrollOffset), m_nVertScrollTotal - m_nVertScrollPage + 1);
 
 	if (m_nVertScrollOffset == nPrevOffset)
 	{
@@ -4591,6 +4639,17 @@ void CWTFPropertyGridCtrl::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 	switch (nChar)
 	{
+	case VK_DELETE:
+		if (m_pSel != NULL && m_pSel->m_bInPlaceEdit != NULL && m_pSel->m_bEnabled)
+		{
+			ASSERT_VALID(m_pSel);
+
+			if (IsChild(GetFocus()))
+			{
+			}
+		}
+		break;
+
 	case VK_F4:
 		if (m_pSel != NULL && m_pSel->m_bEnabled && EditItem(m_pSel))
 		{
@@ -5208,7 +5267,7 @@ void CWTFPropertyGridCtrl::OnLButtonUp(UINT nFlags, CPoint point)
 		CRect rectClient;
 		GetClientRect(rectClient);
 
-		m_nLeftColumnWidth = min(max(m_nRowHeight, point.x), rectClient.Width() - ::GetSystemMetrics(SM_CXHSCROLL) - 5);
+		m_nLeftColumnWidth = std::min<int>(std::max<int>(m_nRowHeight, (int)point.x), rectClient.Width() - ::GetSystemMetrics(SM_CXHSCROLL) - 5);
 
 		HDITEM hdItem;
 		hdItem.mask = HDI_WIDTH ;
@@ -5233,9 +5292,9 @@ void CWTFPropertyGridCtrl::OnLButtonUp(UINT nFlags, CPoint point)
 		CRect rectClient;
 		GetClientRect(rectClient);
 
-		point.y = max(point.y, m_nRowHeight + m_nHeaderHeight);
+		point.y = std::max<int>((int)point.y, m_nRowHeight + m_nHeaderHeight);
 		m_nDescrHeight = rectClient.Height() - point.y + 2;
-		m_nDescrHeight = max(m_nRowHeight, m_nDescrHeight);
+		m_nDescrHeight = std::max<int>(m_nRowHeight, m_nDescrHeight);
 
 		AdjustLayout();
 		RedrawWindow();
@@ -5440,7 +5499,7 @@ HRESULT CWTFPropertyGridCtrl::get_accName(VARIANT varChild, BSTR *pszName)
 		return E_INVALIDARG;
 	}
 
-	if ((varChild.vt == VT_I4) && (varChild.lVal == CHILDID_SELF))
+	if (((varChild.vt == VT_I4) || (varChild.vt == VT_I8) || (varChild.vt == VT_INT)) && (varChild.lVal == CHILDID_SELF))
 	{
 		CString strText;
 		GetWindowText(strText);
@@ -5456,7 +5515,7 @@ HRESULT CWTFPropertyGridCtrl::get_accName(VARIANT varChild, BSTR *pszName)
 
 	if (m_pAccProp != NULL)
 	{
-		CString strName = m_pAccProp->IsInPlaceEditing() ? m_pAccProp->FormatProperty() : m_pAccProp->GetName();
+		CString strName = m_pAccProp->IsInPlaceEditing() ? (LPCTSTR)m_pAccProp->FormatProperty() : m_pAccProp->GetName();
 		*pszName = strName.AllocSysString();
 		return S_OK;
 	}
@@ -5466,7 +5525,7 @@ HRESULT CWTFPropertyGridCtrl::get_accName(VARIANT varChild, BSTR *pszName)
 
 HRESULT CWTFPropertyGridCtrl::get_accValue(VARIANT varChild, BSTR *pszValue)
 {
-	if ((varChild.vt == VT_I4) && (varChild.lVal == CHILDID_SELF))
+	if (((varChild.vt == VT_I4) || (varChild.vt == VT_I8) || (varChild.vt == VT_INT)) && (varChild.lVal == CHILDID_SELF))
 	{
 		return S_FALSE;
 	}
@@ -5487,12 +5546,12 @@ HRESULT CWTFPropertyGridCtrl::get_accValue(VARIANT varChild, BSTR *pszValue)
 
 HRESULT CWTFPropertyGridCtrl::get_accDescription(VARIANT varChild, BSTR *pszDescription)
 {
-	if (((varChild.vt != VT_I4) && (varChild.lVal != CHILDID_SELF)) || (NULL == pszDescription))
+	if ((((varChild.vt == VT_I4) || (varChild.vt == VT_I8) || (varChild.vt == VT_INT)) && (varChild.lVal == CHILDID_SELF)) || (NULL == pszDescription))
 	{
 		return E_INVALIDARG;
 	}
 
-	if ((varChild.vt == VT_I4) && (varChild.lVal == CHILDID_SELF))
+	if (((varChild.vt == VT_I4) || (varChild.vt == VT_I8) || (varChild.vt == VT_INT)) && (varChild.lVal == CHILDID_SELF))
 	{
 		*pszDescription = SysAllocString(L"PropertyList");
 		return S_OK;
@@ -5509,19 +5568,19 @@ HRESULT CWTFPropertyGridCtrl::get_accDescription(VARIANT varChild, BSTR *pszDesc
 
 HRESULT CWTFPropertyGridCtrl::get_accRole(VARIANT varChild, VARIANT *pvarRole)
 {
-	if (!pvarRole || ((varChild.vt != VT_I4) && (varChild.lVal != CHILDID_SELF)))
+	if (!pvarRole || (((varChild.vt == VT_I4) || (varChild.vt == VT_I8) || (varChild.vt == VT_INT)) && (varChild.lVal != CHILDID_SELF)))
 	{
 		return E_INVALIDARG;
 	}
 
-	if ((varChild.vt == VT_I4) && (varChild.lVal == CHILDID_SELF))
+	if (((varChild.vt == VT_I4) || (varChild.vt == VT_I8) || (varChild.vt == VT_INT)) && (varChild.lVal == CHILDID_SELF))
 	{
-		pvarRole->vt = VT_I4;
+		pvarRole->vt = varChild.vt;
 		pvarRole->lVal = ROLE_SYSTEM_LIST;
 		return S_OK;
 	}
 
-	pvarRole->vt = VT_I4;
+	pvarRole->vt = VT_INT;
 	pvarRole->lVal = ROLE_SYSTEM_ROW;
 
 	return S_OK;
@@ -5529,17 +5588,17 @@ HRESULT CWTFPropertyGridCtrl::get_accRole(VARIANT varChild, VARIANT *pvarRole)
 
 HRESULT CWTFPropertyGridCtrl::get_accState(VARIANT varChild, VARIANT *pvarState)
 {
-	if ((varChild.vt == VT_I4) && (varChild.lVal == CHILDID_SELF))
+	if (((varChild.vt == VT_I4) || (varChild.vt == VT_I8) || (varChild.vt == VT_INT)) && (varChild.lVal == CHILDID_SELF))
 	{
-		pvarState->vt = VT_I4;
+		pvarState->vt = varChild.vt;
 		pvarState->lVal = STATE_SYSTEM_NORMAL;
 		return S_OK;
 	}
 
-	pvarState->vt = VT_I4;
+	pvarState->vt = VT_INT;
 	pvarState->lVal = STATE_SYSTEM_FOCUSABLE;
 	pvarState->lVal |= STATE_SYSTEM_SELECTABLE;
-	
+
 	if (m_pAccProp != NULL)
 	{
 		if (m_pAccProp->IsSelected())
@@ -5657,12 +5716,12 @@ HRESULT CWTFPropertyGridCtrl::accHitTest(long  xLeft, long yTop, VARIANT *pvarCh
 	if (pProp != NULL)
 	{
 		LPARAM lParam = MAKELPARAM((WORD)xLeft, (WORD)yTop);
-		pvarChild->vt = VT_I4;
+		pvarChild->vt = VT_INT;
 		pvarChild->lVal = (LONG)lParam;
 	}
 	else
 	{
-		pvarChild->vt = VT_I4;
+		pvarChild->vt = VT_INT;
 		pvarChild->lVal = CHILDID_SELF;
 	}
 
@@ -5672,7 +5731,7 @@ HRESULT CWTFPropertyGridCtrl::accHitTest(long  xLeft, long yTop, VARIANT *pvarCh
 
 LRESULT CWTFPropertyGridCtrl::OnInitControl(WPARAM wParam, LPARAM lParam)
 {
-#if 0
+#if 1
 	DWORD dwSize = (DWORD)wParam;
 	BYTE* pbInitData = (BYTE*)lParam;
 

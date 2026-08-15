@@ -19,6 +19,7 @@ enum ESfxFlagShift
 	FS_ALLOWDESTCHG,
 	FS_REBOOTNEEDED,
 	FS_EXTERNALARCHIVE,
+	FS_ENCRYPTED,
 };
 
 #define SFX_FLAG_EXPLORE			(1 << FS_EXPLORE)				// show a check box on the installer that will allow the user to explore the destination folder
@@ -27,6 +28,9 @@ enum ESfxFlagShift
 #define SFX_FLAG_ALLOWDESTCHG		(1 << FS_ALLOWDESTCHG)			// indicates that the installer allows the destination directory to be changed
 #define SFX_FLAG_REBOOTNEEDED		(1 << FS_REBOOTNEEDED)			// indicates that the system should be restarted for changes to take effect
 #define SFX_FLAG_EXTERNALARCHIVE	(1 << FS_EXTERNALARCHIVE)		// the files will be stored in a file outside of the exe (with the same name, but with a ".data" extension)
+#define SFX_FLAG_ENCRYPTED			(1 << FS_ENCRYPTED)				// a password dialog should be displayed
+
+#define SCRAMBLER		0x55
 
 struct sFixupResourceData
 {
