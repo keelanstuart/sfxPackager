@@ -61,6 +61,8 @@ Build your project once and rebuild it whenever your application changes. Files,
 
 * **Integrated JavaScript scripting** - JavaScript hooks for initialization, pre-install, pre-file, post-file, and post-install let you customize installation behavior from beginning to end. Scripts can manipulate files and the Registry, launch processes, create shortcuts, download content, perform license validation, and more.
 
+* **SHA-256 Encryption** - Add a password to protect your archives with SHA-256 encryption.
+
 * **"TEST ONLY" mode** - Run the complete installation process without making filesystem changes, making it easy to verify destinations and script behavior before deploying.
 
 * **Drag-and-drop packaging** - Add and organize files without maintaining complicated packaging scripts or manifests.
@@ -80,8 +82,6 @@ Build your project once and rebuild it whenever your application changes. Files,
 * **Unicode throughout** - Designed for modern Windows applications and filenames.
 
 * **Large package support** - Handle archives larger than 4 GB using external package data; fully self-contained installers support packages up to 4 GB.
-
-* **Disk spanning** - Large installations can also be divided into explicitly sized package segments for distribution across multiple files or media.
 
 ## Getting Started
 
