@@ -93,7 +93,7 @@ The tutorials walk through creating real packages and demonstrate both the basic
 
 For a more complete reference:
 
-**[Read the sfxPackager User's Guide](sfxPackager_Users_Guide_v4.0.pdf)**
+**[Read the sfxPackager User's Guide](sfxPackager_Users_Guide.pdf)**
 
 ## Philosophy
 
