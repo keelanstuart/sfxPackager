@@ -8,7 +8,7 @@ sfxPackager is a Windows installer creation tool designed around a simple idea: 
 
 Create a project, add your files, configure your package visually, and build. When you need more than the basics, sfxPackager includes an integrated JavaScript environment and installer API that let you customize installation behavior without giving up the simplicity of the project-based workflow.
 
-The result is a **compact, self-contained Windows installer** that doesn't require your users to install a separate runtime, bootstrapper, or packaging framework.
+The result is a **compact, self-contained Windows installer**.
 
 ## Why sfxPackager?
 
