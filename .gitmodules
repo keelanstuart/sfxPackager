@@ -4,3 +4,6 @@
 [submodule "sfx/sfxPackager/third-party/GenIO"]
 	path = sfx/sfxPackager/third-party/GenIO
 	url = https://github.com/keelanstuart/GenIO
+[submodule "sfx/sfxPackager/third-party/Pool"]
+	path = sfx/sfxPackager/third-party/Pool
+	url = https://github.com/keelanstuart/Pool

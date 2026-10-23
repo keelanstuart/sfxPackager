@@ -75,6 +75,7 @@
 #include <afxwin.h>
 
 typedef std::basic_string<TCHAR> tstring;
+typedef std::basic_string_view<TCHAR> tstring_view;
 
 
 

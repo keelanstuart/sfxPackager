@@ -1,5 +1,7 @@
 #pragma once
 
+#include "JsRichEditCtrl.h"
+
 
 // CScriptEditView view
 
@@ -15,7 +17,7 @@ protected:
 public:
 	CComboBox m_cbScriptSelect;
 	CStatic m_stHelper, m_stHelperFrame;
-	CRichEditCtrl m_reScriptEditor;
+	CJsRichEditCtrl m_reScriptEditor;
 	int m_LastSel;
 
 	void UpdateDocWithActiveScript();
