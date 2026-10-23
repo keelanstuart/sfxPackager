@@ -55,6 +55,12 @@ void COutputWnd::AppendMessage(EOutputType t, const TCHAR *msg)
 	}
 }
 
+void COutputWnd::ShowOutput(EOutputType type)
+{
+	m_wndTabs.SetActiveTab(static_cast<int>(type));
+	ShowPane(TRUE, FALSE, TRUE);
+}
+
 BEGIN_MESSAGE_MAP(COutputWnd, CDockablePane)
 	ON_WM_CREATE()
 	ON_WM_SIZE()
@@ -102,7 +108,7 @@ int COutputWnd::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndTabs.AddTab(&m_wndOutputDebug, strTabName, (UINT)1);
 
 	// Fill output tabs with some dummy text (nothing magic here)
-	AppendMessage(OT_DEBUG, _T("sfxPackager v3.7.6 - contact Keelan Stuart (keelanstuart@gmail.com) with comments, bug reports, or suggestions.\r\n"));
+	AppendMessage(OT_DEBUG, _T("sfxPackager v4.1.0 - contact Keelan Stuart (keelanstuart@gmail.com) with comments, bug reports, or suggestions.\r\n"));
 
 	return 0;
 }

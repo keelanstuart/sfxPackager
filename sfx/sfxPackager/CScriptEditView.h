@@ -1,44 +1,45 @@
 #pragma once
 
+#include <afxdockablepane.h>
 #include "JsRichEditCtrl.h"
 
+class CSfxPackagerDoc;
 
-// CScriptEditView view
-
-class CScriptEditView : public CView
+// Retain the existing file/class name; this is now a main-frame docking pane.
+class CScriptEditView : public CDockablePane
 {
-	DECLARE_DYNCREATE(CScriptEditView)
-
-protected:
-	CScriptEditView();           // protected constructor used by dynamic creation
-	virtual ~CScriptEditView();
-
-
 public:
-	CComboBox m_cbScriptSelect;
-	CStatic m_stHelper, m_stHelperFrame;
-	CJsRichEditCtrl m_reScriptEditor;
-	int m_LastSel;
-
+	CScriptEditView();
+	BOOL HandleEditorNavigation(MSG *message);
+	void SetDocument(CSfxPackagerDoc *document);
+	void DetachDocument(CSfxPackagerDoc *document);
 	void UpdateDocWithActiveScript();
 
-#ifdef _DEBUG
-	virtual void AssertValid() const;
-#ifndef _WIN32_WCE
-	virtual void Dump(CDumpContext& dc) const;
-#endif
-#endif
-
 protected:
-	DECLARE_MESSAGE_MAP()
-public:
-	virtual void OnInitialUpdate();
-	virtual BOOL OnCreateAggregates();
-	virtual BOOL OnChildNotify(UINT message, WPARAM wParam, LPARAM lParam, LRESULT *pLResult);
-	afx_msg void OnSize(UINT nType, int cx, int cy);
-	virtual void OnDraw(CDC * /*pDC*/);
+	class ScriptEditor : public CJsRichEditCtrl
+	{
+	public:
+		CScriptEditView *pane = nullptr;
+
+	protected:
+		void BuildContextMenu(CMenu &menu) override;
+		bool HandleContextMenuCommand(UINT command) override;
+		void OnTextChanged() override;
+	};
+
+	CComboBox m_cbScriptSelect;
+	ScriptEditor m_reScriptEditor;
+	CSfxPackagerDoc *m_Document = nullptr; // Borrowed; detached before document destruction.
+	int m_LastSel = -1;
+	bool m_Loading = false;
+
+	void LoadSelectedScript();
+	void Layout();
+	void RegisterIntrinsics();
+
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnSetFocus(CWnd *oldWindow);
 	afx_msg void OnScriptSelected();
+	DECLARE_MESSAGE_MAP()
 };
-
-

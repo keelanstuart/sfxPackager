@@ -26,7 +26,6 @@
 #include "PropertiesWnd.h"
 #include "RepathDlg.h"
 #include "ChildFrm.h"
-#include "CScriptEditView.h"
 #include "AddFolderDlg.h"
 #include "AddURLDlg.h"
 
@@ -79,8 +78,6 @@ CSfxPackagerView::CSfxPackagerView()
 {
 	m_bFirstUpdate = true;
 	m_hPackageThread = NULL;
-	m_Splitter = nullptr;
-	m_ScriptEditor = nullptr;
 	m_hAccelTable = LoadAccelerators(theApp.m_hInstance, MAKEINTRESOURCE(IDR_MAINFRAME));
 }
 
@@ -623,7 +620,13 @@ void CSfxPackagerView::OnUpdateAppBuildsfx(CCmdUI *pCmdUI)
 
 void CSfxPackagerView::OnAppBuildsfx()
 {
-	m_ScriptEditor->UpdateDocWithActiveScript();
+	CMainFrame *frame = DYNAMIC_DOWNCAST(CMainFrame, AfxGetMainWnd());
+	if (frame && !theApp.m_AutomatedBuild)
+	{
+		frame->GetOutputWnd().ShowOutput(COutputWnd::OT_BUILD);
+	}
+
+	// The script pane keeps the document current before the build thread starts.
 
 	m_hPackageThread = CreateThread(NULL, 0, CSfxPackagerDoc::RunCreateSFXPackage, this, 0, NULL);
 }
@@ -634,6 +637,10 @@ void CSfxPackagerView::OnInitialUpdate()
 	CListView::OnInitialUpdate();
 
 	RefreshProperties((CSfxPackagerDoc *)GetDocument());
+
+	CMainFrame *frame = DYNAMIC_DOWNCAST(CMainFrame, AfxGetMainWnd());
+	if (frame && frame->MDIGetActive() == GetParentFrame())
+		frame->GetScriptEditorWnd().SetDocument(GetDocument());
 }
 
 
@@ -949,17 +956,7 @@ void CSfxPackagerView::OnAppCancelSfx()
 
 void CSfxPackagerView::OnSize(UINT nType, int cx, int cy)
 {
-#if 0
-	if (m_Splitter)
-	{
-		CRect r;
-		m_Splitter->GetClientRect(r);
-		cx = r.Width();
 
-		int dummy;
-		m_Splitter->GetRowInfo(0, cy, dummy);
-	}
-#endif
 
 	CListView::OnSize(nType, cx, cy);
 }

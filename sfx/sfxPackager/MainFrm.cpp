@@ -35,6 +35,8 @@ const UINT uiLastUserToolBarId = uiFirstUserToolBarId + iMaxUserToolbars - 1;
 
 BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWndEx)
 	ON_WM_CREATE()
+	ON_COMMAND(ID_VIEW_SCRIPTEDITOR, &CMainFrame::OnViewScriptEditor)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SCRIPTEDITOR, &CMainFrame::OnUpdateViewScriptEditor)
 	ON_COMMAND(ID_WINDOW_MANAGER, &CMainFrame::OnWindowManager)
 	ON_COMMAND(ID_VIEW_CUSTOMIZE, &CMainFrame::OnViewCustomize)
 	ON_REGISTERED_MESSAGE(AFX_WM_CREATETOOLBAR, &CMainFrame::OnToolbarCreateNew)
@@ -165,6 +167,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CDockablePane* pTabbedBar = NULL;
 	m_wndOutput.EnableDocking(CBRS_ALIGN_ANY);
 	DockPane(&m_wndOutput);
+	m_wndScriptEditor.EnableDocking(CBRS_ALIGN_ANY);
+	DockPane(&m_wndScriptEditor);
 	m_wndProperties.EnableDocking(CBRS_ALIGN_ANY);
 	DockPane(&m_wndProperties);
 
@@ -275,6 +279,14 @@ BOOL CMainFrame::CreateDockingWindows()
 	{
 		TRACE0("Failed to create Properties window\n");
 		return FALSE; // failed to create
+	}
+
+	if (!m_wndScriptEditor.Create(_T("Script Editor"), this, CRect(0, 0, 700, 320), TRUE,
+		ID_VIEW_SCRIPTEDITOR, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN |
+		CBRS_BOTTOM | CBRS_FLOAT_MULTI))
+	{
+		TRACE0("Failed to create Script Editor window\n");
+		return FALSE;
 	}
 
 	SetDockingWindowIcons(theApp.m_bHiColorIcons);
@@ -465,7 +477,7 @@ void CMainFrame::OnUpdateAppBuildsfx(CCmdUI *pCmdUI)
 		return;
 	}
 
-	CWnd* pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CWnd* pWnd = pcf->GetActiveView();
 	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
 	if (pView)
 		pView->OnUpdateAppBuildsfx(pCmdUI);
@@ -477,7 +489,7 @@ void CMainFrame::OnAppBuildsfx()
 	if (!pcf)
 		return;
 
-	CWnd* pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CWnd* pWnd = pcf->GetActiveView();
 	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
 	if (pView)
 		pView->OnAppBuildsfx();
@@ -492,7 +504,7 @@ void CMainFrame::OnUpdateAppCancelSfx(CCmdUI *pCmdUI)
 		return;
 	}
 
-	CWnd* pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CWnd* pWnd = pcf->GetActiveView();
 	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
 	if (pView)
 		pView->OnUpdateAppCancelSfx(pCmdUI);
@@ -504,7 +516,7 @@ void CMainFrame::OnAppCancelSfx()
 	if (!pcf)
 		return;
 
-	CWnd* pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CWnd* pWnd = pcf->GetActiveView();
 	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
 	if (pView)
 		pView->OnAppCancelSfx();
@@ -513,13 +525,18 @@ void CMainFrame::OnAppCancelSfx()
 
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 {
-	//now check the focus of the edit control, and if it doesn't have it do the TranslateAccelarator
-	CWnd *pfw = GetFocus();
-	CRichEditCtrl *pre = dynamic_cast<CRichEditCtrl *>(pfw);
-	CEdit *pe = dynamic_cast<CEdit *>(pfw);
-	if (pre || pe)
+	CWnd *focus = GetFocus();
+	if (focus && m_wndScriptEditor.GetSafeHwnd() && m_wndScriptEditor.IsChild(focus) && m_wndScriptEditor.HandleEditorNavigation(pMsg))
+		return TRUE;
+
+	// Editing shortcuts belong to the focused control, not the project's file list.
+	// Explicitly allow Ctrl+S through to the frame's Save command.
+	if (dynamic_cast<CRichEditCtrl *>(focus) || dynamic_cast<CEdit *>(focus))
 	{
-		return pfw->PreTranslateMessage(pMsg);
+		const bool save = pMsg->message == WM_KEYDOWN && pMsg->wParam == 'S' &&
+			(GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_MENU) & 0x8000);
+		if (!save)
+			return focus->PreTranslateMessage(pMsg);
 	}
 
 	return CMDIFrameWndEx::PreTranslateMessage(pMsg);
@@ -534,7 +551,7 @@ void CMainFrame::OnUpdateTestSfx(CCmdUI *pCmdUI)
 		return;
 	}
 
-	CWnd *pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CWnd *pWnd = pcf->GetActiveView();
 	CSfxPackagerView *pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
 	if (pView)
 		pView->OnUpdateAppTestSfx(pCmdUI);
@@ -546,7 +563,7 @@ void CMainFrame::OnTestSfx()
 	if (!pcf)
 		return;
 
-	CWnd* pWnd = pcf->m_wndSplitter.GetPane(0, 0);
+	CWnd* pWnd = pcf->GetActiveView();
 	CSfxPackagerView* pView = DYNAMIC_DOWNCAST(CSfxPackagerView, pWnd);
 	if (pView)
 		pView->TestSfx();
@@ -562,4 +579,18 @@ void CMainFrame::OnActivate(UINT nCmdShow, CWnd *pw, BOOL b)
 void CMainFrame::ActivateFrame(int nCmdShow)
 {
 	CMDIFrameWndEx::ActivateFrame(theApp.m_AutomatedBuild ? SW_HIDE : nCmdShow);
+}
+
+void CMainFrame::OnViewScriptEditor()
+{
+	const BOOL show = !m_wndScriptEditor.IsVisible();
+	m_wndScriptEditor.ShowPane(show, FALSE, show);
+	if (show)
+		m_wndScriptEditor.SetFocus();
+}
+
+void CMainFrame::OnUpdateViewScriptEditor(CCmdUI *pCmdUI)
+{
+	pCmdUI->SetCheck(m_wndScriptEditor.IsVisible());
+	pCmdUI->Enable(TRUE);
 }

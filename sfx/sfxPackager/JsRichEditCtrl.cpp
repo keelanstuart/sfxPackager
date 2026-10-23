@@ -943,6 +943,8 @@ void CJsRichEditCtrl::Impl::Changed()
 
 	for (const auto &notification : notifications)
         Notify(notification);
+
+    owner.OnTextChanged();
 }
 
 long CJsRichEditCtrl::Impl::Caret() const
@@ -1406,8 +1408,13 @@ void CJsRichEditCtrl::Impl::ContextMenu(CPoint screenPoint, CWnd* source)
     menu.AppendMenu(MF_SEPARATOR);
     add(CmdColors, _T("&Colors..."), true);
     add(CmdFunctions, _T("Intrinsic &functions..."), true);
+    owner.BuildContextMenu(menu);
     const UINT command = static_cast<UINT>(menu.TrackPopupMenu(
         TPM_RETURNCMD | TPM_RIGHTBUTTON, screenPoint.x, screenPoint.y, &owner));
+
+    if (command >= ContextMenuCommandFirst && command <= ContextMenuCommandLast &&
+        owner.HandleContextMenuCommand(command))
+        return;
 
 	switch (command)
     {
@@ -2263,4 +2270,19 @@ void CJsRichEditCtrl::RequestColorization()
 const CString &CJsRichEditCtrl::GetLastError() const
 {
     return m_impl->lastError;
+}
+
+void CJsRichEditCtrl::BuildContextMenu(CMenu& menu)
+{
+    UNREFERENCED_PARAMETER(menu);
+}
+
+bool CJsRichEditCtrl::HandleContextMenuCommand(UINT command)
+{
+    UNREFERENCED_PARAMETER(command);
+    return false;
+}
+
+void CJsRichEditCtrl::OnTextChanged()
+{
 }

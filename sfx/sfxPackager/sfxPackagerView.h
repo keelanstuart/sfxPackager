@@ -16,7 +16,6 @@
 #pragma once
 
 #include "sfxPackagerDoc.h"
-#include "CScriptEditView.h"
 
 
 class CSfxPackagerView : public CListView
@@ -32,11 +31,7 @@ public:
 	CSfxPackagerDoc* GetDocument() const;
 
 	static CSfxPackagerView *GetView();
-	void SetSplitterWnd(CSplitterWndEx *ps) { m_Splitter = ps; }
-	CSplitterWndEx *GetSplitterWnd() { return m_Splitter; }
 
-	void SetScriptEditView(CScriptEditView *pe) { m_ScriptEditor = pe; }
-	CScriptEditView *GetScriptEditView() { return m_ScriptEditor; }
 
 	void RefreshProperties(CSfxPackagerDoc *pd = NULL);
 
@@ -68,8 +63,6 @@ protected:
 
 	bool m_bFirstUpdate;
 	HANDLE m_hPackageThread;
-	CSplitterWndEx *m_Splitter;
-	CScriptEditView *m_ScriptEditor;
 	HACCEL m_hAccelTable;
 
 // Generated message map functions

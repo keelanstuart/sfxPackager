@@ -50,6 +50,7 @@ public:
 	};
 
 	void AppendMessage(EOutputType t, const TCHAR *msg);
+	void ShowOutput(EOutputType type);
 
 // Attributes
 protected:

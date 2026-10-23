@@ -17,6 +17,7 @@
 #include "OutputWnd.h"
 #include "PropertiesWnd.h"
 #include "ProgressStatusBar.h"
+#include "CScriptEditView.h"
 
 class CMainFrame : public CMDIFrameWndEx
 {
@@ -43,6 +44,10 @@ public:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
+	CScriptEditView &GetScriptEditorWnd()
+	{
+		return m_wndScriptEditor;
+	}
 	COutputWnd &GetOutputWnd() { return m_wndOutput; }
 	CPropertiesWnd &GetPropertiesWnd() { return m_wndProperties; }
 	CProgressStatusBar &GetStatusBarWnd() { return m_wndStatusBar; }
@@ -54,11 +59,14 @@ protected:  // control bar embedded members
 	CMFCToolBarImages   m_UserImages;
 	COutputWnd          m_wndOutput;
 	CPropertiesWnd      m_wndProperties;
+	CScriptEditView     m_wndScriptEditor;
 
 // Generated message map functions
 protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnWindowManager();
+	afx_msg void OnViewScriptEditor();
+	afx_msg void OnUpdateViewScriptEditor(CCmdUI *pCmdUI);
 	afx_msg void OnViewCustomize();
 	afx_msg LRESULT OnToolbarCreateNew(WPARAM wp, LPARAM lp);
 	afx_msg void OnApplicationLook(UINT id);

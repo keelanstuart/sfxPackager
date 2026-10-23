@@ -18,6 +18,7 @@
 
 #include <vector>
 #include <set>
+#include <mutex>
 
 #include "../../Archiver/Include/Archiver.h"
 #include "OutputWnd.h"
@@ -151,7 +152,9 @@ public:
 
 	LARGE_INTEGER m_UncompressedSize;
 
+	std::mutex m_ScriptMutex; // Guards writes and the packaging thread's snapshot.
 	CString m_Script[EScriptType::NUMTYPES];
+	int m_SelectedScriptStage = INITIALIZE; // Session UI state; not serialized.
 
 	HANDLE m_hThread;
 	HANDLE m_hCancelEvent;

@@ -613,58 +613,65 @@ bool SetupSfxExecutable(const TCHAR *filename, CSfxPackagerDoc *pDoc, HANDLE &hF
 				}
 			}
 
+			CString scripts[CSfxPackagerDoc::NUMTYPES];
+			{
+				std::lock_guard<std::mutex> lock(pDoc->m_ScriptMutex);
+				for (int i = 0; i < CSfxPackagerDoc::NUMTYPES; i++)
+					scripts[i] = pDoc->m_Script[i];
+			}
+
 #if 0
 			tstring tmp_script;
 
-			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::INITIALIZE];
+			tmp_script = scripts[CSfxPackagerDoc::EScriptType::INITIALIZE];
 			Scramble(tmp_script);
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INITIALIZE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
 									 (void *)(tmp_script.c_str()),
 									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
 
-			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREINSTALL];
+			tmp_script = scripts[CSfxPackagerDoc::EScriptType::PREINSTALL];
 			Scramble(tmp_script);
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PREINSTALL"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
 									 (void *)(tmp_script.c_str()),
 									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
 
-			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREFILE];
+			tmp_script = scripts[CSfxPackagerDoc::EScriptType::PREFILE];
 			Scramble(tmp_script);
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PREFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
 									 (void *)(tmp_script.c_str()),
 									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
 
-			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTFILE];
+			tmp_script = scripts[CSfxPackagerDoc::EScriptType::POSTFILE];
 			Scramble(tmp_script);
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_POSTFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
 									 (void *)(tmp_script.c_str()),
 									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
 
-			tmp_script = pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTINSTALL];
+			tmp_script = scripts[CSfxPackagerDoc::EScriptType::POSTINSTALL];
 			Scramble(tmp_script);
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_POSTINSTALL"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
 									 (void *)(tmp_script.c_str()),
 									 ((DWORD)tmp_script.length() + 1) * (DWORD)sizeof(TCHAR));
 #else
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_INITIALIZE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::INITIALIZE]),
-									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::INITIALIZE].GetLength() + 1) * sizeof(TCHAR));
+									 (void *)((LPCTSTR)scripts[CSfxPackagerDoc::EScriptType::INITIALIZE]),
+									 (scripts[CSfxPackagerDoc::EScriptType::INITIALIZE].GetLength() + 1) * sizeof(TCHAR));
 
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PREINSTALL"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREINSTALL]),
-									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREINSTALL].GetLength() + 1) * sizeof(TCHAR));
+									 (void *)((LPCTSTR)scripts[CSfxPackagerDoc::EScriptType::PREINSTALL]),
+									 (scripts[CSfxPackagerDoc::EScriptType::PREINSTALL].GetLength() + 1) * sizeof(TCHAR));
 
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_PREFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREFILE]),
-									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::PREFILE].GetLength() + 1) * sizeof(TCHAR));
+									 (void *)((LPCTSTR)scripts[CSfxPackagerDoc::EScriptType::PREFILE]),
+									 (scripts[CSfxPackagerDoc::EScriptType::PREFILE].GetLength() + 1) * sizeof(TCHAR));
 
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_POSTFILE"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTFILE]),
-									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTFILE].GetLength() + 1) * sizeof(TCHAR));
+									 (void *)((LPCTSTR)scripts[CSfxPackagerDoc::EScriptType::POSTFILE]),
+									 (scripts[CSfxPackagerDoc::EScriptType::POSTFILE].GetLength() + 1) * sizeof(TCHAR));
 
 			bresult = UpdateResource(hbur, _T("SFX"), _T("SFX_SCRIPT_POSTINSTALL"), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-									 (void *)((LPCTSTR)pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTINSTALL]),
-									 (pDoc->m_Script[CSfxPackagerDoc::EScriptType::POSTINSTALL].GetLength() + 1) * sizeof(TCHAR));
+									 (void *)((LPCTSTR)scripts[CSfxPackagerDoc::EScriptType::POSTINSTALL]),
+									 (scripts[CSfxPackagerDoc::EScriptType::POSTINSTALL].GetLength() + 1) * sizeof(TCHAR));
 #endif
 
 			SFixupResourceData furd;
@@ -2421,6 +2428,7 @@ void CSfxPackagerDoc::ReadSettings(genio::IParserT *gp)
 
 void CSfxPackagerDoc::ReadScripts(genio::IParserT *gp)
 {
+	std::lock_guard<std::mutex> lock(m_ScriptMutex);
 	tstring stype;
 
 	while (gp->NextToken())
@@ -2651,22 +2659,7 @@ void CSfxPackagerDoc::Serialize(CArchive& ar)
 
 		s += _T("<scripts>");
 
-		POSITION vp = GetFirstViewPosition();
-		CView *pv = nullptr;
-		CSfxPackagerView *ppv = nullptr;
-		while ((pv = GetNextView(vp)) != nullptr)
-		{
-			if ((ppv = dynamic_cast<CSfxPackagerView *>(pv)) != nullptr)
-				break;
-		}
-
-		CScriptEditView *pe = nullptr;
-		if (ppv)
-		{
-			pe = dynamic_cast<CScriptEditView *>(ppv->GetSplitterWnd()->GetPane(1, 0));
-			if (pe)
-				pe->UpdateDocWithActiveScript();
-		}
+		// Script edits are synchronized by the docking pane as they occur.
 
 		tstring scr;
 
@@ -2917,6 +2910,10 @@ void CSfxPackagerDoc::Dump(CDumpContext& dc) const
 
 void CSfxPackagerDoc::OnCloseDocument()
 {
+	CMainFrame *frame = DYNAMIC_DOWNCAST(CMainFrame, AfxGetMainWnd());
+	if (frame && frame->GetSafeHwnd())
+		frame->GetScriptEditorWnd().DetachDocument(this);
+
 	BeginWaitCursor();
 
 	CDocument::OnCloseDocument();

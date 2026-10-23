@@ -107,6 +107,19 @@ public:
     const CString& GetLastError() const;
 
 protected:
+    // Appended immediately before displaying the popup. The parent menu owns any
+    // attached submenus; custom commands must use IDs in this reserved range.
+    enum : UINT
+    {
+        ContextMenuCommandFirst = 0x9000,
+        ContextMenuCommandLast = 0x9FFF
+    };
+    virtual void BuildContextMenu(CMenu& menu);
+    virtual bool HandleContextMenuCommand(UINT command);
+    // UI thread only; actual text edits including undo/redo, not SetText or coloring.
+    // Do not destroy the editor from this hook.
+    virtual void OnTextChanged();
+
     // Return true on success. Base hooks deliberately do nothing and return false.
     virtual bool LoadColorConfiguration(LPCTSTR context, ColorConfig& colors);
     virtual bool SaveColorConfiguration(LPCTSTR context, const ColorConfig& colors);
