@@ -232,7 +232,6 @@ void CScriptEditView::OnInitialUpdate()
 	{
 		int cbi = m_cbScriptSelect.GetCurSel();
 		CSfxPackagerDoc::EScriptType t = (CSfxPackagerDoc::EScriptType)m_cbScriptSelect.GetItemData(cbi);
-		//m_reScriptEditor.SetWindowText(doc->m_Script[t]);
 	}
 }
 
